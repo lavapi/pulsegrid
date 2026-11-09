@@ -1,0 +1,8 @@
+region                  = "eu-central-1"
+hostname                = "dashops.example.com"
+app_version             = "0.2.0"
+load_balancer_name      = "my-load-balancer"
+database_cluster        = "my-aurora-cluster"
+cache_replication_group = "my-cache"
+subnet_ids              = ["subnet-11111111", "subnet-22222222"]
+listener_rule_priority  = 900

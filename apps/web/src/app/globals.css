@@ -1,0 +1,119 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #f6f7f9;
+  --sidebar: #ffffff;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --popover-border: #d0d5dd;
+  --muted: #f1f3f6;
+  --border: #e4e7ec;
+  --foreground: #111827;
+  --muted-foreground: #667085;
+  --faint: #98a2b3;
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+  --ring: rgb(79 70 229 / 0.16);
+  --success: #047857;
+  --success-soft: #ecfdf5;
+  --warning: #b45309;
+  --warning-soft: #fffbeb;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --neutral-soft: #f1f3f6;
+}
+
+.dark {
+  --background: #0b0d12;
+  --sidebar: #0f1117;
+  --card: #14171f;
+  --popover: #212633;
+  --popover-border: #39404f;
+  --muted: #1a1e28;
+  --border: #232836;
+  --foreground: #eceff4;
+  --muted-foreground: #98a1b3;
+  --faint: #667085;
+  --primary: #818cf8;
+  --primary-foreground: #0b0d12;
+  --ring: rgb(129 140 248 / 0.2);
+  --success: #34d399;
+  --success-soft: rgb(52 211 153 / 0.12);
+  --warning: #fbbf24;
+  --warning-soft: rgb(251 191 36 / 0.12);
+  --danger: #f87171;
+  --danger-soft: rgb(248 113 113 / 0.12);
+  --neutral-soft: rgb(152 161 179 / 0.12);
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-sidebar: var(--sidebar);
+  --color-card: var(--card);
+  --color-popover: var(--popover);
+  --color-popover-border: var(--popover-border);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-faint: var(--faint);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-production: #dc2626;
+  --color-neutral-soft: var(--neutral-soft);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  html {
+    color-scheme: light;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+}
+
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,7 @@
+**/node_modules
+**/dist
+**/.next
+.git
+infra
+.env
+tools/dev-idp/.keys

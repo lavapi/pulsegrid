@@ -1,0 +1,172 @@
+# Changelog
+
+All notable changes to this project are documented in this file. The format is based on Keep a Changelog, and the project follows Semantic Versioning.
+
+## [Unreleased]
+
+## [0.8.0] - 2026-11-09
+
+### Added
+
+- The project is licensed under Apache-2.0, with a security policy, contributing guide, code of conduct, and issue and pull request templates.
+
+### Changed
+
+- The app is now called PulseGrid, and the code packages are `@pulsegrid/*`. New authenticator entries are labelled PulseGrid. Docker images, Terraform resource names, database users and Redis keys keep their current names, so existing installs aren't affected.
+
+## [0.7.0] - 2026-11-09
+
+### Added
+
+- Settings > Project for the super admin, to rename the open project or delete it with everything in it after typing its name. The only remaining project can't be deleted. Run the migration first.
+
+## [0.6.0] - 2026-11-09
+
+### Changed
+
+- People are one pool for the whole install, and each project has its own members with a role per project. Someone who isn't assigned to a project can't reach it. The super admin is one person for the whole install, can see every project and is seated in each as Admin. Sessions now belong to the person, with the open project kept on the session. Run the migration: everyone keeps their current workspace and role, and the first workspace's owner becomes super admin.
+- Removing someone from Team only takes them out of that project; they keep their sign-in.
+
+### Added
+
+- Projects: a switcher at the top left of the sidebar lists your projects, and the super admin can create new ones. Each project has its own cloud accounts, integrations, environments, pipelines, roles, members and Activity.
+- Settings > People for the super admin to add people to the pool, remove them, and hand over the super admin role. Settings > Team is now Members, where the super admin assigns people from the pool and chooses their role in that project.
+- A page for people who aren't in any project yet.
+- The selected cloud account is remembered per project.
+
+## [0.5.0] - 2026-11-09
+
+### Added
+
+- Quick links on Overview for the selected account's environment, with apps and Grafana in separate groups and their own icons, also on the environment page.
+- Editing environment domains. Run the migration so the app can update them.
+
+## [0.4.0] - 2026-11-09
+
+### Added
+
+- Cluster-mode Redis or Valkey (`REDIS_CLUSTER=true`), such as an ElastiCache cluster shared with other applications: the API and worker connect through its configuration endpoint, and every key, BullMQ queues included, carries the `{dashops}` hash tag (`REDIS_KEY_PREFIX`), so multi-key commands stay in one slot and the keys stay apart from other applications. `existing-stack` detects a cluster-mode cache, uses its configuration endpoint and database 0, and sets `REDIS_CLUSTER`.
+
+## [0.3.0] - 2026-11-09
+
+### Removed
+
+- Set temporary password on the Team page and its API route. Removing a person and adding them again is now how they get back in.
+- The events queue and its Terraform module. EC2 reboots started outside the dashboard, and the names of people who start outside work, are no longer shown.
+
+### Added
+
+- The app version at the bottom of the sidebar, read from the web app's package when it's built.
+- App and Grafana domains for each environment under Manage environments, shown as links on the environment's page and on releases that are ready for testing.
+- A Releases page following each change from build and test through its ECS rollout to ready for testing, with a Link a service option to connect a pipeline to its ECS service.
+- A Costs page showing this month and last month per service for each cloud account, from AWS Cost Explorer every 6 hours, behind a new View costs permission that Admins have by default. Keys need `ce:GetCostAndUsage`.
+- Tag filters and an Edit option for cloud accounts, to include or exclude resources by tag.
+- Logs on ECS services from CloudWatch, with time ranges, search and live follow, behind a new View service logs permission.
+
+### Changed
+
+- Roles are now created by the super admin with their own permissions, replacing the fixed roles and per-person permissions. Existing people keep their access, and per-person ticks become custom roles when you run the migration.
+- Any person can be made super admin, not only Admins.
+- Two-factor authentication is required for everyone at first sign-in and can no longer be turned off. The separate two-factor checks on secrets and logs are gone.
+- Times can switch between UTC and local time from the top bar, and show the other zone on hover.
+- Developers can now see Activity, manage pipeline apps and link pipelines to environments, like Admins.
+- Activity replaces the Audit log, with filters for person, account, type and date, readable details, and recent activity on each resource.
+- Switching accounts responds immediately. Pipeline data loads separately, using the last known data while it refreshes in the background.
+- The Overview page is now a system health dashboard for the selected account, with problems, running pipelines, recent failures and work in progress.
+- Secrets: view and edit a whole JSON secret, edit a key's name and value together, see JSON indented, and use a larger JSON editor that refuses broken JSON. Numbers and true or false values keep their type.
+- Background sync now runs every 2 minutes instead of every 5.
+
+## [0.2.0] - 2026-11-06
+
+### Added
+
+- Secrets Manager under Infrastructure, with read and write permissions set by the super admin. Values are read on demand, never stored, and only available outside production with two-factor authentication.
+- Install on AWS with Terraform, on a new stack or on an existing database, cache and load balancer, using published images.
+- Events queue for AWS accounts, which shows outside EC2 reboots and the name of the person who started outside work.
+- Terraform module that forwards AWS changes to a queue for the dashboard.
+- Resource cards with live progress on the ECS, RDS, ElastiCache and EC2 pages, and detection of work started outside the dashboard.
+- Live progress for cloud actions, recorded by the background worker, and a reboot action for staging ElastiCache clusters.
+- Environment badges in the account switcher, and a production banner while a production account is selected.
+- Cloud actions: force deploy a service, reboot a staging database and reboot a server, with permissions the super admin sets for each person.
+- Add user on the Team page: the super admin enters a first name, last name, email and role, and gets a temporary password to send.
+- Temporary passwords set by the super admin, which expire after 24 hours, turn off two-factor and must be replaced at the next sign-in.
+- Show and hide on every password field, and confirm password wherever a new password is set.
+- First-run setup wizard with a one-time code that is replaced if it gets lost, workspace owners with ownership transfer, and default Staging and Production environments.
+- Email and password sign-in, Google sign-in and two-factor authentication.
+- Git integrations under Settings: connect GitHub with an encrypted token for each organization, with a provider layer ready for GitLab and Bitbucket.
+- AWS integrations under Settings: add, test, replace and remove an access key for each account, with encrypted storage and a read-only IAM policy to copy.
+- Live sync progress with per-account status, and page-specific skeleton loaders.
+- Infrastructure map showing resources by VPC and subnet, with health and connections from load balancer targets and security group rules.
+
+### Added
+
+- Logs on ECS services from CloudWatch, with time ranges, search and live follow, behind a new View service logs permission.
+
+### Changed
+
+- Roles are now created by the super admin with their own permissions, replacing the fixed roles and per-person permissions. Existing people keep their access, and per-person ticks become custom roles when you run the migration.
+- Any person can be made super admin, not only Admins.
+- Two-factor authentication is required for everyone at first sign-in and can no longer be turned off. The separate two-factor checks on secrets and logs are gone.
+- Times can switch between UTC and local time from the top bar, and show the other zone on hover.
+- Activity replaces the Audit log, with filters for person, account, type and date, readable details, and recent activity on each resource.
+- Switching accounts responds immediately. Pipeline data loads separately, using the last known data while it refreshes in the background.
+- The account switcher lists the selected account first.
+- Production is read-only: force deploys, reboots and pipeline run, re-run and cancel only work outside production, for everyone, and typed confirmations are gone.
+- Only the super admin can add, remove or change people.
+- Public sign-up, invitations, email verification, forgot password and email sending are removed. A super admin who loses access has to reinstall the app.
+- Pipeline pages moved under apps, and environment pages only show pipelines that belong to an app.
+- Cloud support now runs through a provider layer, with AWS as the first provider, ready for GCP and Azure.
+- Everyone in a workspace now sees all connected AWS accounts.
+- Production pipeline actions now need only the Admin role and the typed confirmation.
+
+### Removed
+
+- Sign-in through AWS IAM Identity Center, group role mappings, `pnpm tenant:create` and the local identity provider.
+- The `GITHUB_TOKEN`, `GITHUB_ORGS` and `GITHUB_TENANT` settings.
+- Connect AWS, My AWS access, per-person AWS permissions and background role access.
+
+## [0.1.0] - 2026-11-05
+
+### Added
+
+- Logs on ECS services from CloudWatch, with time ranges, search and live follow, behind a new View service logs permission.
+
+### Changed
+
+- Roles are now created by the super admin with their own permissions, replacing the fixed roles and per-person permissions. Existing people keep their access, and per-person ticks become custom roles when you run the migration.
+- Any person can be made super admin, not only Admins.
+- Two-factor authentication is required for everyone at first sign-in and can no longer be turned off. The separate two-factor checks on secrets and logs are gone.
+- Times can switch between UTC and local time from the top bar, and show the other zone on hover.
+- Activity replaces the Audit log, with filters for person, account, type and date, readable details, and recent activity on each resource.
+- Switching accounts responds immediately. Pipeline data loads separately, using the last known data while it refreshes in the background.
+- Redesigned the web app with a new design system, dark and light themes, a collapsible sidebar and consistent components.
+
+### Added
+
+- Average deployment time per environment on app cards and app pages.
+- Apps on the Pipelines page: admins create an app from a name and a repository, and each app's card opens its pipelines.
+- The Pipelines page follows the account switcher, showing the selected environment's pipelines and shared checks.
+- Environment rules based on the branch are read from workflow files, and production protection is applied to each run.
+- Command search, sortable and filterable tables, loading states, toasts and confirmation dialogs.
+- Themed dropdowns with keyboard support, replacing browser menus.
+- Run, re-run and cancel pipelines, with role checks, production confirmation and an audit trail.
+- Production pipeline actions now also need write access to the Production AWS account.
+- GitHub Actions pipelines with live run status, history, job and step progress, and environment links.
+- Multi-tenant data model with Postgres row-level security.
+- Sign-in through AWS IAM Identity Center over SAML 2.0.
+- Viewer, Developer and Admin roles mapped from Identity Center groups.
+- Append-only audit log.
+- Web app with sign-in, workspace overview, access settings and audit log pages.
+- Local identity provider for development and tests.
+- Terraform, container images and CI.
+- AWS account connection through a read-only cross-account role.
+- Background sync of ECS, RDS, ElastiCache, S3, EC2 and network resources.
+- Infrastructure pages with filters, search and resource details.
+- Connect AWS through Identity Center.
+- Access levels per account and service, worked out from each person's real AWS permissions.
+- Encrypted storage for AWS tokens.
+- Environments grouped from AWS accounts, with health summaries and resource views.
+- Environment comparison showing missing resources and configuration differences.
+- Infrastructure organized by AWS service, with service icons, health and tailored detail pages.
+- Account switcher that scopes the workspace to one AWS account, with an empty state when there are none.
+- ECS launch type from capacity providers, plus task definition, platform version and deployment state.

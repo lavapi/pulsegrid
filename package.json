@@ -1,0 +1,19 @@
+{
+  "name": "pulsegrid",
+  "private": true,
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@9.15.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @pulsegrid/shared build && pnpm --filter @pulsegrid/api build && concurrently -n api,worker,web \"pnpm --filter @pulsegrid/api dev\" \"pnpm --filter @pulsegrid/api dev:worker\" \"pnpm --filter @pulsegrid/web dev\"",
+    "typecheck": "pnpm --filter @pulsegrid/shared build && pnpm -r typecheck",
+    "test": "pnpm --filter @pulsegrid/shared build && pnpm -r test",
+    "db:migrate": "pnpm --filter @pulsegrid/api db:migrate"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}
