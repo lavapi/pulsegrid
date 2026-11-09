@@ -133,6 +133,14 @@ Set `app_version` to the new version, then run `terraform apply`. The API runs a
 
 Read the release notes first, and check that your database has a recent backup.
 
+### Installs from before the PulseGrid images
+
+Images are published as `ghcr.io/lavapi/pulsegrid-api` and `-web`. Versions up to 0.8.0 were published as `ghcr.io/lavapi/dashops-api` and `-web`, and only exist under those names.
+
+- **To move to a newer version:** set `app_version` as usual. If you set `image_repository` yourself, change it to `ghcr.io/lavapi/pulsegrid`.
+- **To stay on 0.8.0 or earlier:** set `image_repository = "ghcr.io/lavapi/dashops"`, or Terraform will look for the old version under the new name.
+- **Keep `name` as it is.** It defaults to `dashops` and names every resource in the stack, including the database, so changing it would replace them.
+
 ## Use your own images
 
 Set `image_repository` to your own registry. The images must be `linux/amd64`, and named `<repository>-api` and `<repository>-web`, tagged with `app_version`. Build them from the repository root.

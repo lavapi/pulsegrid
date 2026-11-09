@@ -22,7 +22,7 @@ variable "app_version" {
 variable "image_repository" {
   description = "Images are named <repository>-api and <repository>-web."
   type        = string
-  default     = "ghcr.io/lavapi/dashops"
+  default     = "ghcr.io/lavapi/pulsegrid"
 }
 
 variable "load_balancer_name" {
