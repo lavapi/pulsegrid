@@ -1,5 +1,5 @@
 region                  = "eu-central-1"
-hostname                = "dashops.example.com"
+hostname                = "pulsegrid.example.com"
 app_version             = "0.2.0"
 load_balancer_name      = "my-load-balancer"
 database_cluster        = "my-aurora-cluster"

@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Changed
+
+- Docker images are published as `ghcr.io/lavapi/pulsegrid-api` and `-web`, and the Terraform `image_repository` default points there. Versions up to 0.8.0 stay under the `dashops` names; see Upgrade in docs/install-aws.md.
+
 ## [0.8.0] - 2026-11-09
 
 ### Added
