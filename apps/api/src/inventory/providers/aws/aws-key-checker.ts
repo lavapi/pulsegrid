@@ -13,7 +13,7 @@ import { DescribeDBInstancesCommand, RDSClient } from '@aws-sdk/client-rds';
 import { ListBucketsCommand, S3Client } from '@aws-sdk/client-s3';
 import { ListSecretsCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
-import { AWS_SERVICES, type CredentialCheck } from '@pulsegrid/shared';
+import { AWS_ACTIONS, AWS_SERVICES, type CredentialCheck } from '@pulsegrid/shared';
 import { CredentialsRejected } from '../provider';
 import { isAccessDenied, keyErrorMessage } from './aws-error-messages';
 import { type AwsKey, isRootArn } from './aws-key';
@@ -57,21 +57,35 @@ const canRead = async (service: AwsServiceId, target: ProbeTarget): Promise<bool
   }
 };
 
-const canWrite = async (credentials: AwsKey, arn: string): Promise<boolean | null> => {
+/** The actions the simulator allows, or null when the credentials can't run the simulator. */
+const allowedActions = async (credentials: AwsKey, arn: string, actions: readonly string[]) => {
   const client = new IAMClient({ region: IAM_REGION, credentials });
   try {
     const { EvaluationResults: results } = await client.send(
-      new SimulatePrincipalPolicyCommand({
-        PolicySourceArn: arn,
-        ActionNames: SERVICE_PERMISSIONS.map(({ manageAction }) => manageAction),
-      }),
+      new SimulatePrincipalPolicyCommand({ PolicySourceArn: arn, ActionNames: [...actions] }),
     );
-    return (results ?? []).some(
-      ({ EvalDecision: decision }) => decision === PolicyEvaluationDecisionType.ALLOWED,
+    return new Set(
+      (results ?? [])
+        .filter(({ EvalDecision: decision }) => decision === PolicyEvaluationDecisionType.ALLOWED)
+        .flatMap(({ EvalActionName: action }) => (action ? [action] : [])),
     );
   } catch {
     return null;
   }
+};
+
+const canWrite = async (credentials: AwsKey, arn: string): Promise<boolean | null> => {
+  const allowed = await allowedActions(
+    credentials,
+    arn,
+    SERVICE_PERMISSIONS.map(({ manageAction }) => manageAction),
+  );
+  return allowed && allowed.size > 0;
+};
+
+const missingActions = async (credentials: AwsKey, arn: string): Promise<string[] | null> => {
+  const allowed = await allowedActions(credentials, arn, AWS_ACTIONS);
+  return allowed && AWS_ACTIONS.filter((action) => !allowed.has(action));
 };
 
 const identityOf = async (credentials: AwsKey) => {
@@ -97,5 +111,10 @@ export const checkAwsKey = async (key: AwsKey, region: string): Promise<Credenti
       readable: await canRead(service, { credentials: key, region }),
     })),
   );
-  return { accountId: identity.Account ?? '', services, canWrite: await canWrite(key, arn) };
+  return {
+    accountId: identity.Account ?? '',
+    services,
+    canWrite: await canWrite(key, arn),
+    missingActions: await missingActions(key, arn),
+  };
 };

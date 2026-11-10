@@ -79,15 +79,6 @@ export const AWS_READ_ONLY_ACTIONS = [
   'iam:SimulatePrincipalPolicy',
 ] as const;
 
-export const AWS_READ_ONLY_POLICY = JSON.stringify(
-  {
-    Version: '2012-10-17',
-    Statement: [{ Effect: 'Allow', Action: AWS_READ_ONLY_ACTIONS, Resource: '*' }],
-  },
-  null,
-  2,
-);
-
 export const AWS_CHANGE_ACTIONS = [
   'ecs:UpdateService',
   'rds:RebootDBInstance',
@@ -100,13 +91,13 @@ export const AWS_CHANGE_ACTIONS = [
   'fis:StopExperiment',
 ] as const;
 
-export const AWS_ACTIONS_POLICY = JSON.stringify(
+/** Everything PulseGrid can do. Every account uses this one policy; roles in PulseGrid decide who may do what. */
+export const AWS_ACTIONS = [...AWS_READ_ONLY_ACTIONS, ...AWS_CHANGE_ACTIONS] as const;
+
+export const AWS_POLICY = JSON.stringify(
   {
     Version: '2012-10-17',
-    Statement: [
-      { Effect: 'Allow', Action: AWS_READ_ONLY_ACTIONS, Resource: '*' },
-      { Effect: 'Allow', Action: AWS_CHANGE_ACTIONS, Resource: '*' },
-    ],
+    Statement: [{ Effect: 'Allow', Action: AWS_ACTIONS, Resource: '*' }],
   },
   null,
   2,
@@ -115,7 +106,7 @@ export const AWS_ACTIONS_POLICY = JSON.stringify(
 export const AWS_PROVIDER: CloudProviderDefinition = {
   id: 'aws',
   label: 'AWS',
-  description: 'Read infrastructure with an access key for each account',
+  description: 'Read and manage infrastructure with an access key for each account',
   icon: '/cloud-icons/aws/logo.svg',
   accountLabel: 'AWS account',
   credentialFields: [
@@ -139,15 +130,9 @@ export const AWS_PROVIDER: CloudProviderDefinition = {
     'ap-southeast-1',
   ],
   setup: {
-    title: 'Read-only IAM policy',
+    title: 'IAM policy',
     description:
-      "Create a dedicated IAM user with this policy for each account. Don't use personal or admin keys. It can read service logs, costs and, through task definitions, plain environment variables.",
-    code: AWS_READ_ONLY_POLICY,
-  },
-  actionsSetup: {
-    title: 'IAM policy with actions',
-    description:
-      'Use this on non-production accounts to allow force deploys, reboots and secret changes. It adds only those actions, and the check that a server came back. A secret with its own KMS key must also allow this user.',
-    code: AWS_ACTIONS_POLICY,
+      "Create a dedicated IAM user with this policy for each account, production included. Don't use personal or admin keys. It covers everything PulseGrid can read and do. Who can do what, in staging and in production, is set by roles in PulseGrid. A secret with its own KMS key must also allow this user.",
+    code: AWS_POLICY,
   },
 };

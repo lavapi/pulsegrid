@@ -16,7 +16,7 @@ export default async function RolesPage() {
         title="Roles"
         description={
           user.isOwner
-            ? 'Create roles and choose what each one can do. Production stays read-only for every role.'
+            ? 'Create roles and choose what each one can do. Staging and production permissions are separate, so a role can act on one without the other.'
             : 'Only the super admin can change roles.'
         }
       />

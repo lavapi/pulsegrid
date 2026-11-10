@@ -4,7 +4,7 @@ import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { CurrentAuth } from '../../auth/guards/current-auth.decorator';
-import { RequirePermission } from '../../auth/guards/require-permission.decorator';
+import { RequireEnvironmentPermission } from '../../auth/guards/require-permission.decorator';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { ZodPipe } from '../../common/zod.pipe';
 import { RUN_PERMISSION } from './experiment-access';
@@ -14,7 +14,7 @@ import { CHANGE_LIMIT, groupSchema, INVALID_GROUP } from './experiment-schemas';
 type GroupBody = z.infer<typeof groupSchema>;
 
 @Controller('cloud/accounts/:id/experiment-groups')
-@RequirePermission(RUN_PERMISSION)
+@RequireEnvironmentPermission(RUN_PERMISSION)
 @UseGuards(ThrottlerGuard)
 @Throttle(CHANGE_LIMIT)
 export class ExperimentGroupsController {

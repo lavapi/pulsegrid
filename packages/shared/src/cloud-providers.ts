@@ -25,7 +25,6 @@ export interface CloudProviderDefinition {
   defaultRegion: string;
   regions: string[];
   setup: ProviderSetup;
-  actionsSetup?: ProviderSetup;
 }
 
 export const CLOUD_PROVIDERS: readonly CloudProviderDefinition[] = [AWS_PROVIDER];

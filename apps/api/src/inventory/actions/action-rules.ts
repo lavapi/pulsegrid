@@ -1,17 +1,9 @@
-import type { CloudPermission, ResourceActionOption } from '@pulsegrid/shared';
+import type { CloudPermission, ResourceActionOption, UserPermission } from '@pulsegrid/shared';
 import type { AccountEnvironment } from '../environments/account-environment';
-
-const NEEDS_ENVIRONMENT = 'Assign this account to an environment first.';
-const READ_ONLY = 'Production is read-only.';
-
-export const environmentBlockedReason = (environment: AccountEnvironment | null): string | null => {
-  if (!environment) {
-    return NEEDS_ENVIRONMENT;
-  }
-  return environment.isProduction ? READ_ONLY : null;
-};
+import { environmentBlockedReason } from '../environments/environment-permissions';
 
 export const actionOption = (
   permission: CloudPermission,
   environment: AccountEnvironment | null,
-): ResourceActionOption => ({ permission, blockedReason: environmentBlockedReason(environment) });
+  granted: ReadonlySet<UserPermission>,
+): ResourceActionOption => ({ permission, blockedReason: environmentBlockedReason(permission, environment, granted) });

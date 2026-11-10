@@ -45,6 +45,7 @@ const passingCheck = {
   accountId: '',
   services: [{ service: 'ec2' as const, label: 'EC2', readable: true }],
   canWrite: false,
+  missingActions: null,
 };
 
 const fakes = {
