@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-10
+
 ### Added
 
 - `pnpm db:demo` fills an empty project with made-up accounts, resources, environments and costs for trying the app and taking screenshots.
