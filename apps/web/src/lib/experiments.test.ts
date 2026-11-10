@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { experimentPath, formatStepDuration, stateLabel, stateTone } from './experiments';
+import { experimentPath, experimentRunPath, formatStepDuration, stateLabel, stateTone } from './experiments';
 
 describe('experiment helpers', () => {
   it('colours states by what they mean', () => {
@@ -21,5 +21,6 @@ describe('experiment helpers', () => {
   it('labels states and builds paths', () => {
     expect(stateLabel('running')).toBe('Running');
     expect(experimentPath('eu-central-1', 'EXP1')).toBe('/experiments/eu-central-1/EXP1');
+    expect(experimentRunPath('3f8a')).toBe('/experiments/runs/3f8a');
   });
 });
