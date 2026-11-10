@@ -69,6 +69,20 @@ ECS services show a **Logs** section. The dashboard finds the CloudWatch log gro
 
 The read-only policy includes `logs:FilterLogEvents` and `ecs:DescribeTaskDefinition`. The second also lets the key see plain environment variables in task definitions. The dashboard reads only the log settings.
 
+## Load
+
+RDS databases, Aurora clusters and ElastiCache caches show a **Load** section with charts for the last 1 hour, 6 hours, 24 hours or 7 days. Values come from CloudWatch when you open the page and are never stored. Everyone can see load, in every environment, because reading it changes nothing.
+
+| Resource | Charts |
+|---|---|
+| RDS instance | CPU, free memory, storage used, connections, read and write latency, and serverless capacity used for `db.serverless` |
+| Aurora cluster | CPU, free memory, connections, storage used, and serverless capacity used when the cluster scales |
+| ElastiCache cache | CPU, engine CPU, memory used, connections and evictions, one line per node |
+
+Above the charts, the section lists the capacity the resource has, such as the instance class, node type, allocated storage or serverless range. A chart is marked **Near limit** when the latest value is high: CPU above 80%, engine CPU or cache memory above 90%, storage above 85% or serverless capacity above 80%. Charts with no data from AWS are left out, and a cache with more than three nodes shows the first three.
+
+Load needs `cloudwatch:GetMetricData`, which is in the read-only policy. **Keys connected before load was added don't have it.** Add it to their IAM policy, or the Load section says the key can't read load.
+
 ## App secrets
 
 Secrets from AWS Secrets Manager appear under **Infrastructure > Secrets Manager**. The read-only policy lists their names and details, and never their values.

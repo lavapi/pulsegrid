@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- RDS databases, Aurora clusters and ElastiCache caches show their load from CloudWatch, with charts for the last hour, 6 hours, 24 hours or 7 days, their capacity, and a mark when they're near a limit.
+- The read-only AWS policy includes `cloudwatch:GetMetricData`.
+
+### Fixed
+
+- A resource page no longer fails to load when its account has no access key, such as with demo data.
+- Overview names the resource of the latest cloud action again.
+
 ## [0.9.0] - 2026-11-10
 
 ### Added

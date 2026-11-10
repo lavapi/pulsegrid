@@ -41,6 +41,7 @@ const toGroupResource = (
       description: group.Description,
       nodeType: group.CacheNodeType,
       members: group.MemberClusters?.length,
+      memberClusters: group.MemberClusters,
       automaticFailover: group.AutomaticFailover,
       multiAz: group.MultiAZ,
       encryptedInTransit: group.TransitEncryptionEnabled,
