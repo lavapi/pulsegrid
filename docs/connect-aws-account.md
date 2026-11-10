@@ -24,6 +24,10 @@ If a key can delete or create resources, the page shows a warning, because the d
 
 An account that already has data but no key shows **Needs credentials**. It keeps its data but stops syncing. Adding a key for the same AWS account takes it over and keeps its resources and environment.
 
+## Overview
+
+Overview shows the health of the selected account: problems, resource counts, work in progress, running pipelines and failures from the last 24 hours. It refreshes itself. If an account hasn't synced recently, it warns you rather than showing healthy. A stopped resource isn't a problem, because it may be off on purpose. Status comes from AWS, so Overview can't tell whether an application is responding.
+
 ## Filter resources by tag
 
 When you add or edit an account, **Tag filters** choose which resources appear. Include rules keep only resources matching any rule, and exclude rules remove matching resources. Exclude always wins. A rule is a tag key with a value, or just a key to match any value. With no rules, everything appears.

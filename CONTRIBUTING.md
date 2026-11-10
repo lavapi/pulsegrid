@@ -4,7 +4,20 @@ Thanks for helping. This guide covers how to run the project, what we expect in 
 
 ## Run it locally
 
-You need Node 22, pnpm 9 and Docker. Follow **Run it locally** in the [README](README.md), then open http://localhost:3000 and finish the setup wizard.
+You need Node 22, pnpm 9 and Docker. Follow **Try it locally** in the [README](README.md), then open http://localhost:3000 and finish the setup wizard. Run `pnpm db:demo` afterwards if you want made-up accounts and resources to work with.
+
+## Project layout
+
+| Path | Purpose |
+|---|---|
+| `apps/api` | NestJS API and background sync worker |
+| `apps/web` | Next.js web app |
+| `packages/shared` | Types and rules used by both apps |
+| `infra/terraform` | AWS infrastructure |
+
+The web app uses Tailwind CSS with components in `apps/web/src/components/ui`, built on Radix. Colors are defined as tokens in `apps/web/src/app/globals.css`, so a rebrand starts there. To run a second copy of the web app beside a running dev server, set `NEXT_DIST_DIR` to another folder and use another port.
+
+The AWS icons in `apps/web/public/cloud-icons/aws` come from the `aws-icons` package, and the provider logos in `apps/web/public/git-icons` from `@primer/octicons`. To replace the service icons, update those files and `ServiceIcon`.
 
 ## Before you start
 
@@ -36,7 +49,7 @@ pnpm test
 
 ## Rules that protect people's data
 
-- **Projects stay apart.** Every table that belongs to a project has a `tenant_id` and Postgres row-level security. Read and write it through `TenantDatabase.run`, and never give someone access to a project without a membership.
+- **Projects stay apart.** Every table that belongs to a project has a `tenant_id` and Postgres row-level security. The API connects as `devdash_app`, which doesn't own the tables, and sets the project for each transaction. Read and write through `TenantDatabase.run`, and never give someone access to a project without a membership. Audit events can only be read and added, never changed or deleted.
 - **Migrations run as a normal database user.** In production the migration user can't bypass row-level security, so a migration that changes rows across projects must turn off `force row level security` on those tables while it runs and turn it back on at the end. Test it as a role without superuser rights, as `apps/api/test/people-pool-migration.test.ts` does.
 - **Production is read-only.** Don't add actions that change production resources.
 - **Never store, log or return secret values** beyond what's already designed, and never log access keys or tokens.
