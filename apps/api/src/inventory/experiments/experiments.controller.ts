@@ -8,14 +8,9 @@ import { RequirePermission } from '../../auth/guards/require-permission.decorato
 import type { AuthContext } from '../../auth/session/auth-context';
 import { ZodPipe } from '../../common/zod.pipe';
 import { RUN_PERMISSION } from './experiment-access';
+import { awsId, CHANGE_LIMIT, INVALID_REQUEST, READ_LIMIT, region } from './experiment-schemas';
 import { ExperimentsService } from './experiments.service';
 
-const READ_LIMIT = { default: { limit: 60, ttl: 60_000 } };
-const CHANGE_LIMIT = { default: { limit: 10, ttl: 60_000 } };
-const INVALID_REQUEST = 'That experiment request is not valid.';
-
-const region = z.string().regex(/^[a-z]{2}(-[a-z]+)+-\d{1,2}$/);
-const awsId = z.string().regex(/^[A-Za-z0-9]{1,64}$/);
 const experimentSchema = z.object({ region, experimentId: awsId });
 const startSchema = z.object({ region, templateId: awsId });
 

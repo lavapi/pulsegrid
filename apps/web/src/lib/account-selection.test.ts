@@ -65,6 +65,7 @@ describe('followsAccountSwitcher', () => {
 describe('pathAfterSwitch', () => {
   it('leaves an experiment from the previous account', () => {
     expect(pathAfterSwitch('/experiments/eu-central-1/EXP1')).toBe('/experiments');
+    expect(pathAfterSwitch('/experiments/runs/3f8a')).toBe('/experiments');
     expect(pathAfterSwitch('/experiments')).toBeNull();
   });
 

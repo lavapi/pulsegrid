@@ -2,6 +2,11 @@ import { Module } from '@nestjs/common';
 import { AuditModule } from '../audit/audit.module';
 import { CloudActivityController } from './activity/cloud-activity.controller';
 import { CloudActivityService } from './activity/cloud-activity.service';
+import { ExperimentGateway } from './experiments/experiment-gateway';
+import { ExperimentGroupsController } from './experiments/experiment-groups.controller';
+import { ExperimentGroupsService } from './experiments/experiment-groups.service';
+import { ExperimentRunsController } from './experiments/experiment-runs.controller';
+import { ExperimentRunsService } from './experiments/experiment-runs.service';
 import { ExperimentsController } from './experiments/experiments.controller';
 import { ExperimentsService } from './experiments/experiments.service';
 import { ResourceActionsController } from './actions/resource-actions.controller';
@@ -33,6 +38,8 @@ import { SyncProgressController } from './sync/sync-progress.controller';
     CloudAccountsController,
     CloudActivityController,
     ExperimentsController,
+    ExperimentGroupsController,
+    ExperimentRunsController,
     CostsController,
     EnvironmentDomainsController,
     EnvironmentsController,
@@ -48,6 +55,9 @@ import { SyncProgressController } from './sync/sync-progress.controller';
     CloudAccountsService,
     CloudActivityService,
     ExperimentsService,
+    ExperimentGateway,
+    ExperimentGroupsService,
+    ExperimentRunsService,
     CostsService,
     EnvironmentDomainsService,
     EnvironmentsService,

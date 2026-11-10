@@ -31,3 +31,5 @@ export const formatStepDuration = (duration: string | null): string | null => {
 };
 
 export const experimentPath = (region: string, id: string): string => `/experiments/${region}/${id}`;
+
+export const experimentRunPath = (id: string): string => `/experiments/runs/${id}`;
