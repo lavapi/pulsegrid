@@ -25,6 +25,7 @@ All notable changes to this project are documented in this file. The format is b
 
 ### Security
 
+- Updated zod to 4, NestJS to 11.2.9 (with multer 2.5.0) and vitest to 4, which clears every known advisory in the dependencies.
 - Wrong two-factor codes have their own count, which a correct password no longer resets, and failures are counted atomically.
 - Authenticator codes and backup codes can't be reused by sending them in parallel.
 - Backup codes are hashed with a key derived from `TOKEN_ENCRYPTION_KEY`. Codes saved earlier keep working until used.
