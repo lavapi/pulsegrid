@@ -8,6 +8,7 @@
 - Linking a pipeline to an environment now needs Manage environments. Developers can still run non-production pipelines.
 - Sign-in is harder to attack: wrong two-factor codes now lock an account even when the password is right, codes can't be reused, and turning on two-factor signs you out everywhere else. Run `pnpm db:migrate` after updating.
 - Open PulseGrid at the address in `PUBLIC_URL`. Changes sent from any other address, such as the load balancer's own name, are now refused.
+- The Terraform runtime secret can now be restored for 7 days after a `terraform destroy`. The change applies the next time you run `terraform apply`, and nothing is replaced.
 - Docker images now use the PulseGrid name. If you set `image_repository` yourself, change it to `ghcr.io/lavapi/pulsegrid` when you upgrade. Don't change `name`. See Upgrade in docs/install-aws.md.
 
 ## [0.8.0] - 2026-11-09

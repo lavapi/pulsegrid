@@ -34,7 +34,7 @@ resource "random_id" "token_encryption_key" {
 
 resource "aws_secretsmanager_secret" "runtime" {
   name_prefix             = "${var.name}/runtime-"
-  recovery_window_in_days = 0
+  recovery_window_in_days = 7
 }
 
 resource "aws_secretsmanager_secret_version" "runtime" {

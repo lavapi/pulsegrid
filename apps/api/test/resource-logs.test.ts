@@ -95,6 +95,12 @@ describe('service logs', () => {
     expect(read.mock.calls[0]).toBeDefined();
   });
 
+  it('reads at most the last 24 hours, whatever start is asked for', async () => {
+    await logs(await addService('Staging'), owner, 'since=2020-01-01T00:00:00Z').expect(200);
+    const { since } = (read.mock.calls[0] as unknown[])[1] as { since: Date };
+    expect(Date.now() - since.getTime()).toBeLessThanOrEqual(24 * 60 * 60 * 1000 + 5000);
+  });
+
   it('works in production, because reading changes nothing', async () => {
     expect((await logs(await addService('Production')).expect(200)).body.lines).toHaveLength(1);
   });
@@ -109,9 +115,9 @@ describe('service logs', () => {
     expect((await logs(id, developer).expect(200)).body.lines).toHaveLength(1);
   });
 
-  it('records opening logs once, and never the lines', async () => {
+  it('records opening logs once while someone keeps reading, and never the lines', async () => {
     const id = await addService('Staging');
-    await logs(id, owner, 'since=2026-11-06T11:00:00Z&opened=true').expect(200);
+    await logs(id, owner, 'since=2026-11-06T11:00:00Z').expect(200);
     await logs(id, owner, 'since=2026-11-06T11:00:00Z').expect(200);
     const events = await auditOf(id);
     expect(events.map(({ action }) => action)).toEqual(['logs.viewed']);
