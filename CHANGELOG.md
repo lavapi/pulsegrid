@@ -4,6 +4,46 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-10
+
+### Added
+
+- `pnpm db:demo` fills an empty project with made-up accounts, resources, environments and costs for trying the app and taking screenshots.
+- A NOTICE file naming Lavapi as the copyright holder.
+- Environments have a production setting that only the super admin can change. Existing environments are set from their names when you migrate.
+
+### Changed
+
+- The README is written for people deciding whether to install PulseGrid, with screenshots. Developer details moved to CONTRIBUTING.md.
+- Docker images are published as `ghcr.io/lavapi/pulsegrid-api` and `-web`, and the Terraform `image_repository` default points there. Versions up to 0.8.0 stay under the `dashops` names; see Upgrade in docs/install-aws.md.
+- Production protection follows each environment's production setting instead of its name, so renaming an environment no longer changes what's allowed in it.
+- Only the super admin can remove a production environment or move an account out of one.
+- Linking a pipeline to an environment needs **Manage environments** instead of **Manage pipeline apps**.
+- A workflow whose name contains a production word stays production, whatever environment it's linked to.
+
+### Fixed
+
+- The infrastructure map no longer warns about a mismatch between the server and the browser when it first loads.
+
+### Security
+
+- Updated zod to 4, NestJS to 11.2.9 (with multer 2.5.0) and vitest to 4, which clears every known advisory in the dependencies.
+- Wrong two-factor codes have their own count, which a correct password no longer resets, and failures are counted atomically.
+- Authenticator codes and backup codes can't be reused by sending them in parallel.
+- Backup codes are hashed with a key derived from `TOKEN_ENCRYPTION_KEY`. Codes saved earlier keep working until used.
+- Turning on two-factor signs out other sessions.
+- The two-factor challenge and the Google sign-in state are kept in HttpOnly cookies instead of the URL, so a sign-in can only be finished in the browser that started it.
+- Requests that change something are refused when a browser sends them from another site.
+- Rate limits are stored in Redis, shared by every API instance.
+- The web app sends a content security policy and refuses to be shown in a frame, and no longer names its framework in a header.
+- Opening service logs is recorded by the server rather than on the browser's say-so, and a log read covers at most 24 hours.
+- Stored secrets are decrypted only with full-length integrity tags.
+- Docker builds leave out every `.env` file, Terraform variables and state, CI runs with read-only repository access, and GitHub Actions are pinned to exact commits.
+- Local Postgres and Redis from Docker Compose only listen on this machine.
+- The Terraform runtime secret can be restored for 7 days after it's deleted.
+- Adding a cloud account checks that its environment belongs to the same project.
+- The database functions that rename and delete a project only act on the project of the current request.
+
 ## [0.8.0] - 2026-11-09
 
 ### Added

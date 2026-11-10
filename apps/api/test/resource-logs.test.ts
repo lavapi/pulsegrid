@@ -4,6 +4,7 @@ import { CredentialVault } from '../src/inventory/connection/credential-vault';
 import { awsProvider } from '../src/inventory/providers/aws/aws.provider';
 import { CLOUD_PROVIDER_LIST, type CloudProvider, type LogResult } from '../src/inventory/providers/provider';
 import { setExtraPermissions, signIn, startTestApp, type TestContext, user } from './support/test-app';
+import { newEnvironment } from '../src/inventory/environments/account-environment';
 
 const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
 const LINE = { id: '1', timestamp: '2026-11-06T12:00:00.000Z', stream: 's', message: 'sensitive log line' };
@@ -28,7 +29,7 @@ describe('service logs', () => {
     const row = { tenant_id: tenantId, provider: 'aws', account_id: String(400000000000 + sequence) };
     const { id: environmentId } = await context.owner
       .insertInto('environments')
-      .values({ tenant_id: tenantId, name: environment, sort_order: sequence })
+      .values(newEnvironment(tenantId, environment, sequence))
       .onConflict((conflict) => conflict.columns(['tenant_id', 'name']).doUpdateSet({ sort_order: sequence }))
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -94,6 +95,12 @@ describe('service logs', () => {
     expect(read.mock.calls[0]).toBeDefined();
   });
 
+  it('reads at most the last 24 hours, whatever start is asked for', async () => {
+    await logs(await addService('Staging'), owner, 'since=2020-01-01T00:00:00Z').expect(200);
+    const { since } = (read.mock.calls[0] as unknown[])[1] as { since: Date };
+    expect(Date.now() - since.getTime()).toBeLessThanOrEqual(24 * 60 * 60 * 1000 + 5000);
+  });
+
   it('works in production, because reading changes nothing', async () => {
     expect((await logs(await addService('Production')).expect(200)).body.lines).toHaveLength(1);
   });
@@ -108,9 +115,9 @@ describe('service logs', () => {
     expect((await logs(id, developer).expect(200)).body.lines).toHaveLength(1);
   });
 
-  it('records opening logs once, and never the lines', async () => {
+  it('records opening logs once while someone keeps reading, and never the lines', async () => {
     const id = await addService('Staging');
-    await logs(id, owner, 'since=2026-11-06T11:00:00Z&opened=true').expect(200);
+    await logs(id, owner, 'since=2026-11-06T11:00:00Z').expect(200);
     await logs(id, owner, 'since=2026-11-06T11:00:00Z').expect(200);
     const events = await auditOf(id);
     expect(events.map(({ action }) => action)).toEqual(['logs.viewed']);

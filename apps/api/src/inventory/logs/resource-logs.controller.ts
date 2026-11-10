@@ -14,7 +14,6 @@ const INVALID_REQUEST = 'That log request is not valid.';
 const logSchema = z.object({
   since: z.coerce.date(),
   search: z.string().trim().max(200).optional(),
-  opened: z.enum(['true', 'false']).default('false'),
 });
 
 @Controller('resources/:id/logs')
@@ -31,7 +30,6 @@ export class ResourceLogsController {
     @Query(new ZodPipe(logSchema, INVALID_REQUEST)) query: z.infer<typeof logSchema>,
     @Req() request: Request,
   ): Promise<LogView> {
-    const { since, search, opened } = query;
-    return this.logs.read(auth, id, { since, search, opened: opened === 'true' }, request.ip);
+    return this.logs.read(auth, id, query, request.ip);
   }
 }

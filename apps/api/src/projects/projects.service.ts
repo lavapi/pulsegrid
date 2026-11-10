@@ -61,7 +61,7 @@ export class ProjectsService {
 
   async rename(auth: AuthContext, name: string, ipAddress: string | undefined): Promise<Project> {
     const previous = await this.nameOf(auth.tenantId);
-    await sql`select rename_project(${auth.tenantId}, ${name})`.execute(this.db);
+    await this.database.run(auth.tenantId, (trx) => sql`select rename_project(${auth.tenantId}, ${name})`.execute(trx));
     await this.record(auth.tenantId, auth, 'project.renamed', ipAddress, { label: name, previous });
     return { id: auth.tenantId, name };
   }
@@ -74,7 +74,7 @@ export class ProjectsService {
     if ((await this.directory.all()).length <= 1) {
       throw new ConflictException(LAST_PROJECT);
     }
-    await sql`select delete_project(${auth.tenantId})`.execute(this.db);
+    await this.database.run(auth.tenantId, (trx) => sql`select delete_project(${auth.tenantId})`.execute(trx));
     const account = await this.accountOf(auth);
     const next = await this.directory.landing(account);
     await this.sessions.select(auth.sessionId, next);

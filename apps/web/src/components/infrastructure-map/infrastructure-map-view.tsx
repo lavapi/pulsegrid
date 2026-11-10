@@ -16,7 +16,6 @@ import {
   useNodesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useTheme } from 'next-themes';
 import { useEffect, useMemo, useState } from 'react';
 import { CanvasSkeleton } from '@/components/skeletons';
 import { Dropdown } from '@/components/ui/dropdown';
@@ -28,6 +27,7 @@ import {
   vpcGroups,
 } from '@/lib/map-layout';
 import { cn } from '@/lib/utils';
+import { useColorMode } from '@/lib/use-color-mode';
 import { MapDetails } from './map-details';
 import { GroupNode, ResourceNode } from './map-nodes';
 
@@ -82,7 +82,7 @@ function Legend() {
 }
 
 export function InfrastructureMapView({ map }: { map: InfrastructureMap }) {
-  const { resolvedTheme } = useTheme();
+  const colorMode = useColorMode();
   const [vpcId, setVpcId] = useState('');
   const [hiddenCategories, setHiddenCategories] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -191,7 +191,7 @@ export function InfrastructureMapView({ map }: { map: InfrastructureMap }) {
           onNodesChange={onNodesChange}
           onNodeClick={(_, node) => node.type === 'resource' && setSelectedId(node.id)}
           onPaneClick={() => setSelectedId(null)}
-          colorMode={resolvedTheme === 'dark' ? 'dark' : 'light'}
+          colorMode={colorMode}
           nodesConnectable={false}
           minZoom={0.1}
           fitView

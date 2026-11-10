@@ -2,7 +2,6 @@ import type { AccountCosts, CostOverview, ServiceCost } from '@pulsegrid/shared'
 import { Injectable } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { TenantDatabase } from '../../database/tenant-database';
-import { isProductionName } from '../environments/environment-detection';
 import { currentMonth, previousMonth } from './cost-months';
 
 interface CostRow {
@@ -45,6 +44,7 @@ export class CostsService {
           'cloud_accounts.costs_updated_at',
           'cloud_accounts.costs_error',
           'environments.name as environment_name',
+          'environments.is_production',
         ])
         .orderBy('cloud_accounts.name')
         .execute(),
@@ -65,7 +65,7 @@ export class CostsService {
           accountName: account.name,
           environmentId: account.environment_id,
           environmentName: account.environment_name,
-          isProduction: account.environment_name !== null && isProductionName(account.environment_name),
+          isProduction: account.is_production ?? false,
           currency: rows[0]?.currency ?? null,
           services: servicesFrom(rows, month),
           updatedAt: account.costs_updated_at?.toISOString() ?? null,

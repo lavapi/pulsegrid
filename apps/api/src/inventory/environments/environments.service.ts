@@ -8,7 +8,7 @@ import {
   type ManagedEnvironment,
   type ResourceHealth,
 } from '@pulsegrid/shared';
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { sql } from 'kysely';
 import { AuditService } from '../../audit/audit.service';
 import type { AuthContext } from '../../auth/session/auth-context';
@@ -20,11 +20,14 @@ import {
   COMPARED_TYPES,
   compareResources,
 } from './environment-comparison';
+import { newEnvironment } from './account-environment';
+import { checkAccountMove } from './account-moves';
 import { detectEnvironment } from './environment-detection';
 import { domainsByEnvironment } from './environment-domains';
 
 const NOT_FOUND = 'That environment no longer exists.';
 const DUPLICATE_NAME = 'An environment with that name already exists.';
+const REMOVES_PRODUCTION = 'Only the super admin can remove a production environment.';
 
 const emptyHealth = (): HealthCounts => ({
   healthy: 0,
@@ -98,7 +101,7 @@ export class EnvironmentsService {
       const [environments, accounts, domains] = await Promise.all([
         trx
           .selectFrom('environments')
-          .select(['id', 'name'])
+          .select(['id', 'name', 'is_production'])
           .orderBy('sort_order')
           .orderBy('name')
           .execute(),
@@ -110,9 +113,11 @@ export class EnvironmentsService {
         domainsByEnvironment(trx),
       ]);
       return {
-        environments: environments.map((environment) => ({
-          ...environment,
-          domains: domains.get(environment.id) ?? [],
+        environments: environments.map(({ id, name, is_production: isProduction }) => ({
+          id,
+          name,
+          isProduction,
+          domains: domains.get(id) ?? [],
         })),
         accounts: accounts.map((account) => ({
           cloudAccountId: account.id,
@@ -133,7 +138,7 @@ export class EnvironmentsService {
       this.database.run(auth.tenantId, async (trx) => {
         const environment = await trx
           .insertInto('environments')
-          .values({ tenant_id: auth.tenantId, name })
+          .values(newEnvironment(auth.tenantId, name))
           .returning(['id', 'name'])
           .executeTakeFirstOrThrow();
         await this.record(trx, auth, 'environment.created', environment, ipAddress);
@@ -165,8 +170,37 @@ export class EnvironmentsService {
     );
   }
 
+  setProduction(
+    auth: AuthContext,
+    id: string,
+    isProduction: boolean,
+    ipAddress: string | undefined,
+  ): Promise<void> {
+    return this.database.run(auth.tenantId, async (trx) => {
+      const environment = await trx
+        .updateTable('environments')
+        .set({ is_production: isProduction })
+        .where('id', '=', id)
+        .returning(['id', 'name'])
+        .executeTakeFirst();
+      if (!environment) {
+        throw new NotFoundException(NOT_FOUND);
+      }
+      const action = isProduction ? 'environment.marked_production' : 'environment.marked_non_production';
+      await this.record(trx, auth, action, environment, ipAddress);
+    });
+  }
+
   remove(auth: AuthContext, id: string, ipAddress: string | undefined): Promise<void> {
     return this.database.run(auth.tenantId, async (trx) => {
+      const current = await trx
+        .selectFrom('environments')
+        .select('is_production')
+        .where('id', '=', id)
+        .executeTakeFirst();
+      if (current?.is_production && !auth.isOwner) {
+        throw new ForbiddenException(REMOVES_PRODUCTION);
+      }
       const environment = await trx
         .deleteFrom('environments')
         .where('id', '=', id)
@@ -186,17 +220,12 @@ export class EnvironmentsService {
     ipAddress: string | undefined,
   ): Promise<void> {
     return this.database.run(auth.tenantId, async (trx) => {
-      let target: ManagedEnvironment | undefined;
-      if (environmentId) {
-        target = await trx
-          .selectFrom('environments')
-          .select(['id', 'name'])
-          .where('id', '=', environmentId)
-          .executeTakeFirst();
-        if (!target) {
-          throw new NotFoundException(NOT_FOUND);
-        }
-      }
+      const current = await trx
+        .selectFrom('cloud_accounts')
+        .select('environment_id')
+        .where('id', '=', cloudAccountId)
+        .executeTakeFirst();
+      const target = await checkAccountMove(trx, auth, current?.environment_id ?? null, environmentId);
       const account = await trx
         .updateTable('cloud_accounts')
         .set({ environment_id: environmentId, environment_reviewed: true })
@@ -246,7 +275,7 @@ export class EnvironmentsService {
   ): Promise<string> {
     await trx
       .insertInto('environments')
-      .values({ tenant_id: tenantId, name, sort_order: sortOrder })
+      .values(newEnvironment(tenantId, name, sortOrder))
       .onConflict((conflict) => conflict.columns(['tenant_id', 'name']).doNothing())
       .execute();
     const { id } = await trx

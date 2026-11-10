@@ -22,6 +22,7 @@ import {
   type TestRole,
   user,
 } from './support/test-app';
+import { newEnvironment } from '../src/inventory/environments/account-environment';
 
 const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
 const run = vi.fn<(context: ResourceActionContext) => Promise<ActionStart>>();
@@ -61,7 +62,7 @@ describe('resource actions', () => {
     const environmentRow = environment
       ? await context.owner
           .insertInto('environments')
-          .values({ tenant_id: tenantId, name: `${environment} ${sequence}` })
+          .values(newEnvironment(tenantId, `${environment} ${sequence}`))
           .returning('id')
           .executeTakeFirstOrThrow()
       : null;

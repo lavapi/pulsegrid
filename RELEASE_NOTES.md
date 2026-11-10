@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-10
+
+- To look around without an AWS account, run `pnpm db:demo` after setup to fill a new project with made-up data.
+- Production is now a setting on each environment, under Settings > Manage environments, and only the super admin can change it. Renaming an environment no longer changes what's allowed in it. Your environments are set from their current names when you run `pnpm db:migrate`, so check them afterwards.
+- Only the super admin can remove a production environment or move an account out of one.
+- Linking a pipeline to an environment now needs Manage environments. Developers can still run non-production pipelines.
+- Sign-in is harder to attack: wrong two-factor codes now lock an account even when the password is right, codes can't be reused, and turning on two-factor signs you out everywhere else. Run `pnpm db:migrate` after updating.
+- Open PulseGrid at the address in `PUBLIC_URL`. Changes sent from any other address, such as the load balancer's own name, are now refused.
+- The Terraform runtime secret can now be restored for 7 days after a `terraform destroy`. The change applies the next time you run `terraform apply`, and nothing is replaced.
+- Docker images now use the PulseGrid name. If you set `image_repository` yourself, change it to `ghcr.io/lavapi/pulsegrid` when you upgrade. Don't change `name`. See Upgrade in docs/install-aws.md.
+
 ## [0.8.0] - 2026-11-09
 
 - PulseGrid is now licensed under Apache-2.0. The repository has a security policy for reporting vulnerabilities privately, a contributing guide and a code of conduct.

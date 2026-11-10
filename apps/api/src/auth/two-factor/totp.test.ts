@@ -1,6 +1,6 @@
 import { TOTP } from 'otpauth';
 import { describe, expect, it } from 'vitest';
-import { hashBackupCode, newBackupCodes, newTotpSecret, totpStep, totpUri } from './totp';
+import { newBackupCodes, newTotpSecret, totpStep, totpUri } from './totp';
 
 const codeFor = (secret: string, timestamp: number): string =>
   new TOTP({ secret }).generate({ timestamp });
@@ -27,9 +27,5 @@ describe('totp', () => {
 describe('backup codes', () => {
   it('creates ten different codes', () => {
     expect(new Set(newBackupCodes()).size).toBe(10);
-  });
-
-  it('matches a code however it is typed', () => {
-    expect(hashBackupCode('ABCDE-12345')).toBe(hashBackupCode('abcde12345'));
   });
 });

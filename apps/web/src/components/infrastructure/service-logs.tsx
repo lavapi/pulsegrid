@@ -42,17 +42,14 @@ export function ServiceLogs({ resourceId }: { resourceId: string }) {
   const [live, setLive] = useState(false);
   const [view, setView] = useState<LogView | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
-  const opened = useRef(false);
   const latest = useRef<string | null>(null);
 
   const load = useCallback(
     async (since: Date, append: boolean) => {
       const query = new URLSearchParams({
         since: since.toISOString(),
-        opened: String(!opened.current),
         ...(applied ? { search: applied } : {}),
       });
-      opened.current = true;
       const { data, error } = await apiSendForJson<LogView>(`/resources/${resourceId}/logs?${query}`, 'GET');
       setFailure(error);
       if (!data) {

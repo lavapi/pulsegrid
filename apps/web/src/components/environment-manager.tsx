@@ -1,7 +1,8 @@
 'use client';
 
-import type { EnvironmentAdminView, ManagedEnvironment } from '@pulsegrid/shared';
+import type { EnvironmentAdminView, EnvironmentWithDomains, ManagedEnvironment } from '@pulsegrid/shared';
 import type { FormEvent } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
 import { ConfirmButton } from '@/components/ui/confirm-button';
@@ -11,7 +12,40 @@ import { apiSend, apiSendForJson } from '@/lib/browser-api';
 import { EnvironmentDomains } from './environment-domains';
 import { useRefreshingAction } from './use-refreshing-action';
 
-export function EnvironmentManager({ view }: { view: EnvironmentAdminView }) {
+interface EnvironmentManagerProps {
+  view: EnvironmentAdminView;
+  isSuperAdmin: boolean;
+}
+
+function ProductionSetting({
+  environment,
+  editable,
+  pending,
+  onChange,
+}: {
+  environment: EnvironmentWithDomains;
+  editable: boolean;
+  pending: boolean;
+  onChange: (isProduction: boolean) => void;
+}) {
+  if (!editable) {
+    return environment.isProduction ? <Badge tone="danger">Production</Badge> : null;
+  }
+  return (
+    <label className="flex items-center gap-2 text-[13px]">
+      <input
+        type="checkbox"
+        className="size-4 accent-primary"
+        checked={environment.isProduction}
+        disabled={pending}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      Production
+    </label>
+  );
+}
+
+export function EnvironmentManager({ view, isSuperAdmin }: EnvironmentManagerProps) {
   const { pending, run } = useRefreshingAction();
 
   const save = (path: string, method: 'POST' | 'PUT', body: unknown) => async () =>
@@ -28,6 +62,13 @@ export function EnvironmentManager({ view }: { view: EnvironmentAdminView }) {
     event.preventDefault();
     const name = new FormData(event.currentTarget).get('name');
     run(save(`/environments/${environment.id}`, 'PUT', { name }), 'Environment renamed');
+  };
+
+  const markProduction = (environment: ManagedEnvironment, isProduction: boolean) => {
+    run(
+      () => apiSend(`/environments/${environment.id}/production`, 'PUT', { isProduction }),
+      isProduction ? `${environment.name} is now production` : `${environment.name} is no longer production`,
+    );
   };
 
   const assign = (cloudAccountId: string, environmentId: string) => {
@@ -48,7 +89,10 @@ export function EnvironmentManager({ view }: { view: EnvironmentAdminView }) {
   return (
     <>
       <Card>
-        <CardHeader title="Environments" />
+        <CardHeader
+          title="Environments"
+          description="Production environments are read-only. Only the super admin can change which environments are production, remove one, or move an account out of one."
+        />
         <div className="flex flex-col gap-3 p-5">
           {view.environments.map((environment) => (
             <div className="flex flex-col gap-3 border-b pb-4" key={environment.id}>
@@ -67,6 +111,12 @@ export function EnvironmentManager({ view }: { view: EnvironmentAdminView }) {
               <Button size="sm" disabled={pending}>
                 Rename
               </Button>
+              <ProductionSetting
+                environment={environment}
+                editable={isSuperAdmin}
+                pending={pending}
+                onChange={(isProduction) => markProduction(environment, isProduction)}
+              />
               <ConfirmButton
                 label="Remove"
                 title={`Remove ${environment.name}?`}

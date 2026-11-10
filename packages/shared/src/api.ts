@@ -52,7 +52,7 @@ export interface MemberAssignment {
 }
 
 export interface SignInResult {
-  twoFactorChallenge: string | null;
+  twoFactorRequired: boolean;
 }
 
 export const SETUP_CODE_EXPIRED = 'That setup code has expired. A new code is in the server log.';

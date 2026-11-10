@@ -21,7 +21,7 @@ Production is read-only for everyone, including the super admin. People can stil
 
 This rule covers the dashboard only. People with access on GitHub can still run workflows there. To control that, add required reviewers to the `production` environment on GitHub.
 
-A pipeline counts as production if it's linked to Production or an environment that isn't recognised as non-production, if its workflow file uses a production environment, or if it has no environment at all. To run a shared pipeline that has no environment, link it to a non-production environment first. A link to another environment can't make a production workflow file count as non-production. A workflow whose environment is an expression the dashboard can't read also counts as production.
+A pipeline counts as production if it's linked to a production environment, if its workflow file uses a production environment, if its workflow name contains a word like `prod` or `production`, or if it has no environment at all. See [Environments](environments.md#production) for which environments are production. To run a shared pipeline that has no environment, link it to a non-production environment first. A link to another environment can't make a production workflow count as non-production. A workflow whose environment is an expression the dashboard can't read also counts as production.
 
 Some workflows pick their environment from the branch, for example `${{ github.ref_name == 'main' && 'production' || 'staging' }}`. The dashboard reads this rule and decides for each run: `main` runs follow the production rules, and runs on other branches follow the staging rules.
 
@@ -40,7 +40,7 @@ Cards and app pages also show the average deployment time for each environment. 
 
 ## Environments
 
-A pipeline is linked to an environment when its workflow file names that environment, or when its workflow name contains a word like `staging` or `production`. People with **Manage pipeline apps** can change or clear the link on the pipeline's page, except for workflows that pick their environment by branch. Linked pipelines appear on the environment's page.
+A pipeline is linked to an environment when its workflow file names that environment, or when its workflow name contains a word like `staging` or `production`. People with **Manage environments** can change or clear the link on the pipeline's page, except for workflows that pick their environment by branch. Linked pipelines appear on the environment's page.
 
 The Pipelines page follows the account switcher. An account in Staging shows Staging pipelines, an account in Production shows Production pipelines, and every account shows shared pipelines, such as CI and pull request checks. A shared pipeline is one with no environment. A workflow that picks its environment by branch appears in both, showing only the runs for the selected environment. An account with no environment shows only shared pipelines.
 

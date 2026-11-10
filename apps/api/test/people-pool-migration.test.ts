@@ -66,6 +66,12 @@ describe('moving people into one pool, as a database role without superuser righ
         values (${ids.first}, ${viewer}, 'hash', now() + interval '1 hour')
       `.execute(trx),
     );
+    await withTenantContext(plain, ids.second!, (trx) =>
+      sql`
+        insert into environments (tenant_id, name)
+        values (${ids.second}, 'EU staging'), (${ids.second}, 'Production'), (${ids.second}, 'Customers')
+      `.execute(trx),
+    );
     await migratorFor(plain).migrateToLatest();
   });
   afterAll(async () => {
@@ -115,8 +121,25 @@ describe('moving people into one pool, as a database role without superuser righ
     ]);
   });
 
+  it('marks environments as production from their names, without superuser rights', async () => {
+    const { rows } = await sql<{ name: string; is_production: boolean }>`
+      select name, is_production from environments order by name
+    `.execute(admin);
+    expect(rows).toEqual([
+      { name: 'Customers', is_production: true },
+      { name: 'EU staging', is_production: false },
+      { name: 'Production', is_production: true },
+    ]);
+  });
+
+  it('refuses to delete a project other than the current one', async () => {
+    await withTenantContext(plain, ids.first!, (trx) => sql`select delete_project(${ids.second})`.execute(trx));
+    const { rows } = await sql<{ count: string }>`select count(*) from tenants where id = ${ids.second}`.execute(admin);
+    expect(Number(rows[0]!.count)).toBe(1);
+  });
+
   it('deletes a whole project through its function, without superuser rights', async () => {
-    await sql`select delete_project(${ids.second})`.execute(plain);
+    await withTenantContext(plain, ids.second!, (trx) => sql`select delete_project(${ids.second})`.execute(trx));
     const { rows } = await sql<{ count: string }>`
       select (select count(*) from users where tenant_id = ${ids.second})
         + (select count(*) from roles where tenant_id = ${ids.second})

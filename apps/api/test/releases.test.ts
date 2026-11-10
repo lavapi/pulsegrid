@@ -8,6 +8,7 @@ import { CLOUD_PROVIDER_LIST, type CloudProvider, type Deployment } from '../src
 import { GIT_PROVIDER_LIST, type GitClient, type GitProvider } from '../src/pipelines/git/git-provider';
 import { REDIS } from '../src/redis/redis.module';
 import { signIn, startTestApp, type TestContext, type TestTenant, user } from './support/test-app';
+import { newEnvironment } from '../src/inventory/environments/account-environment';
 
 const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
 const REPOSITORY = 'acme-org/api';
@@ -92,7 +93,7 @@ describe('releases', () => {
     const row = { tenant_id: tenant.id, provider: 'aws', account_id: `5000${name}` };
     const created = await context.owner
       .insertInto('environments')
-      .values({ tenant_id: tenant.id, name: environment })
+      .values(newEnvironment(tenant.id, environment))
       .onConflict((conflict) => conflict.columns(['tenant_id', 'name']).doUpdateSet({ name: environment }))
       .returning('id')
       .executeTakeFirstOrThrow();

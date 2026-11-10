@@ -5,6 +5,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { createDatabase } from '../src/database/connection';
 import type { Database } from '../src/database/schema';
 import type { Kysely } from 'kysely';
+import { newEnvironment } from '../src/inventory/environments/account-environment';
 import { awsProvider } from '../src/inventory/providers/aws/aws.provider';
 import {
   CLOUD_PROVIDER_LIST,
@@ -122,6 +123,20 @@ describe('AWS inventory', () => {
       http().put(`/api/cloud/accounts/${id}/credentials`).set('Cookie', cookie).send({ credentials: KEY });
     const check = (credentials: Record<string, string> = KEY) =>
       http().post('/api/cloud/accounts/check').set('Cookie', admin).send({ provider: 'aws', credentials });
+
+    it('refuses an environment from another project', async () => {
+      const foreign = await context.owner
+        .insertInto('environments')
+        .values(newEnvironment(context.globex.tenant.id, 'Globex staging'))
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const response = await http()
+        .post('/api/cloud/accounts')
+        .set('Cookie', admin)
+        .send({ ...integration(['eu-central-1']), environmentId: foreign.id });
+      expect(response.status).toBe(404);
+      expect(response.body.message).toBe('That environment no longer exists.');
+    });
 
     it('only lets admins add accounts or test credentials', async () => {
       await http().post('/api/cloud/accounts').set('Cookie', viewer).send(integration(['eu-central-1'])).expect(403);

@@ -18,7 +18,8 @@ import type { CloudAccountRow } from '../../database/schema';
 import type { TenantTransaction } from '../../database/tenant-context';
 import { TenantDatabase } from '../../database/tenant-database';
 import { CredentialVault } from '../connection/credential-vault';
-import { isProductionName } from '../environments/environment-detection';
+import { type AccountEnvironment, toAccountEnvironment } from '../environments/account-environment';
+import { checkAccountMove, findEnvironment } from '../environments/account-moves';
 import {
   type CloudCredentials,
   type CloudProvider,
@@ -51,7 +52,7 @@ const ALREADY_ADDED = 'That account already has credentials. Replace them instea
 const WRONG_ACCOUNT = 'Those credentials belong to a different account.';
 const CHECK_FAILED = "We couldn't check those credentials. Please try again.";
 
-const toCloudAccount = (row: CloudAccountRow, environmentName: string | null): CloudAccount => ({
+const toCloudAccount = (row: CloudAccountRow, environment: AccountEnvironment | null): CloudAccount => ({
   id: row.id,
   provider: row.provider,
   accountId: row.account_id,
@@ -62,8 +63,8 @@ const toCloudAccount = (row: CloudAccountRow, environmentName: string | null): C
   lastSyncedAt: row.last_synced_at?.toISOString() ?? null,
   syncIssues: row.sync_issues,
   environmentId: row.environment_id,
-  environmentName,
-  isProduction: environmentName !== null && isProductionName(environmentName),
+  environmentName: environment?.name ?? null,
+  isProduction: environment?.isProduction ?? false,
   hasCredentials: row.encrypted_credentials !== null,
   credentialHint: row.credential_hint,
   canWrite: row.can_write,
@@ -95,10 +96,10 @@ export class CloudAccountsService {
         .selectFrom('cloud_accounts')
         .leftJoin('environments', 'environments.id', 'cloud_accounts.environment_id')
         .selectAll('cloud_accounts')
-        .select('environments.name as environment_name')
+        .select(['environments.name as environment_name', 'environments.is_production'])
         .orderBy('cloud_accounts.name')
         .execute();
-      return rows.map((row) => toCloudAccount(row, row.environment_name));
+      return rows.map((row) => toCloudAccount(row, toAccountEnvironment(row.environment_name, row.is_production)));
     });
   }
 
@@ -127,13 +128,14 @@ export class CloudAccountsService {
       const row = await this.database.run(auth.tenantId, async (trx) => {
         const existing = await trx
           .selectFrom('cloud_accounts')
-          .select('encrypted_credentials')
+          .select(['encrypted_credentials', 'environment_id'])
           .where('provider', '=', provider.id)
           .where('account_id', '=', check.accountId)
           .executeTakeFirst();
         if (existing?.encrypted_credentials) {
           throw new ConflictException(ALREADY_ADDED);
         }
+        await checkAccountMove(trx, auth, existing?.environment_id ?? null, environmentId);
         const values = {
           name,
           regions,
@@ -283,17 +285,9 @@ export class CloudAccountsService {
   }
 
   private present(tenantId: string, row: CloudAccountRow): Promise<CloudAccount> {
-    return this.database.run(tenantId, async (trx) => {
-      const environment =
-        row.environment_id === null
-          ? undefined
-          : await trx
-              .selectFrom('environments')
-              .select('name')
-              .where('id', '=', row.environment_id)
-              .executeTakeFirst();
-      return toCloudAccount(row, environment?.name ?? null);
-    });
+    return this.database.run(tenantId, async (trx) =>
+      toCloudAccount(row, await findEnvironment(trx, row.environment_id)),
+    );
   }
 
   private async check(
