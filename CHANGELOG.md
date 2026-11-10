@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-10
+
 ### Added
 
 - An **Experiments** page lists the AWS FIS experiment templates and recent experiments of the selected account. People with the new **Run staging fault experiments** permission can start and stop them outside production, after typing the template's name. Each experiment has a live page with its steps, stop alarms, who started it and the Load charts of the databases and caches it picked.
