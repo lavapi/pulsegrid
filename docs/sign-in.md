@@ -112,8 +112,12 @@ Only one action can run on a resource at a time, and outside work counts. Past t
 ## Security
 
 - Passwords are hashed with Argon2id, must have at least 12 characters, and are checked against known breaches. Only the first 5 characters of a SHA-1 hash leave the server. If that check is unavailable, the password is accepted.
-- Five wrong attempts lock an account for 15 minutes. Messages don't reveal whether an email has an account.
-- Two-factor authentication uses an authenticator app, with 10 single-use backup codes. It's required for everyone at first sign-in, can't be turned off, and also applies to Google sign-in.
+- Five wrong passwords, or five wrong two-factor codes, lock an account for 15 minutes. Entering the right password doesn't reset the count of wrong codes. Messages don't reveal whether an email has an account.
+- Two-factor authentication uses an authenticator app, with 10 single-use backup codes. It's required for everyone at first sign-in, can't be turned off, and also applies to Google sign-in. Each code works once, even if it's sent twice at the same moment. Backup codes are stored as keyed hashes, so a copy of the database alone isn't enough to guess them.
+- Turning on two-factor signs you out everywhere else.
+- A sign-in has to be finished in the browser that started it, for both the two-factor step and Google.
+- The API refuses changes that a browser sends from another site. Open PulseGrid at `PUBLIC_URL`; signing in through any other address fails.
+- Sign-in requests are limited per IP address, counted in Redis so the limit holds across every API instance.
 - Sign-ins, failures, password changes, temporary passwords, new people and role changes appear in the audit log.
 
 ## Google
