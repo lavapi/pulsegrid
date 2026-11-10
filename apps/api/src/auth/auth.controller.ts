@@ -11,6 +11,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { timingSafeEqual } from 'node:crypto';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
@@ -19,8 +20,8 @@ import { ZodPipe } from '../common/zod.pipe';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { TenantDatabase } from '../database/tenant-database';
 import { TenantsService } from '../tenants/tenants.service';
-import { AuthService, type SignInOutcome } from './auth.service';
-import { GoogleSignInService } from './google/google-sign-in.service';
+import { AuthService, CHALLENGE_TTL_SECONDS, type SignInOutcome } from './auth.service';
+import { GoogleSignInService, STATE_TTL_SECONDS } from './google/google-sign-in.service';
 import { AllowNoProject } from './guards/allow-no-project.decorator';
 import { AllowPendingPassword } from './guards/allow-pending-password.decorator';
 import { AllowPendingTwoFactor } from './guards/allow-pending-two-factor.decorator';
@@ -28,7 +29,12 @@ import { CurrentPerson } from './guards/current-person.decorator';
 import { Public } from './guards/public.decorator';
 import { emailSchema, INVALID_PASSWORD, nameSchema, passwordSchema } from './requests';
 import type { PersonContext } from './session/auth-context';
-import { encodeSessionCookie, SESSION_COOKIE } from './session/session-cookie';
+import {
+  CHALLENGE_COOKIE,
+  encodeSessionCookie,
+  GOOGLE_STATE_COOKIE,
+  SESSION_COOKIE,
+} from './session/session-cookie';
 import { SessionService } from './session/session.service';
 import { SetupService } from './setup.service';
 
@@ -42,10 +48,13 @@ const setupSchema = setupCodeSchema.extend({
   company: nameSchema,
 });
 const signInSchema = z.object({ email: emailSchema, password: z.string().min(1).max(200) });
-const twoFactorSchema = z.object({
-  challenge: z.string().min(1).max(100),
-  code: z.string().trim().min(6).max(12),
-});
+const twoFactorSchema = z.object({ code: z.string().trim().min(6).max(12) });
+
+const cookieValue = (request: Request, name: string): string =>
+  typeof request.cookies?.[name] === 'string' ? (request.cookies[name] as string) : '';
+
+const sameText = (first: string, second: string): boolean =>
+  first.length === second.length && timingSafeEqual(Buffer.from(first), Buffer.from(second));
 
 const INVALID_SETUP = `Enter your name, company and a valid email. ${INVALID_PASSWORD}`;
 const INVALID_SETUP_CODE = 'Enter the setup code from the server logs.';
@@ -123,17 +132,27 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<SignInResult> {
-    const session = await this.auth.completeTwoFactor(body.challenge, body.code, request.ip);
+    const challenge = cookieValue(request, CHALLENGE_COOKIE);
+    const session = await this.auth.completeTwoFactor(challenge, body.code, request.ip);
+    response.clearCookie(CHALLENGE_COOKIE, this.cookieOptions());
     this.setCookie(response, session);
-    return { twoFactorChallenge: null };
+    return { twoFactorRequired: false };
   }
 
   @Public()
   @UseGuards(ThrottlerGuard)
   @Get('auth/google')
   async startGoogle(@Res() response: Response): Promise<void> {
-    const url = await this.google.start();
-    response.redirect(url ?? '/login?error=google_failed');
+    const started = await this.google.start();
+    if (!started) {
+      response.redirect('/login?error=google_failed');
+      return;
+    }
+    response.cookie(GOOGLE_STATE_COOKIE, started.state, {
+      ...this.cookieOptions(),
+      maxAge: STATE_TTL_SECONDS * 1000,
+    });
+    response.redirect(started.url);
   }
 
   @Public()
@@ -145,7 +164,9 @@ export class AuthController {
     @Req() request: Request,
     @Res() response: Response,
   ): Promise<void> {
-    if (typeof state !== 'string' || typeof code !== 'string') {
+    const expected = cookieValue(request, GOOGLE_STATE_COOKIE);
+    response.clearCookie(GOOGLE_STATE_COOKIE, this.cookieOptions());
+    if (typeof state !== 'string' || typeof code !== 'string' || !expected || !sameText(state, expected)) {
       response.redirect('/login?error=google_failed');
       return;
     }
@@ -154,8 +175,8 @@ export class AuthController {
       response.redirect(`/login?error=${result.error}`);
       return;
     }
-    const { twoFactorChallenge } = this.respond(result.outcome, response);
-    response.redirect(twoFactorChallenge ? `/login?challenge=${twoFactorChallenge}` : '/');
+    const { twoFactorRequired } = this.respond(result.outcome, response);
+    response.redirect(twoFactorRequired ? '/login?step=two-factor' : '/');
   }
 
   @AllowPendingPassword()
@@ -206,8 +227,13 @@ export class AuthController {
   private respond(outcome: SignInOutcome, response: Response): SignInResult {
     if (outcome.session) {
       this.setCookie(response, outcome.session);
+      return { twoFactorRequired: false };
     }
-    return { twoFactorChallenge: outcome.twoFactorChallenge ?? null };
+    response.cookie(CHALLENGE_COOKIE, outcome.twoFactorChallenge, {
+      ...this.cookieOptions(),
+      maxAge: CHALLENGE_TTL_SECONDS * 1000,
+    });
+    return { twoFactorRequired: true };
   }
 
   private setCookie(response: Response, session: string): void {

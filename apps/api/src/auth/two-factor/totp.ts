@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { Secret, TOTP } from 'otpauth';
 
 const ISSUER = 'PulseGrid';
@@ -19,9 +19,6 @@ export const totpStep = (secret: string, code: string, now = Date.now()): number
   const delta = totpFor(secret, 'check').validate({ token: code, window: WINDOW, timestamp: now });
   return delta === null ? null : Math.floor(now / 1000 / PERIOD_SECONDS) + delta;
 };
-
-export const hashBackupCode = (code: string): string =>
-  createHash('sha256').update(code.toLowerCase().replaceAll('-', '')).digest('hex');
 
 export const newBackupCodes = (): string[] =>
   Array.from({ length: BACKUP_CODE_COUNT }, () => {

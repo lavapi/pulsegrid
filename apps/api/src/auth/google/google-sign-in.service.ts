@@ -8,7 +8,7 @@ import { AuthService, type SignInOutcome } from '../auth.service';
 import { GOOGLE_OAUTH, type GoogleOAuth, type GoogleProfile } from './google-oauth';
 
 const PROVIDER = 'google';
-const STATE_TTL_SECONDS = 600;
+export const STATE_TTL_SECONDS = 600;
 
 export type GoogleResult =
   | { kind: 'signed_in'; outcome: SignInOutcome }
@@ -30,13 +30,13 @@ export class GoogleSignInService {
     return this.google !== null;
   }
 
-  async start(): Promise<string | null> {
+  async start(): Promise<{ url: string; state: string } | null> {
     if (!this.google) {
       return null;
     }
     const state = newToken();
     await this.redis.set(this.key('state', state), '1', 'EX', STATE_TTL_SECONDS);
-    return this.google.authorizeUrl(state, this.redirectUri());
+    return { url: this.google.authorizeUrl(state, this.redirectUri()), state };
   }
 
   async finish(

@@ -15,9 +15,10 @@ import { AccountStore } from './account-store';
 import { LEAKED_PASSWORDS, type LeakedPasswords } from './passwords/leaked-passwords';
 import { verifyPassword } from './passwords/password-hasher';
 import { SessionService } from './session/session.service';
-import { hashBackupCode, totpStep } from './two-factor/totp';
+import { BackupCodeHasher } from './two-factor/backup-code-hasher';
+import { totpStep } from './two-factor/totp';
 
-const CHALLENGE_TTL_SECONDS = 300;
+export const CHALLENGE_TTL_SECONDS = 300;
 
 const BAD_CREDENTIALS = 'That email or password is incorrect.';
 const LOCKED = 'Too many attempts. Try again in 15 minutes.';
@@ -50,6 +51,7 @@ export class AuthService {
     @Inject(LEAKED_PASSWORDS) private readonly leaked: LeakedPasswords,
     @Inject(REDIS) private readonly redis: RedisClient,
     private readonly projects: ProjectDirectory,
+    private readonly backupCodes: BackupCodeHasher,
   ) {}
 
   async createWorkspace(
@@ -92,7 +94,7 @@ export class AuthService {
     const matches = await verifyPassword(account?.password_hash, password);
     if (!account || !matches) {
       if (account) {
-        await this.accounts.recordFailure(account);
+        await this.accounts.recordFailure(account.id, 'failed_attempts');
         await this.recordAttempt(account, 'auth.sign_in.failed', ipAddress);
       }
       throw new UnauthorizedException(BAD_CREDENTIALS);
@@ -108,8 +110,8 @@ export class AuthService {
     account: Account,
     ipAddress: string | undefined,
   ): Promise<SignInOutcome> {
-    await this.accounts.clearFailures(account.id);
     if (account.totp_enabled_at) {
+      await this.accounts.clearPasswordFailures(account.id);
       const twoFactorChallenge = newToken();
       await this.redis.set(
         this.challengeKey(twoFactorChallenge),
@@ -119,6 +121,7 @@ export class AuthService {
       );
       return { twoFactorChallenge };
     }
+    await this.accounts.clearFailures(account.id);
     return { session: await this.createSession(account, ipAddress) };
   }
 
@@ -137,7 +140,7 @@ export class AuthService {
       throw new UnauthorizedException(LOCKED);
     }
     if (!(await this.acceptCode(account, code))) {
-      await this.accounts.recordFailure(account);
+      await this.accounts.recordFailure(account.id, 'two_factor_failed_attempts');
       await this.recordAttempt(account, 'auth.two_factor.failed', ipAddress);
       throw new UnauthorizedException(BAD_CODE);
     }
@@ -150,18 +153,10 @@ export class AuthService {
     const trimmed = code.trim();
     const secret = account.totp_secret && this.cipher.decrypt<string>(account.totp_secret, `totp:${account.id}`);
     const step = secret ? totpStep(secret, trimmed) : null;
-    if (step !== null && step > Number(account.totp_last_step ?? 0)) {
-      await this.accounts.update(account.id, { totp_last_step: step });
+    if (step !== null && (await this.accounts.advanceTotpStep(account.id, step))) {
       return true;
     }
-    const hashed = hashBackupCode(trimmed);
-    if (account.backup_codes.includes(hashed)) {
-      await this.accounts.update(account.id, {
-        backup_codes: account.backup_codes.filter((item) => item !== hashed),
-      });
-      return true;
-    }
-    return false;
+    return this.accounts.useBackupCode(account.id, this.backupCodes.candidates(trimmed));
   }
 
   async assertUsablePassword(password: string): Promise<void> {

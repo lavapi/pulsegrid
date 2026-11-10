@@ -46,6 +46,7 @@ export interface AccountsTable {
   last_tenant_id: string | null;
   password_hash: string | null;
   failed_attempts: Generated<number>;
+  two_factor_failed_attempts: Generated<number>;
   locked_until: Date | null;
   totp_secret: string | null;
   totp_enabled_at: Date | null;
