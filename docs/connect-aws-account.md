@@ -65,7 +65,7 @@ Figures come from AWS and can lag by up to a day, so they may differ slightly fr
 - Data access, such as reading S3 files, and changes from inside a server aren't included.
 ## Service logs
 
-ECS services show a **Logs** section. The dashboard finds the CloudWatch log group from the service's task definition, so services using another log driver show a message instead. Logs need the **View service logs** permission, and work in every environment, because reading them changes nothing. Opening a service's logs is recorded in Activity. Lines are read when you look at them and are never stored.
+ECS services show a **Logs** section. The dashboard finds the CloudWatch log group from the service's task definition, so services using another log driver show a message instead. Logs need the **View service logs** permission, and work in every environment, because reading them changes nothing. Opening a service's logs is recorded in Activity, once every 15 minutes per person and service while they keep reading. Lines are read when you look at them and are never stored. The longest range is 24 hours.
 
 The read-only policy includes `logs:FilterLogEvents` and `ecs:DescribeTaskDefinition`. The second also lets the key see plain environment variables in task definitions. The dashboard reads only the log settings.
 

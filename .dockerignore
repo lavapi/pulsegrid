@@ -3,5 +3,10 @@
 **/.next
 .git
 infra
-.env
+**/.env
+**/.env.*
+!.env.example
+**/*.tfvars
+**/*.tfstate
+**/*.tfstate.*
 tools/dev-idp/.keys
