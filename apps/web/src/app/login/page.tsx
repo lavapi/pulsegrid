@@ -7,9 +7,9 @@ import { apiGet } from '@/lib/server-api';
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; challenge?: string }>;
+  searchParams: Promise<{ error?: string; step?: string }>;
 }) {
-  const { error, challenge } = await searchParams;
+  const { error, step } = await searchParams;
   const { google, setupRequired } = await apiGet<AuthMethods>('/auth/methods');
   if (setupRequired) {
     redirect('/setup');
@@ -26,7 +26,7 @@ export default async function LoginPage({
           {message}
         </p>
       )}
-      <SignInForm google={google} initialChallenge={challenge ?? null} />
+      <SignInForm google={google} initialTwoFactor={step === 'two-factor'} />
     </AuthPage>
   );
 }

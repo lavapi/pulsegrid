@@ -10,13 +10,13 @@ import { useAuthAction } from './use-auth-action';
 
 const goHome = () => window.location.assign('/');
 
-function TwoFactorForm({ challenge }: { challenge: string }) {
+function TwoFactorForm() {
   const { pending, post } = useAuthAction();
   const [code, setCode] = useState('');
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    post('/auth/two-factor', { challenge, code }, goHome);
+    post('/auth/two-factor', { code }, goHome);
   };
 
   return (
@@ -40,25 +40,25 @@ function TwoFactorForm({ challenge }: { challenge: string }) {
 
 export function SignInForm({
   google,
-  initialChallenge,
+  initialTwoFactor,
 }: {
   google: boolean;
-  initialChallenge: string | null;
+  initialTwoFactor: boolean;
 }) {
   const { pending, post } = useAuthAction();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [challenge, setChallenge] = useState(initialChallenge);
+  const [twoFactor, setTwoFactor] = useState(initialTwoFactor);
 
-  if (challenge) {
-    return <TwoFactorForm challenge={challenge} />;
+  if (twoFactor) {
+    return <TwoFactorForm />;
   }
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    post<SignInResult>('/auth/sign-in', { email, password }, ({ twoFactorChallenge }) => {
-      if (twoFactorChallenge) {
-        setChallenge(twoFactorChallenge);
+    post<SignInResult>('/auth/sign-in', { email, password }, ({ twoFactorRequired }) => {
+      if (twoFactorRequired) {
+        setTwoFactor(true);
       } else {
         goHome();
       }

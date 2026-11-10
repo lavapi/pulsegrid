@@ -21,6 +21,13 @@ All notable changes to this project are documented in this file. The format is b
 
 ### Security
 
+- Wrong two-factor codes have their own count, which a correct password no longer resets, and failures are counted atomically.
+- Authenticator codes and backup codes can't be reused by sending them in parallel.
+- Backup codes are hashed with a key derived from `TOKEN_ENCRYPTION_KEY`. Codes saved earlier keep working until used.
+- Turning on two-factor signs out other sessions.
+- The two-factor challenge and the Google sign-in state are kept in HttpOnly cookies instead of the URL, so a sign-in can only be finished in the browser that started it.
+- Requests that change something are refused when a browser sends them from another site.
+- Rate limits are stored in Redis, shared by every API instance.
 - Adding a cloud account checks that its environment belongs to the same project.
 - The database functions that rename and delete a project only act on the project of the current request.
 

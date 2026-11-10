@@ -3,7 +3,10 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AuditModule } from '../audit/audit.module';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { RedisThrottlerStorage } from '../common/throttling/redis-throttler-storage';
 import { TokenCipher } from '../inventory/connection/token-cipher';
+import type { RedisClient } from '../redis/redis-connection';
+import { REDIS } from '../redis/redis.module';
 import { TenantsModule } from '../tenants/tenants.module';
 import { AccountStore } from './account-store';
 import { AccountController } from './account.controller';
@@ -17,13 +20,20 @@ import { SessionGuard } from './guards/session.guard';
 import { LEAKED_PASSWORDS, PwnedPasswords } from './passwords/leaked-passwords';
 import { SessionService } from './session/session.service';
 import { SetupService } from './setup.service';
+import { BackupCodeHasher } from './two-factor/backup-code-hasher';
 
 @Global()
 @Module({
   imports: [
     AuditModule,
     TenantsModule,
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
+    ThrottlerModule.forRootAsync({
+      inject: [REDIS],
+      useFactory: (redis: RedisClient) => ({
+        throttlers: [{ ttl: 60_000, limit: 60 }],
+        storage: new RedisThrottlerStorage(redis),
+      }),
+    }),
   ],
   controllers: [AccountController, AuthController],
   providers: [
@@ -37,6 +47,11 @@ import { SetupService } from './setup.service';
       provide: TokenCipher,
       inject: [APP_CONFIG],
       useFactory: (config: AppConfig) => new TokenCipher(config.tokenEncryptionKey),
+    },
+    {
+      provide: BackupCodeHasher,
+      inject: [APP_CONFIG],
+      useFactory: (config: AppConfig) => new BackupCodeHasher(config.tokenEncryptionKey),
     },
     {
       provide: GOOGLE_OAUTH,

@@ -1,4 +1,6 @@
 export const SESSION_COOKIE = 'devdash_session';
+export const CHALLENGE_COOKIE = 'devdash_challenge';
+export const GOOGLE_STATE_COOKIE = 'devdash_google_state';
 
 const TOKEN = /^[A-Za-z0-9_-]{20,100}$/;
 
