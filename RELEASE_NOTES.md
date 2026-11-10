@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-10
+
 - Group fault experiments and start a whole group, or every template, in one click. Watch them together on one page and stop them all at once. Groups follow the same rules as single experiments and need no new AWS permissions. Run `pnpm db:migrate` after updating.
 
 ## [0.11.0] - 2026-11-10
