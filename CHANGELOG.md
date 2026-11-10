@@ -19,8 +19,18 @@ All notable changes to this project are documented in this file. The format is b
 - Linking a pipeline to an environment needs **Manage environments** instead of **Manage pipeline apps**.
 - A workflow whose name contains a production word stays production, whatever environment it's linked to.
 
+### Fixed
+
+- The infrastructure map no longer warns about a mismatch between the server and the browser when it first loads.
+
 ### Security
 
+- The web app sends a content security policy and refuses to be shown in a frame, and no longer names its framework in a header.
+- Opening service logs is recorded by the server rather than on the browser's say-so, and a log read covers at most 24 hours.
+- Stored secrets are decrypted only with full-length integrity tags.
+- Docker builds leave out every `.env` file, Terraform variables and state, CI runs with read-only repository access, and GitHub Actions are pinned to exact commits.
+- Local Postgres and Redis from Docker Compose only listen on this machine.
+- The Terraform runtime secret can be restored for 7 days after it's deleted.
 - Adding a cloud account checks that its environment belongs to the same project.
 - The database functions that rename and delete a project only act on the project of the current request.
 
