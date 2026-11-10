@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-10
+
+- Run AWS Fault Injection Service experiments from the new **Experiments** page and watch them live, with the load on the databases and caches they hit. Starting and stopping need the new Run staging fault experiments permission and only work outside production.
+- Add the FIS permissions from Integrations to your keys: the five read actions to every key, and `fis:StartExperiment` and `fis:StopExperiment` to keys with the extended policy.
+
 ## [0.10.0] - 2026-11-10
 
 - See how busy your databases and caches are. RDS, Aurora and ElastiCache pages now show CPU, memory, storage, connections and more from CloudWatch, with their capacity, and mark anything near its limit.

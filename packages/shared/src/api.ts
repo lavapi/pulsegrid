@@ -125,7 +125,10 @@ export interface AuditEvent {
 
 export const ACTIVITY_CATEGORIES = {
   secrets: { label: 'Secrets', prefixes: ['secret.'] },
-  changes: { label: 'Deploys and reboots', prefixes: ['cloud.action.', 'cloud.activity.'] },
+  changes: {
+    label: 'Deploys, reboots and experiments',
+    prefixes: ['cloud.action.', 'cloud.activity.', 'cloud.experiment.'],
+  },
   pipelines: { label: 'Pipelines', prefixes: ['pipeline.'] },
   people: { label: 'People', prefixes: ['team.', 'people.', 'project.'] },
   signIns: { label: 'Sign-ins', prefixes: ['auth.'] },
