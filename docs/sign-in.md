@@ -57,7 +57,7 @@ Roles belong to a project, so the same person can be a Viewer in one project and
 
 ## Cloud actions
 
-Force deploying a service, rebooting a database, cache or server, and reading or writing app secrets are off for every role until the super admin ticks them. They apply to every account in the project, and the access key needs the extended policy from Integrations.
+Force deploying a service, rebooting a database, cache or server, running fault experiments, and reading or writing app secrets are off for every role until the super admin ticks them. They apply to every account in the project, and the access key needs the extended policy from Integrations.
 
 Production is read-only. No action runs in a production environment, or on an account with no environment, and that includes the super admin. Only the super admin decides which environments are production. See [Environments](environments.md#production).
 
@@ -67,6 +67,7 @@ Production is read-only. No action runs in a production environment, or on an ac
 | Reboot a staging database | |
 | Reboot a staging cache | Rebooting can lose data stored in the cache, and caches in cluster mode can't be rebooted |
 | Reboot a staging server | |
+| Run staging fault experiments | Starts and stops AWS FIS experiments on the **Experiments** page. See [Fault experiments](connect-aws-account.md#fault-experiments). |
 | Read app secrets | Shows a secret's keys, and a value when you select **Show**. |
 | Write app secrets | Also adds, edits and deletes keys, and includes reading. |
 

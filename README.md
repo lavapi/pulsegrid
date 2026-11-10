@@ -15,6 +15,7 @@ You run it in your own AWS account, so your keys and data stay with you.
 - **Infrastructure map.** See how load balancers, services, databases and caches connect, including which security groups allow what.
 - **Pipelines and releases.** Follow GitHub Actions runs per app and environment, and see when a change has rolled out to ECS and is ready for testing.
 - **Costs.** Spending per account and service, this month so far and last month, from Cost Explorer.
+- **Fault experiments.** Run AWS FIS experiment templates on staging and watch each step and the load on the resources they hit.
 - **Activity.** Who did what, both in PulseGrid and in AWS (from CloudTrail Event history), plus ECS service logs on demand.
 - **Projects and people.** Each project has its own accounts, integrations, environments and members. People are added once and assigned to the projects they need.
 - **Safe by default.** Two-factor sign-in for everyone, custom roles, read-only access keys, and production that stays read-only. Actions that change cloud resources are off until you turn them on.

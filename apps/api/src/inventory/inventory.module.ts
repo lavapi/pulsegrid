@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { AuditModule } from '../audit/audit.module';
 import { CloudActivityController } from './activity/cloud-activity.controller';
 import { CloudActivityService } from './activity/cloud-activity.service';
+import { ExperimentsController } from './experiments/experiments.controller';
+import { ExperimentsService } from './experiments/experiments.service';
 import { ResourceActionsController } from './actions/resource-actions.controller';
 import { ResourceActionsService } from './actions/resource-actions.service';
 import { ResourceActivityController } from './actions/resource-activity.controller';
@@ -30,6 +32,7 @@ import { SyncProgressController } from './sync/sync-progress.controller';
   controllers: [
     CloudAccountsController,
     CloudActivityController,
+    ExperimentsController,
     CostsController,
     EnvironmentDomainsController,
     EnvironmentsController,
@@ -44,6 +47,7 @@ import { SyncProgressController } from './sync/sync-progress.controller';
   providers: [
     CloudAccountsService,
     CloudActivityService,
+    ExperimentsService,
     CostsService,
     EnvironmentDomainsService,
     EnvironmentsService,

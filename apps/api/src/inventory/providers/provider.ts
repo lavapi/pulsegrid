@@ -3,6 +3,9 @@ import type {
   CloudPermission,
   CapacityFact,
   CredentialCheck,
+  ExperimentDetail,
+  ExperimentSummary,
+  ExperimentTemplate,
   InfrastructureMap,
   LoadChart,
   LogLine,
@@ -170,6 +173,25 @@ export interface MetricSource<Credentials extends CloudCredentials = CloudCreden
   failureMessage(error: unknown): string;
 }
 
+export interface ExperimentContext<Credentials extends CloudCredentials = CloudCredentials> {
+  credentials: Credentials;
+  region: string;
+}
+
+export type ExperimentRecord = Omit<ExperimentDetail, 'startedBy' | 'resources' | 'access'> & {
+  /** Resources the experiment actually picked, by provider ID. */
+  resolvedResourceIds: string[];
+};
+
+export interface ExperimentSource<Credentials extends CloudCredentials = CloudCredentials> {
+  listTemplates(context: ExperimentContext<Credentials>): Promise<ExperimentTemplate[]>;
+  listExperiments(context: ExperimentContext<Credentials>): Promise<ExperimentSummary[]>;
+  getExperiment(context: ExperimentContext<Credentials>, id: string): Promise<ExperimentRecord | null>;
+  start(context: ExperimentContext<Credentials>, templateId: string, requestToken: string): Promise<string>;
+  stop(context: ExperimentContext<Credentials>, id: string): Promise<void>;
+  failureMessage(error: unknown): string;
+}
+
 export interface CostContext<Credentials extends CloudCredentials = CloudCredentials> {
   credentials: Credentials;
   accountId: string;
@@ -222,6 +244,7 @@ export interface CloudProvider<Credentials extends CloudCredentials = CloudCrede
   activitySource?: ActivitySource<Credentials>;
   logSource?: LogSource<Credentials>;
   metricSource?: MetricSource<Credentials>;
+  experimentSource?: ExperimentSource<Credentials>;
   costSource?: CostSource<Credentials>;
   deploymentSource?: DeploymentSource<Credentials>;
   parseCredentials(input: unknown): Credentials | null;

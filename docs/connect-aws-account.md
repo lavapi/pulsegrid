@@ -83,6 +83,16 @@ Above the charts, the section lists the capacity the resource has, such as the i
 
 Load needs `cloudwatch:GetMetricData`, which is in the read-only policy. **Keys connected before load was added don't have it.** Add it to their IAM policy, or the Load section says the key can't read load.
 
+## Fault experiments
+
+The **Experiments** page lists the AWS FIS experiment templates of the account selected in the top bar, in every synced region, and its 20 most recent experiments per region. Each template shows its targets, its steps with their durations, and the CloudWatch alarms that stop it early. A template with no stop alarm is marked, because only a person can stop it. Templates are created in the AWS console or with Terraform; PulseGrid doesn't create or change them.
+
+Everyone can see templates and experiments. Starting or stopping one needs the **Run staging fault experiments** permission, an access key with the extended policy, and an account in a non-production environment. Starting asks you to type the template's name. Production accounts are read-only, so an experiment running in production has to be stopped in the AWS console.
+
+An experiment's page refreshes every 5 seconds while it runs. It shows each step's state and timing, why the experiment ended, and who started it from PulseGrid; experiments started elsewhere show **Outside PulseGrid**. Databases and caches the experiment picked that PulseGrid knows are listed with their Load charts, so you can see the effect. Every start and stop is recorded in Activity, and so is every refused attempt.
+
+The read-only policy includes `fis:ListExperimentTemplates`, `fis:GetExperimentTemplate`, `fis:ListExperiments`, `fis:GetExperiment` and `fis:ListExperimentResolvedTargets`. The extended policy adds `fis:StartExperiment` and `fis:StopExperiment`. FIS runs each experiment with the role in its template, so the key itself never gets the permissions the experiment uses.
+
 ## App secrets
 
 Secrets from AWS Secrets Manager appear under **Infrastructure > Secrets Manager**. The read-only policy lists their names and details, and never their values.
