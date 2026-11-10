@@ -59,7 +59,7 @@ Roles belong to a project, so the same person can be a Viewer in one project and
 
 Force deploying a service, rebooting a database, cache or server, and reading or writing app secrets are off for every role until the super admin ticks them. They apply to every account in the project, and the access key needs the extended policy from Integrations.
 
-Production is read-only. No action runs in production, or on an account whose environment is missing or isn't recognised as non-production, and that includes the super admin.
+Production is read-only. No action runs in a production environment, or on an account with no environment, and that includes the super admin. Only the super admin decides which environments are production. See [Environments](environments.md#production).
 
 | Action | Note |
 |---|---|

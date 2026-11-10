@@ -11,6 +11,7 @@ import {
   type DetectedActivity,
 } from '../src/inventory/providers/provider';
 import { signIn, startTestApp, type TestContext, user } from './support/test-app';
+import { newEnvironment } from '../src/inventory/environments/account-environment';
 
 const detect = vi.fn<() => Promise<DetectedActivity[]>>();
 const run = vi.fn<() => Promise<ActionStart>>();
@@ -54,7 +55,7 @@ describe('outside activity', () => {
     const row = { tenant_id: tenantId, provider: 'aws', account_id: String(200000000000 + sequence) };
     const environment = await context.owner
       .insertInto('environments')
-      .values({ tenant_id: tenantId, name: `Staging ${sequence}` })
+      .values(newEnvironment(tenantId, `Staging ${sequence}`))
       .returning('id')
       .executeTakeFirstOrThrow();
     const { id } = await context.owner

@@ -1,17 +1,17 @@
 import type { CloudPermission, ResourceActionOption } from '@pulsegrid/shared';
-import { isKnownNonProductionName } from '../environments/environment-detection';
+import type { AccountEnvironment } from '../environments/account-environment';
 
 const NEEDS_ENVIRONMENT = 'Assign this account to an environment first.';
 const READ_ONLY = 'Production is read-only.';
 
-export const environmentBlockedReason = (environmentName: string | null): string | null => {
-  if (environmentName === null) {
+export const environmentBlockedReason = (environment: AccountEnvironment | null): string | null => {
+  if (!environment) {
     return NEEDS_ENVIRONMENT;
   }
-  return isKnownNonProductionName(environmentName) ? null : READ_ONLY;
+  return environment.isProduction ? READ_ONLY : null;
 };
 
 export const actionOption = (
   permission: CloudPermission,
-  environmentName: string | null,
-): ResourceActionOption => ({ permission, blockedReason: environmentBlockedReason(environmentName) });
+  environment: AccountEnvironment | null,
+): ResourceActionOption => ({ permission, blockedReason: environmentBlockedReason(environment) });

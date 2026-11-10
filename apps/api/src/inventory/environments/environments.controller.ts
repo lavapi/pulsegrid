@@ -20,6 +20,7 @@ import {
 import type { Request } from 'express';
 import { z } from 'zod';
 import { CurrentAuth } from '../../auth/guards/current-auth.decorator';
+import { RequireOwner } from '../../auth/guards/require-owner.decorator';
 import { RequirePermission } from '../../auth/guards/require-permission.decorator';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { ZodPipe } from '../../common/zod.pipe';
@@ -27,10 +28,12 @@ import { EnvironmentsService } from './environments.service';
 
 const nameSchema = z.object({ name: z.string().trim().min(1).max(60) });
 const assignmentSchema = z.object({ environmentId: z.string().uuid().nullable() });
+const productionSchema = z.object({ isProduction: z.boolean() });
 const comparisonSchema = z.object({ left: z.string().uuid(), right: z.string().uuid() });
 
 const INVALID_NAME = 'Enter a name up to 60 characters.';
 const INVALID_ASSIGNMENT = 'Choose a valid environment.';
+const INVALID_PRODUCTION = 'Choose whether this environment is production.';
 const INVALID_COMPARISON = 'Choose two environments to compare.';
 
 @Controller('environments')
@@ -97,6 +100,18 @@ export class EnvironmentsController {
     @Req() request: Request,
   ): Promise<ManagedEnvironment> {
     return this.environments.rename(auth, id, body.name, request.ip);
+  }
+
+  @Put(':id/production')
+  @RequireOwner()
+  @HttpCode(204)
+  setProduction(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodPipe(productionSchema, INVALID_PRODUCTION)) body: z.infer<typeof productionSchema>,
+    @Req() request: Request,
+  ): Promise<void> {
+    return this.environments.setProduction(auth, id, body.isProduction, request.ip);
   }
 
   @Delete(':id')

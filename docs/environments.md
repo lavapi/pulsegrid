@@ -10,6 +10,18 @@ Connected accounts are checked once by name. Names containing words like `prod`,
 
 Admins can rename, add or remove environments under **Manage environments**, and move accounts between them. A manual choice is kept. Removing an environment keeps its accounts and their data.
 
+## Production
+
+Each environment is either production or not, and production environments are read-only: no cloud actions, secret values or pipeline runs. A new environment counts as production unless its name contains a non-production word like `staging`, `dev`, `qa` or `test`. Renaming an environment doesn't change this.
+
+Only the super admin can:
+
+- Tick or clear **Production** for an environment under **Manage environments**.
+- Remove a production environment.
+- Move an account out of a production environment, either to another environment or to none.
+
+Everyone with **Manage environments** sees which environments are production. Every change is recorded in Activity.
+
 ## Domains
 
 Each environment can list its domains under **Manage environments**, such as the Staging and Production addresses of your apps and their Grafana.

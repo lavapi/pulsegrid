@@ -34,13 +34,13 @@ export class ResourceActionsService {
   ) {}
 
   async list(auth: AuthContext, id: string): Promise<ResourceActionOption[]> {
-    const { resource, account, environmentName, granted } = await this.access.load(auth, id);
+    const { resource, account, environment, granted } = await this.access.load(auth, id);
     return this.providers
       .get(account.provider)
       .actions.filter(
         ({ resourceType, permission }) => resourceType === resource.type && granted.has(permission),
       )
-      .map(({ permission }) => actionOption(permission, environmentName));
+      .map(({ permission }) => actionOption(permission, environment));
   }
 
   async run(
@@ -49,7 +49,7 @@ export class ResourceActionsService {
     permission: CloudPermission,
     ipAddress: string | undefined,
   ): Promise<ActionRun> {
-    const { resource, account, environmentName, granted } = await this.access.load(auth, id);
+    const { resource, account, environment, granted } = await this.access.load(auth, id);
     const metadata = { label: resource.name, permission, cloudAccount: account.account_id };
     const provider = this.providers.get(account.provider);
     const action = provider.actions.find(
@@ -59,7 +59,7 @@ export class ResourceActionsService {
       await this.access.record(auth, 'access.denied', resource.id, ipAddress, metadata);
       throw new ForbiddenException(NOT_ALLOWED);
     }
-    const { blockedReason } = actionOption(permission, environmentName);
+    const { blockedReason } = actionOption(permission, environment);
     if (blockedReason) {
       await this.access.record(auth, 'access.denied', resource.id, ipAddress, metadata);
       throw new ConflictException(blockedReason);

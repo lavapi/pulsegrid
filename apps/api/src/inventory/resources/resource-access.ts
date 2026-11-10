@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuditService } from '../../audit/audit.service';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { TenantDatabase } from '../../database/tenant-database';
+import { toAccountEnvironment } from '../environments/account-environment';
 
 const RESOURCE_MISSING = 'That resource no longer exists.';
 
@@ -26,13 +27,13 @@ export class ResourceAccess {
         .selectFrom('cloud_accounts')
         .leftJoin('environments', 'environments.id', 'cloud_accounts.environment_id')
         .selectAll('cloud_accounts')
-        .select('environments.name as environment_name')
+        .select(['environments.name as environment_name', 'environments.is_production'])
         .where('cloud_accounts.id', '=', resource.cloud_account_id)
         .executeTakeFirstOrThrow();
       return {
         resource,
         account,
-        environmentName: account.environment_name,
+        environment: toAccountEnvironment(account.environment_name, account.is_production),
         granted: auth.permissions,
       };
     });

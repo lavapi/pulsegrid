@@ -4,7 +4,7 @@ import { secretAccess } from './secret-rules';
 
 const input = (permissions: UserPermission[], overrides = {}) => ({
   granted: new Set(permissions),
-  environmentName: 'Staging',
+  environment: { name: 'Staging', isProduction: false },
   managedBy: undefined,
   ...overrides,
 });
@@ -22,8 +22,9 @@ describe('secretAccess', () => {
     expect(secretAccess(input(['server.reboot'])).canRead).toBe(false);
   });
 
-  it.each(['Production', 'Live', 'Customer accounts'])('hides values in %s', (environmentName) => {
-    expect(secretAccess(input(['secret.write'], { environmentName }))).toEqual({
+  it('hides values in production', () => {
+    const environment = { name: 'Staging', isProduction: true };
+    expect(secretAccess(input(['secret.write'], { environment }))).toEqual({
       canRead: false,
       canWrite: false,
       reason: 'Production is read-only.',
@@ -31,7 +32,7 @@ describe('secretAccess', () => {
   });
 
   it('asks for an environment when there is none', () => {
-    expect(secretAccess(input(['secret.write'], { environmentName: null })).canRead).toBe(false);
+    expect(secretAccess(input(['secret.write'], { environment: null })).canRead).toBe(false);
   });
 
   it('lets people read but not change a secret AWS manages', () => {

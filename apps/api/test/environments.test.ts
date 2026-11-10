@@ -11,6 +11,7 @@ interface Seed {
 describe('environments', () => {
   let context: TestContext;
   let admin: string;
+  let otherAdmin: string;
   let viewer: string;
   let other: string;
 
@@ -60,6 +61,7 @@ describe('environments', () => {
   beforeAll(async () => {
     context = await startTestApp();
     admin = await signIn(context, context.acme, user('ada', 'admin'));
+    otherAdmin = await signIn(context, context.acme, user('bo', 'admin'));
     viewer = await signIn(context, context.acme, user('val', 'viewer'));
     other = await signIn(context, context.globex, user('gia', 'admin'));
   });
@@ -194,6 +196,68 @@ describe('environments', () => {
       const account = await context.owner.selectFrom('cloud_accounts').selectAll().where('id', '=', staging).executeTakeFirstOrThrow();
       expect(account.environment_id).toBeNull();
       expect((await environments(admin)).map((item: { name: string }) => item.name)).toEqual(['Production']);
+    });
+
+    describe('production', () => {
+      const managed = async () =>
+        (await http().get('/api/environments/manage').set('Cookie', admin).expect(200)).body.environments as {
+          id: string;
+          name: string;
+          isProduction: boolean;
+        }[];
+      const named = async (name: string) => (await managed()).find((item) => item.name === name)!;
+
+      it('marks only known non-production names as non-production', async () => {
+        await http().post('/api/environments').set('Cookie', admin).send({ name: 'Sandbox' }).expect(201);
+        await http().post('/api/environments').set('Cookie', admin).send({ name: 'QA' }).expect(201);
+        const flags = Object.fromEntries((await managed()).map(({ name, isProduction }) => [name, isProduction]));
+        expect(flags).toEqual({ Staging: false, QA: false, Production: true, Sandbox: true });
+      });
+
+      it('keeps production when an environment is renamed', async () => {
+        const { id } = await named('Production');
+        await http().put(`/api/environments/${id}`).set('Cookie', otherAdmin).send({ name: 'Stage' }).expect(200);
+        expect((await named('Stage')).isProduction).toBe(true);
+        const [account] = (await accounts()).filter(({ name }: { name: string }) => name === 'Production');
+        expect(account.isProduction).toBe(true);
+      });
+
+      it('only lets the super admin change which environments are production', async () => {
+        const { id } = await named('Production');
+        await http().put(`/api/environments/${id}/production`).set('Cookie', otherAdmin).send({ isProduction: false }).expect(403);
+        await http().put(`/api/environments/${id}/production`).set('Cookie', admin).send({ isProduction: false }).expect(204);
+        expect((await named('Production')).isProduction).toBe(false);
+        const audited = await http().get('/api/audit-events').set('Cookie', admin);
+        expect(audited.body.events.map((event: { action: string }) => event.action)).toContain(
+          'environment.marked_non_production',
+        );
+      });
+
+      it('only lets the super admin move an account out of production', async () => {
+        const target = await named('Staging');
+        const response = await http()
+          .put(`/api/environments/accounts/${production}`)
+          .set('Cookie', otherAdmin)
+          .send({ environmentId: target.id });
+        expect(response.status).toBe(403);
+        expect(response.body.message).toBe('Only the super admin can move an account out of production.');
+        await http().put(`/api/environments/accounts/${production}`).set('Cookie', otherAdmin).send({ environmentId: null }).expect(403);
+        await http().put(`/api/environments/accounts/${production}`).set('Cookie', admin).send({ environmentId: target.id }).expect(204);
+      });
+
+      it('lets admins move accounts into production', async () => {
+        const target = await named('Production');
+        await http().put(`/api/environments/accounts/${staging}`).set('Cookie', otherAdmin).send({ environmentId: target.id }).expect(204);
+      });
+
+      it('only lets the super admin remove a production environment', async () => {
+        const { id } = await named('Production');
+        const response = await http().delete(`/api/environments/${id}`).set('Cookie', otherAdmin);
+        expect(response.status).toBe(403);
+        expect(response.body.message).toBe('Only the super admin can remove a production environment.');
+        await http().delete(`/api/environments/${(await named('Staging')).id}`).set('Cookie', otherAdmin).expect(204);
+        await http().delete(`/api/environments/${id}`).set('Cookie', admin).expect(204);
+      });
     });
 
     describe('domains', () => {

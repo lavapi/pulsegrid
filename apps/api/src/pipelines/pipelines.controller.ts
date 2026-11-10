@@ -115,7 +115,7 @@ export class PipelinesController {
   }
 
   @Put('link')
-  @RequirePermission('pipeline_apps.manage')
+  @RequirePermission('environments.manage')
   @HttpCode(204)
   link(
     @CurrentAuth() auth: AuthContext,

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createDatabase } from '../connection';
 import { type TenantTransaction, withTenantContext } from '../tenant-context';
 import { currentMonth, previousMonth } from '../../inventory/costs/cost-months';
+import { newEnvironment } from '../../inventory/environments/account-environment';
 import { type DemoStack, demoResources } from './demo-resources';
 
 const STACKS: (DemoStack & { environment: string; host: string; costScale: number })[] = [
@@ -63,7 +64,7 @@ const seedStack = async (trx: TenantTransaction, tenantId: string, stack: (typeo
   const now = new Date();
   const environment = await trx
     .insertInto('environments')
-    .values({ tenant_id: tenantId, name: stack.environment, sort_order: order })
+    .values(newEnvironment(tenantId, stack.environment, order))
     .onConflict((conflict) => conflict.columns(['tenant_id', 'name']).doUpdateSet({ sort_order: order }))
     .returning('id')
     .executeTakeFirstOrThrow();

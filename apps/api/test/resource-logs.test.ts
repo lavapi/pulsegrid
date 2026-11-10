@@ -4,6 +4,7 @@ import { CredentialVault } from '../src/inventory/connection/credential-vault';
 import { awsProvider } from '../src/inventory/providers/aws/aws.provider';
 import { CLOUD_PROVIDER_LIST, type CloudProvider, type LogResult } from '../src/inventory/providers/provider';
 import { setExtraPermissions, signIn, startTestApp, type TestContext, user } from './support/test-app';
+import { newEnvironment } from '../src/inventory/environments/account-environment';
 
 const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
 const LINE = { id: '1', timestamp: '2026-11-06T12:00:00.000Z', stream: 's', message: 'sensitive log line' };
@@ -28,7 +29,7 @@ describe('service logs', () => {
     const row = { tenant_id: tenantId, provider: 'aws', account_id: String(400000000000 + sequence) };
     const { id: environmentId } = await context.owner
       .insertInto('environments')
-      .values({ tenant_id: tenantId, name: environment, sort_order: sequence })
+      .values(newEnvironment(tenantId, environment, sequence))
       .onConflict((conflict) => conflict.columns(['tenant_id', 'name']).doUpdateSet({ sort_order: sequence }))
       .returning('id')
       .executeTakeFirstOrThrow();

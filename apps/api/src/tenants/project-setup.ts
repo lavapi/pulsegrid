@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { Account, Tenant } from '../database/schema';
 import { applyTenantContext, type TenantTransaction } from '../database/tenant-context';
+import { newEnvironment } from '../inventory/environments/account-environment';
 import { ADMIN_ROLE, addDefaultRoles } from '../team/default-roles';
 
 const SLUG_LIMIT = 30;
@@ -57,7 +58,7 @@ export const createProject = async (
   await addDefaultRoles(trx, tenant.id);
   await trx
     .insertInto('environments')
-    .values(DEFAULT_ENVIRONMENTS.map((environment) => ({ tenant_id: tenant.id, name: environment })))
+    .values(DEFAULT_ENVIRONMENTS.map((environment) => newEnvironment(tenant.id, environment)))
     .execute();
   return { tenant, userId: await addSeat(trx, tenant.id, superAdmin) };
 };
