@@ -3,6 +3,9 @@
 ## [Unreleased]
 
 - To look around without an AWS account, run `pnpm db:demo` after setup to fill a new project with made-up data.
+- Production is now a setting on each environment, under Settings > Manage environments, and only the super admin can change it. Renaming an environment no longer changes what's allowed in it. Your environments are set from their current names when you run `pnpm db:migrate`, so check them afterwards.
+- Only the super admin can remove a production environment or move an account out of one.
+- Linking a pipeline to an environment now needs Manage environments. Developers can still run non-production pipelines.
 - Docker images now use the PulseGrid name. If you set `image_repository` yourself, change it to `ghcr.io/lavapi/pulsegrid` when you upgrade. Don't change `name`. See Upgrade in docs/install-aws.md.
 
 ## [0.8.0] - 2026-11-09

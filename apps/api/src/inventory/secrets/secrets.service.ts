@@ -150,7 +150,7 @@ export class SecretsService {
   }
 
   private async open(auth: AuthContext, id: string) {
-    const { resource, account, environmentName, granted } = await this.access.load(auth, id);
+    const { resource, account, environment, granted } = await this.access.load(auth, id);
     const provider = this.providers.get(account.provider);
     const store = provider.secretStore;
     if (!store || store.resourceType !== resource.type) {
@@ -158,7 +158,7 @@ export class SecretsService {
     }
     const rules = secretAccess({
       granted,
-      environmentName,
+      environment,
       managedBy: resource.details['managedBy'],
     });
     const target = (): SecretTarget => {

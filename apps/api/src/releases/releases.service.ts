@@ -13,7 +13,6 @@ import { chunk } from '../common/chunk';
 import { isUniqueViolation } from '../database/errors';
 import { TenantDatabase } from '../database/tenant-database';
 import { CredentialVault } from '../inventory/connection/credential-vault';
-import { isKnownNonProductionName } from '../inventory/environments/environment-detection';
 import { domainsByEnvironment } from '../inventory/environments/environment-domains';
 import type { Deployment } from '../inventory/providers/provider';
 import { ProviderRegistry } from '../inventory/providers/provider-registry';
@@ -212,12 +211,11 @@ export class ReleasesService {
           'environments.name as environment_name',
         ])
         .where('resources.type', '=', DEPLOY_TYPE)
+        .where('environments.is_production', '=', false)
         .orderBy('resources.name')
         .execute(),
     );
-    return rows
-      .filter(({ environment_name: name }) => isKnownNonProductionName(name))
-      .map(({ cloud_account_id: accountId, native_id: nativeId, name, details, environment_name: environment }) => ({
+    return rows.map(({ cloud_account_id: accountId, native_id: nativeId, name, details, environment_name: environment }) => ({
         accountId,
         nativeId,
         name,

@@ -115,6 +115,7 @@ export interface EnvironmentsTable {
   tenant_id: string;
   name: string;
   sort_order: ColumnType<number, number | undefined, number>;
+  is_production: ColumnType<boolean, boolean | undefined, boolean>;
   created_at: CreatedAt;
 }
 

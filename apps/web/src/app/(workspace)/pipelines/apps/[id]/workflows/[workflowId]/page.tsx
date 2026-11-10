@@ -37,7 +37,7 @@ export default async function PipelineHistoryPage({
     apiGet<PipelineHistory>(`/pipelines/history?${query}`),
     getCurrentUser(),
   ]);
-  const canLink = hasPermission(user, 'pipeline_apps.manage');
+  const canLink = hasPermission(user, 'environments.manage');
   const rule = options.definition.environmentRule;
   const environments = canLink ? await apiGet<EnvironmentSummary[]>('/environments') : [];
 

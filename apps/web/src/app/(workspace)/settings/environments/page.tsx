@@ -17,7 +17,7 @@ export default async function EnvironmentSettingsPage() {
         title="Manage environments"
         description="Group cloud accounts into environments, and add the app and Grafana domains for each one."
       />
-      <EnvironmentManager view={view} />
+      <EnvironmentManager view={view} isSuperAdmin={user.isOwner} />
     </>
   );
 }

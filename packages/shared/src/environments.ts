@@ -32,6 +32,7 @@ export interface EnvironmentAssignment {
 }
 
 export interface EnvironmentWithDomains extends ManagedEnvironment {
+  isProduction: boolean;
   domains: EnvironmentDomain[];
 }
 

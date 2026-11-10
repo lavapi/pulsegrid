@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { averageDeployments, deploymentsOf } from './deployment-times';
 import type { PipelineContext } from './pipeline-summaries';
 
-const STAGING = { id: 's', name: 'Staging' };
-const PRODUCTION = { id: 'p', name: 'Production' };
+const STAGING = { id: 's', name: 'Staging', production: false };
+const PRODUCTION = { id: 'p', name: 'Production', production: true };
 
 const definition = (overrides: Partial<PipelineDefinition>): PipelineDefinition => ({
   manual: false,

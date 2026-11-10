@@ -512,6 +512,31 @@ describe('pipelines', () => {
       expect(audit.body.events[0]).toMatchObject({ action: 'pipeline.action_denied', actorEmail: 'ada@example.test' });
     });
 
+    it('only lets people who manage environments link pipelines', async () => {
+      const staging = await environment('Staging');
+      await http()
+        .put('/api/pipelines/link')
+        .set('Cookie', developer)
+        .send({ appId, workflowId: '1', environmentId: staging })
+        .expect(403);
+    });
+
+    it('keeps a workflow named for production read-only when linked to staging', async () => {
+      state.workflows[repository] = [workflow('1', 'Deploy production', repository)];
+      await link('1', await environment('Staging'));
+      const response = await start(admin, { workflowId: '1', inputs: { target: 'blue' } });
+      expect(response.status).toBe(403);
+      expect(state.actions).toEqual([]);
+    });
+
+    it('keeps a renamed production environment read-only', async () => {
+      const id = await environment('Production');
+      await http().put(`/api/environments/${id}`).set('Cookie', admin).send({ name: 'Staging two' }).expect(200);
+      await link('1', id);
+      await start(admin, { workflowId: '1', inputs: { target: 'blue' } }).expect(403);
+      expect(state.actions).toEqual([]);
+    });
+
     it('refuses production re-runs for admins', async () => {
       await environment('Production');
       await http().post('/api/pipelines/runs/rerun').set('Cookie', admin).send({ appId, runId: '200' }).expect(403);

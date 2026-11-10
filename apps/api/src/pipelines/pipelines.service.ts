@@ -744,7 +744,10 @@ export class PipelinesService {
         .selectAll()
         .where('app_id', '=', app.id)
         .execute();
-      const environments = await trx.selectFrom('environments').select(['id', 'name']).execute();
+      const environments = await trx
+        .selectFrom('environments')
+        .select(['id', 'name', 'is_production as production'])
+        .execute();
       return {
         environments,
         links: links.map((link) => ({

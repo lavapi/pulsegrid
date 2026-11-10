@@ -9,8 +9,8 @@ import {
   toPipelineSummary,
 } from './pipeline-summaries';
 
-const STAGING = { id: 'staging-id', name: 'Staging' };
-const PRODUCTION = { id: 'production-id', name: 'Production' };
+const STAGING = { id: 'staging-id', name: 'Staging', production: false };
+const PRODUCTION = { id: 'production-id', name: 'Production', production: true };
 const RULE = { branch: 'main', matched: 'production', otherwise: 'staging' };
 
 const definition = (overrides: Partial<PipelineDefinition> = {}): PipelineDefinition => ({
@@ -117,6 +117,30 @@ describe('protectionFor', () => {
       links: [{ repository: 'o/r', workflowId: '1', environmentId: STAGING.id }],
     });
     expect(protectionFor(linked).production).toBe(true);
+  });
+
+  it('keeps a workflow named for production protected when linked elsewhere', () => {
+    const linked = context({
+      workflow: { id: '1', repository: 'o/r', name: 'Deploy production', path: 'p', url: 'u' },
+      links: [{ repository: 'o/r', workflowId: '1', environmentId: STAGING.id }],
+    });
+    expect(protectionFor(linked).production).toBe(true);
+  });
+
+  it('follows the production flag rather than the environment name', () => {
+    const renamed = { id: 'renamed-id', name: 'Stage', production: true };
+    const linked = context({
+      environments: [STAGING, renamed],
+      links: [{ repository: 'o/r', workflowId: '1', environmentId: renamed.id }],
+    });
+    expect(protectionFor(linked)).toEqual({ production: true, label: 'Stage' });
+  });
+
+  it('follows the production flag for branch routed pipelines', () => {
+    const flagged = { ...STAGING, production: true };
+    expect(protectionFor(routed({ environments: [flagged, PRODUCTION] }), { branch: 'develop' }).production).toBe(
+      true,
+    );
   });
 
   it('allows a real staging pipeline', () => {
