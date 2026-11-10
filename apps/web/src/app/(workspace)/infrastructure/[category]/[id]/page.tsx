@@ -9,6 +9,7 @@ import {
   hasPermission,
   type SecretView,
   SERVICE_CATEGORIES,
+  supportsLoad,
 } from '@pulsegrid/shared';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -18,6 +19,7 @@ import { CloudActivityTable } from '@/components/activity/cloud-activity-table';
 import { HealthBadge } from '@/components/health-badge';
 import { ResourceActionPanel } from '@/components/infrastructure/resource-action-panel';
 import { SecretPanel } from '@/components/infrastructure/secret-panel';
+import { ResourceLoad } from '@/components/infrastructure/load/resource-load';
 import { ServiceLogs } from '@/components/infrastructure/service-logs';
 import { ServiceIcon } from '@/components/service-icon';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -25,7 +27,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { PageHeader } from '@/components/ui/page-header';
 import { Time } from '@/components/ui/time';
 import { formatValue, humanizeKey } from '@/lib/format';
-import { apiGet, getCurrentUser } from '@/lib/server-api';
+import { apiGet, apiGetOptional, getCurrentUser } from '@/lib/server-api';
 import { formatDeployment, formatLaunchType } from '@/lib/service-views';
 
 function Fields({ entries }: { entries: [string, ReactNode][] }) {
@@ -62,10 +64,10 @@ const detailValue = (key: string, value: unknown): ReactNode =>
 const lookupName = (nativeId: string): string => nativeId.split(/[/:]/).at(-1) ?? nativeId;
 
 async function RecentAwsActivity({ accountId, nativeId }: { accountId: string; nativeId: string }) {
-  const { events } = await apiGet<CloudActivityPage>(
+  const page = await apiGetOptional<CloudActivityPage>(
     `/cloud/accounts/${accountId}/activity?resource=${encodeURIComponent(lookupName(nativeId))}`,
   );
-  const recent = events.slice(0, RECENT_ACTIVITY);
+  const recent = page?.events.slice(0, RECENT_ACTIVITY) ?? [];
   return (
     recent.length > 0 && (
       <section className="flex flex-col gap-2" aria-label="Recent AWS activity">
@@ -139,6 +141,7 @@ export default async function ResourceDetailPage({
       />
       {secret && <SecretPanel resourceId={resource.id} view={secret} />}
       {resource.type === 'ecs-service' && <ServiceLogs resourceId={resource.id} />}
+      {supportsLoad(resource.type) && <ResourceLoad resourceId={resource.id} />}
       <Card>
         <CardHeader title="Summary" />
         <Fields entries={summary} />

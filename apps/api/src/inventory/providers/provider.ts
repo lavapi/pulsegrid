@@ -1,8 +1,10 @@
 import type {
   CloudActivityEvent,
   CloudPermission,
+  CapacityFact,
   CredentialCheck,
   InfrastructureMap,
+  LoadChart,
   LogLine,
   Resource,
   ResourceHealth,
@@ -144,6 +146,30 @@ export interface LogSource<Credentials extends CloudCredentials = CloudCredentia
   read(context: LogContext<Credentials>, query: LogQuery): Promise<LogResult>;
 }
 
+export interface MetricQuery {
+  since: Date;
+  until: Date;
+  periodSeconds: number;
+}
+
+export interface MetricResult {
+  charts: LoadChart[];
+  capacity: CapacityFact[];
+  hiddenSeries: number;
+}
+
+export interface MetricContext<Credentials extends CloudCredentials = CloudCredentials> {
+  credentials: Credentials;
+  region: string;
+  resource: { type: ResourceType; name: string; details: Record<string, unknown> };
+}
+
+export interface MetricSource<Credentials extends CloudCredentials = CloudCredentials> {
+  resourceTypes: readonly ResourceType[];
+  read(context: MetricContext<Credentials>, query: MetricQuery): Promise<MetricResult>;
+  failureMessage(error: unknown): string;
+}
+
 export interface CostContext<Credentials extends CloudCredentials = CloudCredentials> {
   credentials: Credentials;
   accountId: string;
@@ -195,6 +221,7 @@ export interface CloudProvider<Credentials extends CloudCredentials = CloudCrede
   secretStore?: SecretStore<Credentials>;
   activitySource?: ActivitySource<Credentials>;
   logSource?: LogSource<Credentials>;
+  metricSource?: MetricSource<Credentials>;
   costSource?: CostSource<Credentials>;
   deploymentSource?: DeploymentSource<Credentials>;
   parseCredentials(input: unknown): Credentials | null;

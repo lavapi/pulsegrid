@@ -60,6 +60,8 @@ const toClusterResource = (cluster: DBCluster, region: string): CollectedResourc
       engine: cluster.Engine,
       engineVersion: cluster.EngineVersion,
       members: cluster.DBClusterMembers?.length,
+      serverlessMinAcu: cluster.ServerlessV2ScalingConfiguration?.MinCapacity,
+      serverlessMaxAcu: cluster.ServerlessV2ScalingConfiguration?.MaxCapacity,
       multiAz: cluster.MultiAZ,
       storageEncrypted: cluster.StorageEncrypted,
       securityGroups: securityGroupsOf(cluster.VpcSecurityGroups),

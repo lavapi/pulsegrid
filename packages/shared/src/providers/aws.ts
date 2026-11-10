@@ -49,6 +49,7 @@ export const AWS_READ_ONLY_ACTIONS = [
   'ecs:ListTagsForResource',
   'ecs:DescribeTaskDefinition',
   'logs:FilterLogEvents',
+  'cloudwatch:GetMetricData',
   'rds:DescribeDBInstances',
   'rds:DescribeDBClusters',
   'elasticache:DescribeReplicationGroups',

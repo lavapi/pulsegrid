@@ -10,6 +10,7 @@ import { AWS_ACTIVITY_SOURCE } from './aws-cloudtrail';
 import { AWS_COST_SOURCE } from './aws-costs';
 import { AWS_DEPLOYMENT_SOURCE } from './aws-deployments';
 import { AWS_LOG_SOURCE } from './aws-logs';
+import { AWS_METRIC_SOURCE } from './aws-metrics';
 import { AWS_SECRET_STORE } from './aws-secrets';
 import { AWS_COLLECTORS } from './collectors';
 
@@ -22,6 +23,7 @@ const awsProviderOf: CloudProvider<AwsKey> = {
   secretStore: AWS_SECRET_STORE,
   activitySource: AWS_ACTIVITY_SOURCE,
   logSource: AWS_LOG_SOURCE,
+  metricSource: AWS_METRIC_SOURCE,
   costSource: AWS_COST_SOURCE,
   deploymentSource: AWS_DEPLOYMENT_SOURCE,
   parseCredentials: parseAwsKey,
