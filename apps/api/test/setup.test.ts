@@ -131,7 +131,10 @@ describe('first-run setup', () => {
     };
     const started = await http().get('/api/auth/google').expect(302);
     const state = new URL(started.headers.location ?? '').searchParams.get('state');
-    const response = await http().get(`/api/auth/google/callback?state=${state}&code=x`).expect(302);
+    const response = await http()
+      .get(`/api/auth/google/callback?state=${state}&code=x`)
+      .set('Cookie', `devdash_google_state=${state}`)
+      .expect(302);
     expect(response.headers.location).toBe('/login?error=no_access');
   });
 });

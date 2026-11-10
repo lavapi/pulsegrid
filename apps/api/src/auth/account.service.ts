@@ -10,7 +10,8 @@ import { AuthService } from './auth.service';
 import { hashPassword, verifyPassword } from './passwords/password-hasher';
 import type { PersonContext } from './session/auth-context';
 import { SessionService } from './session/session.service';
-import { hashBackupCode, newBackupCodes, newTotpSecret, totpStep, totpUri } from './two-factor/totp';
+import { BackupCodeHasher } from './two-factor/backup-code-hasher';
+import { newBackupCodes, newTotpSecret, totpStep, totpUri } from './two-factor/totp';
 
 const NO_ACCOUNT = 'We could not find your account.';
 const BAD_PASSWORD = 'Your current password is incorrect.';
@@ -28,6 +29,7 @@ export class AccountService {
     private readonly database: TenantDatabase,
     private readonly audit: AuditService,
     private readonly cipher: TokenCipher,
+    private readonly backupCodes: BackupCodeHasher,
   ) {}
 
   async settings(auth: PersonContext): Promise<AccountSettings> {
@@ -106,9 +108,9 @@ export class AccountService {
     await this.accounts.update(account.id, {
       totp_enabled_at: new Date(),
       totp_last_step: step,
-      backup_codes: backupCodes.map(hashBackupCode),
+      backup_codes: backupCodes.map((backupCode) => this.backupCodes.hash(backupCode)),
     });
-    await this.record(auth, 'auth.two_factor_enabled', ipAddress);
+    await this.record(auth, 'auth.two_factor_enabled', ipAddress, true);
     return { backupCodes };
   }
 

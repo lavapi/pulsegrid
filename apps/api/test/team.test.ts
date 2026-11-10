@@ -159,9 +159,15 @@ describe('team', () => {
       context.google.profile = { subject: `g-${email}`, email, emailVerified: true, name: 'New' };
       const started = await http().get('/api/auth/google').expect(302);
       const state = new URL(started.headers.location ?? '').searchParams.get('state');
-      const response = await http().get(`/api/auth/google/callback?state=${state}&code=x`).expect(302);
+      const response = await http()
+        .get(`/api/auth/google/callback?state=${state}&code=x`)
+        .set('Cookie', `devdash_google_state=${state}`)
+        .expect(302);
       expect(response.headers.location).toBe('/');
-      const me = await http().get('/api/me').set('Cookie', cookieFrom(response)).expect(200);
+      const session = ([] as string[])
+        .concat(response.headers['set-cookie'] ?? [])
+        .find((cookie) => cookie.startsWith('devdash_session='));
+      const me = await http().get('/api/me').set('Cookie', String(session).split(';')[0] ?? '').expect(200);
       expect(me.body.mustChangePassword).toBe(true);
     });
 
@@ -357,7 +363,7 @@ describe('team', () => {
 
       const { body } = await addOk(email);
       const response = await login(email, body.password).expect(200);
-      expect(response.body.twoFactorChallenge).toBeNull();
+      expect(response.body.twoFactorRequired).toBe(false);
       expect(await account(email)).toMatchObject({
         totp_secret: null,
         totp_enabled_at: null,

@@ -4,7 +4,9 @@ import { DATABASE } from '../database/database.module';
 import type { Account, Database } from '../database/schema';
 
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCK_MS = 15 * 60 * 1000;
+const LOCK_SECONDS = 15 * 60;
+
+export type FailureCounter = 'failed_attempts' | 'two_factor_failed_attempts';
 
 @Injectable()
 export class AccountStore {
@@ -56,6 +58,7 @@ export class AccountStore {
     changes: {
       password_hash?: string | null;
       failed_attempts?: number;
+      two_factor_failed_attempts?: number;
       locked_until?: Date | null;
       totp_secret?: string | null;
       totp_enabled_at?: Date | null;
@@ -67,17 +70,45 @@ export class AccountStore {
     await this.db.updateTable('accounts').set(changes).where('id', '=', id).execute();
   }
 
-  async recordFailure(account: Account): Promise<void> {
-    const attempts = account.failed_attempts + 1;
-    const locked = attempts >= MAX_FAILED_ATTEMPTS;
-    await this.applyUpdate(account.id, {
-      failed_attempts: locked ? 0 : attempts,
-      ...(locked ? { locked_until: new Date(Date.now() + LOCK_MS) } : {}),
-    });
+  async recordFailure(id: string, counter: FailureCounter): Promise<void> {
+    const column = sql.ref(counter);
+    const reached = sql`${column} + 1 >= ${MAX_FAILED_ATTEMPTS}`;
+    await sql`
+      update accounts set
+        ${column} = case when ${reached} then 0 else ${column} + 1 end,
+        locked_until = case when ${reached} then now() + make_interval(secs => ${LOCK_SECONDS}) else locked_until end
+      where id = ${id}
+    `.execute(this.db);
+  }
+
+  clearPasswordFailures(id: string): Promise<void> {
+    return this.applyUpdate(id, { failed_attempts: 0 });
   }
 
   clearFailures(id: string): Promise<void> {
-    return this.applyUpdate(id, { failed_attempts: 0, locked_until: null });
+    return this.applyUpdate(id, { failed_attempts: 0, two_factor_failed_attempts: 0, locked_until: null });
+  }
+
+  async advanceTotpStep(id: string, step: number): Promise<boolean> {
+    const row = await this.db
+      .updateTable('accounts')
+      .set({ totp_last_step: step })
+      .where('id', '=', id)
+      .where((eb) => eb.or([eb('totp_last_step', 'is', null), eb('totp_last_step', '<', String(step))]))
+      .returning('id')
+      .executeTakeFirst();
+    return row !== undefined;
+  }
+
+  async useBackupCode(id: string, hashes: readonly string[]): Promise<boolean> {
+    const { rows } = await sql<{ id: string }>`
+      update accounts set backup_codes = array(
+        select code from unnest(backup_codes) as code where code <> all(${hashes}::text[])
+      )
+      where id = ${id} and backup_codes && ${hashes}::text[]
+      returning id
+    `.execute(this.db);
+    return rows.length > 0;
   }
 
   isLocked({ locked_until: lockedUntil }: Account): boolean {
