@@ -11,7 +11,8 @@
     "dev": "pnpm --filter @pulsegrid/shared build && pnpm --filter @pulsegrid/api build && concurrently -n api,worker,web \"pnpm --filter @pulsegrid/api dev\" \"pnpm --filter @pulsegrid/api dev:worker\" \"pnpm --filter @pulsegrid/web dev\"",
     "typecheck": "pnpm --filter @pulsegrid/shared build && pnpm -r typecheck",
     "test": "pnpm --filter @pulsegrid/shared build && pnpm -r test",
-    "db:migrate": "pnpm --filter @pulsegrid/api db:migrate"
+    "db:migrate": "pnpm --filter @pulsegrid/api db:migrate",
+    "db:demo": "pnpm --filter @pulsegrid/api db:demo"
   },
   "devDependencies": {
     "concurrently": "^10.0.6"

@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- To look around without an AWS account, run `pnpm db:demo` after setup to fill a new project with made-up data.
 - Docker images now use the PulseGrid name. If you set `image_repository` yourself, change it to `ghcr.io/lavapi/pulsegrid` when you upgrade. Don't change `name`. See Upgrade in docs/install-aws.md.
 
 ## [0.8.0] - 2026-11-09
