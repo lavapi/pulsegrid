@@ -20,7 +20,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { z } from 'zod';
 import { CurrentAuth } from '../auth/guards/current-auth.decorator';
-import { RequirePermission } from '../auth/guards/require-permission.decorator';
+import { RequireEnvironmentPermission, RequirePermission } from '../auth/guards/require-permission.decorator';
 import type { AuthContext } from '../auth/session/auth-context';
 import { ZodPipe } from '../common/zod.pipe';
 import { pipelineScopeSchema as scopeSchema } from './pipeline-requests';
@@ -79,7 +79,7 @@ export class PipelinesController {
   }
 
   @Post('runs')
-  @RequirePermission('pipeline.run')
+  @RequireEnvironmentPermission('pipeline.run')
   @UseGuards(ThrottlerGuard)
   @HttpCode(202)
   startRun(
@@ -91,7 +91,7 @@ export class PipelinesController {
   }
 
   @Post('runs/rerun')
-  @RequirePermission('pipeline.run')
+  @RequireEnvironmentPermission('pipeline.run')
   @UseGuards(ThrottlerGuard)
   @HttpCode(202)
   rerun(
@@ -103,7 +103,7 @@ export class PipelinesController {
   }
 
   @Post('runs/cancel')
-  @RequirePermission('pipeline.run')
+  @RequireEnvironmentPermission('pipeline.run')
   @UseGuards(ThrottlerGuard)
   @HttpCode(202)
   cancel(

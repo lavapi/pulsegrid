@@ -15,13 +15,13 @@ Tokens are encrypted, belong to one project, and are never shown again. Add one 
 
 Running pipelines needs a token with **Actions: Read and write**. With a read-only token, the pages still work and actions show a clear error.
 
-People whose role has **Run pipelines** can run, re-run and cancel non-production pipelines.
+People whose role has **Run staging pipelines** can run, re-run and cancel non-production pipelines. **Run production pipelines** does the same for production pipelines.
 
-Production is read-only for everyone, including the super admin. People can still see production pipelines and their runs. Refused attempts appear in the audit log.
+Everyone can see production pipelines and their runs. Refused attempts appear in the audit log.
 
 This rule covers the dashboard only. People with access on GitHub can still run workflows there. To control that, add required reviewers to the `production` environment on GitHub.
 
-A pipeline counts as production if it's linked to a production environment, if its workflow file uses a production environment, if its workflow name contains a word like `prod` or `production`, or if it has no environment at all. See [Environments](environments.md#production) for which environments are production. To run a shared pipeline that has no environment, link it to a non-production environment first. A link to another environment can't make a production workflow count as non-production. A workflow whose environment is an expression the dashboard can't read also counts as production.
+A pipeline counts as production if it's linked to a production environment, if its workflow file uses a production environment, if its workflow name contains a word like `prod` or `production`, or if it has no environment at all. See [Environments](environments.md#production) for which environments are production. A shared pipeline that has no environment needs **Run production pipelines**, or a link to a non-production environment. A link to another environment can't make a production workflow count as non-production. A workflow whose environment is an expression the dashboard can't read also counts as production.
 
 Some workflows pick their environment from the branch, for example `${{ github.ref_name == 'main' && 'production' || 'staging' }}`. The dashboard reads this rule and decides for each run: `main` runs follow the production rules, and runs on other branches follow the staging rules.
 
@@ -52,7 +52,7 @@ To add a line, people whose role has **Manage pipeline apps** select **Link a se
 
 Build, Test and Image come from the jobs of the latest run, or from its steps if the pipeline has a single job. They're sorted by name, so a job called `unit-tests` counts as Test and one called `push-image` counts as Image. Anything else counts as Build, and a stage with nothing in it isn't shown.
 
-The ECS stage is read live from AWS. This uses `ecs:DescribeServices` and `ecs:DescribeTaskDefinition`, which are already in the read-only policy. **Ready for testing** appears when the pipeline has succeeded and ECS says the matching rollout has completed. ECS only completes a rollout once the new tasks are running and, behind a load balancer, healthy.
+The ECS stage is read live from AWS. This uses `ecs:DescribeServices` and `ecs:DescribeTaskDefinition`, which are in the PulseGrid policy. **Ready for testing** appears when the pipeline has succeeded and ECS says the matching rollout has completed. ECS only completes a rollout once the new tasks are running and, behind a load balancer, healthy.
 
 To match a rollout to a run, the dashboard looks for the run's commit in the image tag:
 

@@ -7,7 +7,7 @@ Everyone in the project sees its connected accounts. Dashboard roles control wha
 ## Create a key
 
 1. In the AWS account, create a dedicated IAM user for the dashboard. Don't use a personal user or an admin user.
-2. Attach the read-only policy shown on the **AWS** integration page. It only allows list and describe actions, plus reading logs and costs, and can't read S3 files or secret values. Use this policy for production accounts. The extended policy is only for non-production accounts.
+2. Attach the PulseGrid policy shown on the **AWS** integration page. Every account uses the same policy, production included. It allows the list and describe actions, logs and costs PulseGrid reads, and the actions it can take: force deploys, reboots, fault experiments and app secret values. It can't read S3 files or create or delete resources. Who can take which action, in staging and in production, is set by roles in PulseGrid.
 3. Create an access key for that user.
 
 Root account keys and temporary keys are refused.
@@ -20,7 +20,7 @@ Root account keys and temporary keys are refused.
 4. Select **Test credentials**. The page shows the account the key belongs to and which services it can read.
 5. Select **Save integration**. The first sync starts straight away.
 
-If a key can delete or create resources, the page shows a warning, because the dashboard never needs that. The extended policy for force deploys and reboots does not trigger it. The check needs `iam:SimulatePrincipalPolicy`, which is included in the policy. Without it, the dashboard can't tell.
+Testing a key lists any actions from the PulseGrid policy that it lacks, because the pages and actions that need them won't work. If a key can delete or create resources, the page also shows a warning, because PulseGrid never needs that. Both checks need `iam:SimulatePrincipalPolicy`, which is in the policy. Without it, PulseGrid can't tell.
 
 An account that already has data but no key shows **Needs credentials**. It keeps its data but stops syncing. Adding a key for the same AWS account takes it over and keeps its resources and environment.
 
@@ -36,7 +36,7 @@ With an include rule, untagged resources are hidden unless you tick **Keep untag
 
 Filtered resources aren't stored, so they also disappear from health and Environments. Saving rules starts a sync, and removing a rule brings resources back. Filters only decide what the dashboard shows. They don't limit what the access key can reach, and **Activity > AWS** still shows events for filtered resources.
 
-Reading tags for ElastiCache, load balancers and S3 needs `elasticache:ListTagsForResource`, `elasticloadbalancing:DescribeTags` and `s3:GetBucketTagging`, which are in the read-only policy. Without them those resources count as untagged.
+Reading tags for ElastiCache, load balancers and S3 needs `elasticache:ListTagsForResource`, `elasticloadbalancing:DescribeTags` and `s3:GetBucketTagging`, which are in the PulseGrid policy. Without them those resources count as untagged.
 
 ## See changes made outside the dashboard
 
@@ -58,7 +58,7 @@ Figures come from AWS and can lag by up to a day, so they may differ slightly fr
 
 ## AWS activity
 
-**Activity > AWS** shows what people and tools did in the selected account, from AWS Event history. This covers management actions from the last 90 days, including the console, the CLI, CI and Terraform. It needs `cloudtrail:LookupEvents`, which is in the read-only policy, and no other setup. It needs the **View activity** permission.
+**Activity > AWS** shows what people and tools did in the selected account, from AWS Event history. This covers management actions from the last 90 days, including the console, the CLI, CI and Terraform. It needs `cloudtrail:LookupEvents`, which is in the PulseGrid policy, and no other setup. It needs the **View activity** permission.
 
 - Events usually take about 15 minutes to appear, so this isn't for real-time alerts.
 - AWS only knows the login used, so a shared IAM user or role shows that name.
@@ -67,7 +67,7 @@ Figures come from AWS and can lag by up to a day, so they may differ slightly fr
 
 ECS services show a **Logs** section. The dashboard finds the CloudWatch log group from the service's task definition, so services using another log driver show a message instead. Logs need the **View service logs** permission, and work in every environment, because reading them changes nothing. Opening a service's logs is recorded in Activity, once every 15 minutes per person and service while they keep reading. Lines are read when you look at them and are never stored. The longest range is 24 hours.
 
-The read-only policy includes `logs:FilterLogEvents` and `ecs:DescribeTaskDefinition`. The second also lets the key see plain environment variables in task definitions. The dashboard reads only the log settings.
+The PulseGrid policy includes `logs:FilterLogEvents` and `ecs:DescribeTaskDefinition`. The second also lets the key see plain environment variables in task definitions. The dashboard reads only the log settings.
 
 ## Load
 
@@ -81,13 +81,13 @@ RDS databases, Aurora clusters and ElastiCache caches show a **Load** section wi
 
 Above the charts, the section lists the capacity the resource has, such as the instance class, node type, allocated storage or serverless range. A chart is marked **Near limit** when the latest value is high: CPU above 80%, engine CPU or cache memory above 90%, storage above 85% or serverless capacity above 80%. Charts with no data from AWS are left out, and a cache with more than three nodes shows the first three.
 
-Load needs `cloudwatch:GetMetricData`, which is in the read-only policy. **Keys connected before load was added don't have it.** Add it to their IAM policy, or the Load section says the key can't read load.
+Load needs `cloudwatch:GetMetricData`, which is in the PulseGrid policy. **Keys connected before load was added don't have it.** Add it to their IAM policy, or the Load section says the key can't read load.
 
 ## Fault experiments
 
 The **Experiments** page lists the AWS FIS experiment templates of the account selected in the top bar, in every synced region, and its 20 most recent experiments per region. Each template shows its targets, its steps with their durations, and the CloudWatch alarms that stop it early. A template with no stop alarm is marked, because only a person can stop it. Templates are created in the AWS console or with Terraform; PulseGrid doesn't create or change them.
 
-Everyone can see templates and experiments. Starting or stopping one needs the **Run staging fault experiments** permission, an access key with the extended policy, and an account in a non-production environment. Starting asks you to type the template's name. Production accounts are read-only, so an experiment running in production has to be stopped in the AWS console.
+Everyone can see templates and experiments. Starting or stopping one needs an access key and the **Run staging fault experiments** permission, or **Run production fault experiments** for an account in a production environment. Starting asks you to type the template's name.
 
 An experiment's page refreshes every 5 seconds while it runs. It shows each step's state and timing, why the experiment ended, and who started it from PulseGrid; experiments started elsewhere show **Outside PulseGrid**. Databases and caches the experiment picked that PulseGrid knows are listed with their Load charts, so you can see the effect. Every start and stop is recorded in Activity, and so is every refused attempt.
 
@@ -97,15 +97,15 @@ An experiment's page refreshes every 5 seconds while it runs. It shows each step
 
 Each run has its own page with the live state of every experiment, linked to its page, and refreshes every 5 seconds while any is running. A template that no longer exists in AWS, or that AWS refuses to start, is shown with the reason, and the others still run. **Stop all** stops every experiment of the run that's still active. Recent runs are listed on the Experiments page.
 
-Creating, changing, deleting and running groups need the same permission, key and environment as single experiments, so production stays read-only. Group changes, runs and Stop all are recorded in Activity, along with each experiment they started or stopped. No extra AWS permissions are needed.
+Creating, changing, deleting and running groups need the same key and permission as single experiments, staging or production depending on the account's environment. Group changes, runs and Stop all are recorded in Activity, along with each experiment they started or stopped. No extra AWS permissions are needed.
 
-The read-only policy includes `fis:ListExperimentTemplates`, `fis:GetExperimentTemplate`, `fis:ListExperiments`, `fis:GetExperiment` and `fis:ListExperimentResolvedTargets`. The extended policy adds `fis:StartExperiment` and `fis:StopExperiment`. FIS runs each experiment with the role in its template, so the key itself never gets the permissions the experiment uses.
+The PulseGrid policy includes `fis:ListExperimentTemplates`, `fis:GetExperimentTemplate`, `fis:ListExperiments`, `fis:GetExperiment`, `fis:ListExperimentResolvedTargets`, `fis:StartExperiment` and `fis:StopExperiment`. FIS runs each experiment with the role in its template, so the key itself never gets the permissions the experiment uses.
 
 ## App secrets
 
-Secrets from AWS Secrets Manager appear under **Infrastructure > Secrets Manager**. The read-only policy lists their names and details, and never their values.
+Secrets from AWS Secrets Manager appear under **Infrastructure > Secrets Manager**. Everyone sees their names and details. Values need the secret permissions.
 
-On a non-production account with the extended policy, people with the secret permissions can open a secret. Values stay hidden until someone selects **Show**, which reads that value from AWS, shows it for 30 seconds, and records who did it. Values are never stored in the dashboard, its logs or the audit log. In production and on accounts with no environment, only names are shown.
+People with **Read staging app secrets** or **Write staging app secrets** can open a secret in a non-production environment, and the production versions of those permissions cover production environments. Values stay hidden until someone selects **Show**, which reads that value from AWS, shows it for 30 seconds, and records who did it. Values are never stored in the dashboard, its logs or the audit log. Without the matching permission, and on accounts with no environment, only names are shown.
 
 Writing adds, edits or deletes one key and saves a new version in AWS. **Edit** can change the key name, the value or both, and it reads the current value, so it's recorded like **Show**. JSON values are shown indented and open in a larger editor, which won't save broken JSON. A secret that's a JSON object opens in the **JSON** view, where **Edit JSON** replaces the whole secret in one version, and the audit log records which keys were added, changed or removed. **Keys** lists each key for single changes. Numbers and true or false values keep their type. If the secret changed since you opened it, nothing is saved and you're asked to reload. Whole secrets can't be created or deleted here, and secrets managed by another AWS service, such as RDS, can't be changed.
 

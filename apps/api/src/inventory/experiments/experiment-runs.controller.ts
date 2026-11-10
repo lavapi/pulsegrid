@@ -4,7 +4,7 @@ import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
 import type { z } from 'zod';
 import { CurrentAuth } from '../../auth/guards/current-auth.decorator';
-import { RequirePermission } from '../../auth/guards/require-permission.decorator';
+import { RequireEnvironmentPermission } from '../../auth/guards/require-permission.decorator';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { ZodPipe } from '../../common/zod.pipe';
 import { RUN_PERMISSION } from './experiment-access';
@@ -17,7 +17,7 @@ export class ExperimentRunsController {
   constructor(private readonly runs: ExperimentRunsService) {}
 
   @Post()
-  @RequirePermission(RUN_PERMISSION)
+  @RequireEnvironmentPermission(RUN_PERMISSION)
   @Throttle(CHANGE_LIMIT)
   start(
     @CurrentAuth() auth: AuthContext,
@@ -39,7 +39,7 @@ export class ExperimentRunsController {
   }
 
   @Post(':runId/stop')
-  @RequirePermission(RUN_PERMISSION)
+  @RequireEnvironmentPermission(RUN_PERMISSION)
   @Throttle(CHANGE_LIMIT)
   @HttpCode(204)
   stop(

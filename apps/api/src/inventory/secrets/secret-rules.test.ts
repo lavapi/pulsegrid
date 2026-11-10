@@ -22,13 +22,19 @@ describe('secretAccess', () => {
     expect(secretAccess(input(['server.reboot'])).canRead).toBe(false);
   });
 
-  it('hides values in production', () => {
+  it('needs the production permissions in production', () => {
     const environment = { name: 'Staging', isProduction: true };
     expect(secretAccess(input(['secret.write'], { environment }))).toEqual({
       canRead: false,
       canWrite: false,
-      reason: 'Production is read-only.',
+      reason: 'Ask your super admin for the Read production app secrets permission.',
     });
+    expect(secretAccess(input(['production.secret.read'], { environment }))).toEqual({
+      canRead: true,
+      canWrite: false,
+      reason: null,
+    });
+    expect(secretAccess(input(['production.secret.write'], { environment })).canWrite).toBe(true);
   });
 
   it('asks for an environment when there is none', () => {

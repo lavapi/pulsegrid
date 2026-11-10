@@ -91,7 +91,7 @@ export function EnvironmentManager({ view, isSuperAdmin }: EnvironmentManagerPro
       <Card>
         <CardHeader
           title="Environments"
-          description="Production environments are read-only. Only the super admin can change which environments are production, remove one, or move an account out of one."
+          description="Acting on a production environment needs the production permissions in Roles. Only the super admin can change which environments are production, remove one, or move an account out of one."
         />
         <div className="flex flex-col gap-3 p-5">
           {view.environments.map((environment) => (

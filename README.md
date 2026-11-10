@@ -18,7 +18,7 @@ You run it in your own AWS account, so your keys and data stay with you.
 - **Fault experiments.** Run AWS FIS experiment templates on staging and watch each step and the load on the resources they hit.
 - **Activity.** Who did what, both in PulseGrid and in AWS (from CloudTrail Event history), plus ECS service logs on demand.
 - **Projects and people.** Each project has its own accounts, integrations, environments and members. People are added once and assigned to the projects they need.
-- **Safe by default.** Two-factor sign-in for everyone, custom roles, read-only access keys, and production that stays read-only. Actions that change cloud resources are off until you turn them on.
+- **Safe by default.** Two-factor sign-in for everyone, custom roles with separate staging and production permissions, and one IAM policy for every account. Actions that change cloud resources are off until you turn them on.
 
 | Environments | Costs |
 |---|---|

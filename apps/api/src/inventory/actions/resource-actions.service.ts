@@ -12,6 +12,7 @@ import { CredentialVault } from '../connection/credential-vault';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { ResourceAccess } from '../resources/resource-access';
 import { ActionQueue } from './action-queue';
+import { holdsInAnyEnvironment } from '../environments/environment-permissions';
 import { actionOption } from './action-rules';
 import { ActionRunStore, toActionRun } from './action-run.store';
 
@@ -38,9 +39,10 @@ export class ResourceActionsService {
     return this.providers
       .get(account.provider)
       .actions.filter(
-        ({ resourceType, permission }) => resourceType === resource.type && granted.has(permission),
+        ({ resourceType, permission }) =>
+          resourceType === resource.type && holdsInAnyEnvironment(permission, granted),
       )
-      .map(({ permission }) => actionOption(permission, environment));
+      .map(({ permission }) => actionOption(permission, environment, granted));
   }
 
   async run(
@@ -55,14 +57,14 @@ export class ResourceActionsService {
     const action = provider.actions.find(
       (item) => item.permission === permission && item.resourceType === resource.type,
     );
-    if (!action || !granted.has(permission)) {
+    if (!action || !holdsInAnyEnvironment(permission, granted)) {
       await this.access.record(auth, 'access.denied', resource.id, ipAddress, metadata);
       throw new ForbiddenException(NOT_ALLOWED);
     }
-    const { blockedReason } = actionOption(permission, environment);
+    const { blockedReason } = actionOption(permission, environment, granted);
     if (blockedReason) {
       await this.access.record(auth, 'access.denied', resource.id, ipAddress, metadata);
-      throw new ConflictException(blockedReason);
+      throw new ForbiddenException(blockedReason);
     }
     const credentials = this.vault.open(account);
     if (!credentials) {

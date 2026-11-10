@@ -32,6 +32,9 @@ export function CredentialResult({
           Services these credentials can&apos;t read will be missing from the dashboard.
         </p>
       )}
+      {result.missingActions && result.missingActions.length > 0 && (
+        <MissingActions actions={result.missingActions} />
+      )}
       {result.canWrite && <WriteAccessWarning />}
     </div>
   );
@@ -41,7 +44,20 @@ export function WriteAccessWarning() {
   return (
     <p className="flex items-center gap-2 rounded-lg bg-warning-soft px-3 py-2 text-[13px] text-warning">
       <TriangleAlert className="size-4 shrink-0" aria-hidden="true" />
-      These credentials can do more than the dashboard needs. Limit them to the policy below.
+      These credentials can do more than PulseGrid needs. Limit them to the policy below.
     </p>
+  );
+}
+
+function MissingActions({ actions }: { actions: readonly string[] }) {
+  return (
+    <div className="flex flex-col gap-1.5 rounded-lg bg-warning-soft px-3 py-2 text-[13px] text-warning">
+      <p className="flex items-center gap-2">
+        <TriangleAlert className="size-4 shrink-0" aria-hidden="true" />
+        These credentials are missing {actions.length} actions from the policy below. Pages and actions that need
+        them won&apos;t work.
+      </p>
+      <p className="font-mono text-[12px] break-words">{actions.join(', ')}</p>
+    </div>
   );
 }

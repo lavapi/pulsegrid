@@ -15,12 +15,17 @@ describe('experimentAccess', () => {
     });
   });
 
-  it('puts production first, then the access key, then the permission', () => {
+  it('needs the production permission in production', () => {
     const production = { name: 'Staging', isProduction: true };
-    expect(experimentAccess({ account: account(false), environment: production }, new Set()).blockedReason).toBe(
-      'Production is read-only.',
+    expect(experimentAccess({ account: account(), environment: production }, runner).blockedReason).toBe(
+      'Ask your super admin for the Run production fault experiments permission.',
     );
-    expect(experimentAccess({ account: account(false), environment: staging }, new Set()).blockedReason).toContain(
+    const productionRunner = new Set<UserPermission>(['production.experiment.run']);
+    expect(experimentAccess({ account: account(), environment: production }, productionRunner).canRun).toBe(true);
+  });
+
+  it('puts the permission first, then the access key', () => {
+    expect(experimentAccess({ account: account(false), environment: staging }, runner).blockedReason).toContain(
       'no access key',
     );
     expect(experimentAccess({ account: account(), environment: staging }, new Set()).blockedReason).toContain(

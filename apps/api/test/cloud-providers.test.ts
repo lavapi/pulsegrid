@@ -43,7 +43,7 @@ const otherCloud: CloudProvider = defineProvider<{ token: string }>({
   },
   credentialHint: ({ token }) => `…${token.slice(-2)}`,
   isValidRegion: (region) => region === 'moon-1',
-  checkCredentials: async () => ({ accountId: PROJECT_ID, services: [], canWrite: false }),
+  checkCredentials: async () => ({ accountId: PROJECT_ID, services: [], canWrite: false, missingActions: null }),
   actions: [],
   activityWatches: [],
   failureMessage: () => 'Could not read.',

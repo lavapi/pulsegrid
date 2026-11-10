@@ -198,11 +198,20 @@ describe('secrets', () => {
       expect(read).not.toHaveBeenCalled();
     });
 
-    it.each(['Production', null])('never shows values in %s, even to the owner', async (environment) => {
-      const id = await addSecret(environment);
+    it('never shows values on an account without an environment, even to the owner', async () => {
+      const id = await addSecret(null);
       await reveal(id, 'TOKEN').expect(403);
       expect((await view(id).expect(200)).body.content).toBeNull();
       expect(read).not.toHaveBeenCalled();
+    });
+
+    it('shows production values only with the production permission', async () => {
+      const id = await addSecret('Production');
+      await grant(['secret.read', 'secret.write']);
+      await reveal(id, 'TOKEN', developer).expect(403);
+      expect(read).not.toHaveBeenCalled();
+      await grant(['production.secret.read']);
+      await reveal(id, 'TOKEN', developer).expect(200);
     });
   });
 
@@ -303,11 +312,14 @@ describe('secrets', () => {
       await save(id, 'TOKEN', 'x', 'v1', developer).expect(204);
     });
 
-    it('never changes production, even for the owner', async () => {
+    it('changes production only with the production permission', async () => {
       const id = await addSecret('Production');
-      await save(id, 'TOKEN', 'x').expect(403);
-      await remove(id, 'TOKEN').expect(403);
+      await grant(['secret.write', 'production.secret.read']);
+      await save(id, 'TOKEN', 'x', 'v1', developer).expect(403);
+      await remove(id, 'TOKEN', 'v1', developer).expect(403);
       expect(write).not.toHaveBeenCalled();
+      await grant(['production.secret.write']);
+      await save(id, 'TOKEN', 'x', 'v1', developer).expect(204);
     });
 
     it('leaves a secret AWS manages alone', async () => {

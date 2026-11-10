@@ -1,4 +1,4 @@
-import type { ActionRun, CloudPermission, ResourceType, UserPermission } from '@pulsegrid/shared';
+import { type ActionRun, type CloudPermission, productionPermission, type ResourceType, type UserPermission } from '@pulsegrid/shared';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ActionQueue } from '../src/inventory/actions/action-queue';
@@ -191,19 +191,37 @@ describe('resource actions', () => {
       ['rds-instance', 'database.reboot'],
       ['elasticache-cluster', 'cache.reboot'],
       ['ec2-instance', 'server.reboot'],
-    ] as const)('never runs %s %s in production, even for the owner', async (type, permission) => {
+    ] as const)('runs %s %s in production only with the production permission', async (type, permission) => {
       const id = await addResource(await addAccount('Production'), type);
-      expect((await list(id).expect(200)).body[0].blockedReason).toBe('Production is read-only.');
-      const response = await perform(id, permission);
-      expect(response.status).toBe(409);
-      expect(response.body.message).toBe('Production is read-only.');
+      await grant('developer', [permission]);
+      const reason = expect.stringMatching(/^Ask your super admin for the .* production .* permission\.$/);
+      expect((await list(id, developer).expect(200)).body[0].blockedReason).toEqual(reason);
+      const response = await perform(id, permission, developer);
+      expect(response.status).toBe(403);
+      expect(response.body.message).toEqual(reason);
       expect(run).not.toHaveBeenCalled();
       expect((await auditActions(id)).map(({ action: name }) => name)).toEqual(['access.denied']);
+      await grant('developer', [productionPermission(permission)]);
+      await perform(id, permission, developer).expect(201);
+    });
+
+    it('does not let a production permission act on staging', async () => {
+      const id = await addResource(await addAccount('Staging'), 'ec2-instance');
+      await grant('developer', ['production.server.reboot']);
+      await perform(id, 'server.reboot', developer).expect(403);
+      expect(run).not.toHaveBeenCalled();
+    });
+
+    it('gives the owner production actions too', async () => {
+      const id = await addResource(await addAccount('Production'), 'ec2-instance');
+      await perform(id, 'server.reboot').expect(201);
     });
 
     it('refuses an account without an environment', async () => {
       const id = await addResource(await addAccount(null), 'ec2-instance');
-      await perform(id, 'server.reboot').expect(409);
+      const response = await perform(id, 'server.reboot');
+      expect(response.status).toBe(403);
+      expect(response.body.message).toBe('Assign this account to an environment first.');
       expect(run).not.toHaveBeenCalled();
     });
 

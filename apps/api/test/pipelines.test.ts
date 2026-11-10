@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { REDIS } from '../src/redis/redis.module';
 import { GIT_PROVIDER_LIST, type GitClient, type GitProvider, GitProviderError, type GitWorkflow } from '../src/pipelines/git/git-provider';
 import { parseWorkflowDefinition } from '../src/pipelines/git/github/workflow-definition';
-import { signIn, startTestApp, type TestContext, user, } from './support/test-app';
+import { setExtraPermissions, signIn, startTestApp, type TestContext, user } from './support/test-app';
 
 const workflow = (id: string, name: string, repository = 'acme-org/api'): GitWorkflow => ({
   id,
@@ -495,21 +495,24 @@ describe('pipelines', () => {
       expect(state.actions).toEqual([]);
     });
 
-    it('keeps production read-only, even if an admin links it to staging', async () => {
+    it('needs the production permission for production, even if it is linked to staging', async () => {
       const staging = await environment('Staging');
       await environment('Production');
       await link('2', staging);
 
-      for (const cookie of [developer, admin]) {
-        const response = await start(cookie, { workflowId: '2' });
-        expect(response.status).toBe(403);
-        expect(response.body.message).toBe('Production is read-only.');
-        await http().post('/api/pipelines/runs/cancel').set('Cookie', cookie).send({ appId, runId: '200' }).expect(403);
-      }
+      const response = await start(developer, { workflowId: '2' });
+      expect(response.status).toBe(403);
+      expect(response.body.message).toBe('Ask your super admin for the Run production pipelines permission.');
+      await http().post('/api/pipelines/runs/cancel').set('Cookie', developer).send({ appId, runId: '200' }).expect(403);
       expect(state.actions).toEqual([]);
 
       const audit = await http().get('/api/audit-events').set('Cookie', admin);
-      expect(audit.body.events[0]).toMatchObject({ action: 'pipeline.action_denied', actorEmail: 'ada@example.test' });
+      expect(audit.body.events[0]).toMatchObject({ action: 'pipeline.action_denied', actorEmail: 'dev@example.test' });
+
+      await setExtraPermissions(context, context.acme, 'developer', ['production.pipeline.run']);
+      await start(developer, { workflowId: '2' }).expect(202);
+      await start(admin, { workflowId: '2' }).expect(202);
+      await setExtraPermissions(context, context.acme, 'developer', []);
     });
 
     it('only lets people who manage environments link pipelines', async () => {
@@ -521,31 +524,31 @@ describe('pipelines', () => {
         .expect(403);
     });
 
-    it('keeps a workflow named for production read-only when linked to staging', async () => {
+    it('treats a workflow named for production as production when linked to staging', async () => {
       state.workflows[repository] = [workflow('1', 'Deploy production', repository)];
       await link('1', await environment('Staging'));
-      const response = await start(admin, { workflowId: '1', inputs: { target: 'blue' } });
+      const response = await start(developer, { workflowId: '1', inputs: { target: 'blue' } });
       expect(response.status).toBe(403);
       expect(state.actions).toEqual([]);
     });
 
-    it('keeps a renamed production environment read-only', async () => {
+    it('keeps a renamed production environment production', async () => {
       const id = await environment('Production');
       await http().put(`/api/environments/${id}`).set('Cookie', admin).send({ name: 'Staging two' }).expect(200);
       await link('1', id);
-      await start(admin, { workflowId: '1', inputs: { target: 'blue' } }).expect(403);
+      await start(developer, { workflowId: '1', inputs: { target: 'blue' } }).expect(403);
       expect(state.actions).toEqual([]);
     });
 
-    it('refuses production re-runs for admins', async () => {
+    it('refuses production re-runs without the production permission', async () => {
       await environment('Production');
-      await http().post('/api/pipelines/runs/rerun').set('Cookie', admin).send({ appId, runId: '200' }).expect(403);
+      await http().post('/api/pipelines/runs/rerun').set('Cookie', developer).send({ appId, runId: '200' }).expect(403);
       expect(state.actions).toEqual([]);
     });
 
     it('fails closed for an environment it does not recognise', async () => {
       await link('1', await environment('Customer accounts'));
-      await start(admin, { workflowId: '1', inputs: { target: 'blue' } }).expect(403);
+      await start(developer, { workflowId: '1', inputs: { target: 'blue' } }).expect(403);
       expect(state.actions).toEqual([]);
     });
 
@@ -622,14 +625,17 @@ describe('pipelines', () => {
         production: false,
         reason: null,
       });
-      expect((await history('1', viewer)).body.options.access.reason).toBe('Your role can see pipelines but not run them.');
+      expect((await history('1', viewer)).body.options.access.reason).toBe(
+        'Ask your super admin for the Run staging pipelines permission.',
+      );
       await environment('Production');
-      const production = await history('2', admin);
+      const production = await history('2', developer);
       expect(production.body.options.access).toEqual({
         canAct: false,
         production: true,
-        reason: 'Production is read-only.',
+        reason: 'Ask your super admin for the Run production pipelines permission.',
       });
+      expect((await history('2', admin)).body.options.access).toMatchObject({ canAct: true, production: true });
       expect(production.body.options.definition.manual).toBe(true);
     });
 
@@ -705,7 +711,7 @@ describe('pipelines', () => {
       it('applies production rules to main, even when linked to staging', async () => {
         await link('2', staging);
         await rerun(developer, '200').expect(403);
-        await rerun(admin, '200').expect(403);
+        await rerun(admin, '200').expect(202);
       });
 
       it('finds the rule when only another branch has it', async () => {
