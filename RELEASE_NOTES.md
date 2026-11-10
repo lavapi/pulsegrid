@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-10
+
 - Production is now controlled by roles instead of being read-only for everyone. Each action has a staging and a production permission under **Roles**. Nothing changes until you tick production permissions on a role; the super admin already has them.
 - Replace the IAM policy on every AWS key, production included, with the single **PulseGrid policy** from Integrations. Test each key afterwards: PulseGrid lists any actions it's missing.
 

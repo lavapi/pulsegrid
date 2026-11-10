@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-10
+
 ### Changed
 
 - Production is no longer read-only for everyone. Running pipelines, cloud actions, fault experiments and app secrets each have a staging and a production permission in **Roles**, and the environment's Production flag decides which applies. Existing roles keep their staging permissions and get no production ones. The super admin has every permission, production included.
