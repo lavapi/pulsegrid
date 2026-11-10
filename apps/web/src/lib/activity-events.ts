@@ -26,6 +26,8 @@ const ACTION_LABELS: Record<string, string> = {
   'cloud.action.failed': 'Cloud action failed',
   'cloud.action.timed_out': 'Cloud action timed out',
   'cloud.action.unconfirmed': 'Cloud action not confirmed',
+  'cloud.experiment.started': 'Fault experiment started',
+  'cloud.experiment.stopped': 'Fault experiment stopped',
   'cloud.activity.detected': 'Outside activity detected',
   'cloud.activity.succeeded': 'Outside activity finished',
   'cloud.activity.failed': 'Outside activity failed',

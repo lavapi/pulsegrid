@@ -38,6 +38,9 @@ importers:
       '@aws-sdk/client-elasticache':
         specifier: ^3.1165.0
         version: 3.1165.0
+      '@aws-sdk/client-fis':
+        specifier: 3.1165.0
+        version: 3.1165.0
       '@aws-sdk/client-iam':
         specifier: ^3.1165.0
         version: 3.1165.0
@@ -294,6 +297,10 @@ packages:
 
   '@aws-sdk/client-elasticache@3.1165.0':
     resolution: {integrity: sha512-ZzoSGyJsz7SqXSem9Q2MZkKJzCE9a4RsbsAaCWkdKAjSSd3fb0Bl9yqj32gi8hltciHFMQSA43jvVscs1qN/lg==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/client-fis@3.1165.0':
+    resolution: {integrity: sha512-8egMpUvlBQbOoEMg6AtehiQTVC7X7z+QPG1gDhV62QLZMRz85Oil6q4U7KZ2XyTbyDXMIt/QZ74J/ZBC5tLTLg==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/client-iam@3.1165.0':
@@ -3353,6 +3360,17 @@ snapshots:
       tslib: 2.9.1
 
   '@aws-sdk/client-elasticache@3.1165.0':
+    dependencies:
+      '@aws-sdk/core': 3.980.2
+      '@aws-sdk/credential-provider-node': 3.972.95
+      '@aws-sdk/types': 3.975.1
+      '@smithy/core': 3.39.0
+      '@smithy/fetch-http-handler': 5.8.1
+      '@smithy/node-http-handler': 4.14.2
+      '@smithy/types': 4.20.0
+      tslib: 2.9.1
+
+  '@aws-sdk/client-fis@3.1165.0':
     dependencies:
       '@aws-sdk/core': 3.980.2
       '@aws-sdk/credential-provider-node': 3.972.95

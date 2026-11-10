@@ -23,6 +23,12 @@ export const CLOUD_ACTIONS = {
     description: 'The server goes offline briefly while it restarts.',
     success: 'Server reboot started',
   },
+  'experiment.run': {
+    label: 'Run staging fault experiments',
+    buttonLabel: 'Start experiment',
+    description: 'Runs an AWS FIS experiment, which deliberately breaks or slows the resources it targets until it ends or is stopped.',
+    success: 'Experiment started',
+  },
 } as const;
 
 export type CloudPermission = keyof typeof CLOUD_ACTIONS;

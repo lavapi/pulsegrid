@@ -63,6 +63,11 @@ describe('followsAccountSwitcher', () => {
 });
 
 describe('pathAfterSwitch', () => {
+  it('leaves an experiment from the previous account', () => {
+    expect(pathAfterSwitch('/experiments/eu-central-1/EXP1')).toBe('/experiments');
+    expect(pathAfterSwitch('/experiments')).toBeNull();
+  });
+
   it('leaves a resource from the previous account', () => {
     expect(pathAfterSwitch('/infrastructure/rds/abc')).toBe('/infrastructure/rds');
   });

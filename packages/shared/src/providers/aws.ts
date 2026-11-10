@@ -50,6 +50,11 @@ export const AWS_READ_ONLY_ACTIONS = [
   'ecs:DescribeTaskDefinition',
   'logs:FilterLogEvents',
   'cloudwatch:GetMetricData',
+  'fis:ListExperimentTemplates',
+  'fis:GetExperimentTemplate',
+  'fis:ListExperiments',
+  'fis:GetExperiment',
+  'fis:ListExperimentResolvedTargets',
   'rds:DescribeDBInstances',
   'rds:DescribeDBClusters',
   'elasticache:DescribeReplicationGroups',
@@ -91,6 +96,8 @@ export const AWS_CHANGE_ACTIONS = [
   'ec2:DescribeInstanceStatus',
   'secretsmanager:GetSecretValue',
   'secretsmanager:PutSecretValue',
+  'fis:StartExperiment',
+  'fis:StopExperiment',
 ] as const;
 
 export const AWS_ACTIONS_POLICY = JSON.stringify(
