@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-10
+
 ### Added
 
 - RDS databases, Aurora clusters and ElastiCache caches show their load from CloudWatch, with charts for the last hour, 6 hours, 24 hours or 7 days, their capacity, and a mark when they're near a limit.
