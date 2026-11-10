@@ -6,6 +6,7 @@ import { CredentialVault } from '../src/inventory/connection/credential-vault';
 import { awsProvider } from '../src/inventory/providers/aws/aws.provider';
 import { CLOUD_PROVIDER_LIST, type CloudProvider, type StoredSecret } from '../src/inventory/providers/provider';
 import { setExtraPermissions, signIn, startTestApp, type TestContext, user } from './support/test-app';
+import { newEnvironment } from '../src/inventory/environments/account-environment';
 
 const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
 const SECRET_VALUE = 'super-secret-value';
@@ -33,7 +34,7 @@ describe('secrets', () => {
     const environmentRow = environment
       ? await context.owner
           .insertInto('environments')
-          .values({ tenant_id: tenantId, name: environment, sort_order: sequence })
+          .values(newEnvironment(tenantId, environment, sequence))
           .onConflict((conflict) =>
             conflict.columns(['tenant_id', 'name']).doUpdateSet({ sort_order: sequence }),
           )

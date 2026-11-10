@@ -26,6 +26,8 @@ import * as environmentDomains from './migrations/0024_environment_domains';
 import * as environmentDomainUpdates from './migrations/0025_environment_domain_updates';
 import * as peoplePool from './migrations/0026_people_pool';
 import * as projectSettings from './migrations/0027_project_settings';
+import * as productionEnvironments from './migrations/0028_production_environments';
+import * as projectFunctionChecks from './migrations/0029_project_function_checks';
 import * as twoFactorAttempts from './migrations/0030_two_factor_attempts';
 
 const MIGRATIONS: Record<string, Migration> = {
@@ -56,6 +58,8 @@ const MIGRATIONS: Record<string, Migration> = {
   '0025_environment_domain_updates': environmentDomainUpdates,
   '0026_people_pool': peoplePool,
   '0027_project_settings': projectSettings,
+  '0028_production_environments': productionEnvironments,
+  '0029_project_function_checks': projectFunctionChecks,
   '0030_two_factor_attempts': twoFactorAttempts,
 };
 

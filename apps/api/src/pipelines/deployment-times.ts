@@ -5,7 +5,6 @@ import {
   type PipelineContext,
   pipelineEnvironments,
 } from './pipeline-summaries';
-import { isProductionName } from '../inventory/environments/environment-detection';
 
 export interface Deployment {
   environmentName: string;
@@ -28,7 +27,7 @@ export const deploymentsOf = (
 };
 
 const productionLast = (first: EnvironmentRef, second: EnvironmentRef): number =>
-  Number(isProductionName(first.name)) - Number(isProductionName(second.name)) ||
+  Number(first.production) - Number(second.production) ||
   first.name.localeCompare(second.name);
 
 const average = (values: readonly number[]): number | null =>

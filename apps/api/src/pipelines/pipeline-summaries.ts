@@ -16,6 +16,7 @@ export interface PipelineLink {
 export interface EnvironmentRef {
   id: string;
   name: string;
+  production: boolean;
 }
 
 export interface PipelineContext {
@@ -121,8 +122,17 @@ const routedProtection = (context: PipelineContext, target: ProtectionTarget): P
     return { production: true, label: production ?? workflow.name };
   }
   const environment = named(context.environments, name);
-  return { production: !isKnownNonProductionName(name), label: environment?.name ?? name };
+  return {
+    production: environment ? environment.production : !isKnownNonProductionName(name),
+    label: environment?.name ?? name,
+  };
 };
+
+const declaresProduction = ({ workflow, definition, environments }: PipelineContext): boolean =>
+  isProductionName(workflow.name) ||
+  (definition?.environments ?? []).some(
+    (name) => isProductionName(name) || Boolean(named(environments, name)?.production),
+  );
 
 export const protectionFor = (
   context: PipelineContext,
@@ -136,10 +146,7 @@ export const protectionFor = (
     return { production: true, label: workflow.name };
   }
   const environment = fixedEnvironment(context);
-  const production =
-    !environment ||
-    !isKnownNonProductionName(environment.name) ||
-    (definition?.environments ?? []).some(isProductionName);
+  const production = !environment || environment.production || declaresProduction(context);
   return { production, label: environment?.name ?? workflow.name };
 };
 
@@ -156,7 +163,7 @@ export const toPipelineSummary = (
   const routed = Boolean(definition?.environmentRule);
   const scoped = routed ? environments.find(({ id }) => id === scope?.id) : undefined;
   const primary =
-    scoped ?? environments.find(({ name }) => isProductionName(name)) ?? environments[0] ?? null;
+    scoped ?? environments.find(({ production }) => production) ?? environments[0] ?? null;
   return {
     appId: context.appId,
     repository: workflow.repository,

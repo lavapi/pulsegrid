@@ -8,12 +8,21 @@ All notable changes to this project are documented in this file. The format is b
 
 - `pnpm db:demo` fills an empty project with made-up accounts, resources, environments and costs for trying the app and taking screenshots.
 - A NOTICE file naming Lavapi as the copyright holder.
+- Environments have a production setting that only the super admin can change. Existing environments are set from their names when you migrate.
 
 ### Changed
 
 - The README is written for people deciding whether to install PulseGrid, with screenshots. Developer details moved to CONTRIBUTING.md.
-
 - Docker images are published as `ghcr.io/lavapi/pulsegrid-api` and `-web`, and the Terraform `image_repository` default points there. Versions up to 0.8.0 stay under the `dashops` names; see Upgrade in docs/install-aws.md.
+- Production protection follows each environment's production setting instead of its name, so renaming an environment no longer changes what's allowed in it.
+- Only the super admin can remove a production environment or move an account out of one.
+- Linking a pipeline to an environment needs **Manage environments** instead of **Manage pipeline apps**.
+- A workflow whose name contains a production word stays production, whatever environment it's linked to.
+
+### Security
+
+- Adding a cloud account checks that its environment belongs to the same project.
+- The database functions that rename and delete a project only act on the project of the current request.
 
 ## [0.8.0] - 2026-11-09
 
