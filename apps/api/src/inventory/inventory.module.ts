@@ -14,6 +14,8 @@ import { EnvironmentDomainsService } from './environments/environment-domains.se
 import { EnvironmentsController } from './environments/environments.controller';
 import { EnvironmentsService } from './environments/environments.service';
 import { InventoryCoreModule } from './inventory-core.module';
+import { ResourceLoadController } from './load/resource-load.controller';
+import { ResourceLoadService } from './load/resource-load.service';
 import { ResourceLogsController } from './logs/resource-logs.controller';
 import { ResourceLogsService } from './logs/resource-logs.service';
 import { ResourceAccess } from './resources/resource-access';
@@ -33,6 +35,7 @@ import { SyncProgressController } from './sync/sync-progress.controller';
     EnvironmentsController,
     ResourceActionsController,
     ResourceActivityController,
+    ResourceLoadController,
     ResourceLogsController,
     ResourcesController,
     SecretsController,
@@ -46,6 +49,7 @@ import { SyncProgressController } from './sync/sync-progress.controller';
     EnvironmentsService,
     ResourceAccess,
     ResourceActionsService,
+    ResourceLoadService,
     ResourceLogsService,
     ResourcesService,
     SecretsService,

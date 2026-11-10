@@ -33,6 +33,8 @@ const KEY_LABELS: Record<string, string> = {
   storageEncrypted: 'Storage encrypted',
   encryptedInTransit: 'Encrypted in transit',
   encryptedAtRest: 'Encrypted at rest',
+  serverlessMinAcu: 'Serverless minimum ACU',
+  serverlessMaxAcu: 'Serverless maximum ACU',
 };
 
 export const humanizeKey = (key: string): string => {

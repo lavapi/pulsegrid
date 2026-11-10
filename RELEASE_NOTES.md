@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- See how busy your databases and caches are. RDS, Aurora and ElastiCache pages now show CPU, memory, storage, connections and more from CloudWatch, with their capacity, and mark anything near its limit.
+- Load needs `cloudwatch:GetMetricData`. Add it to the IAM policy of keys you connected earlier. New keys get it from the policy shown under Integrations.
+
 ## [0.9.0] - 2026-11-10
 
 - To look around without an AWS account, run `pnpm db:demo` after setup to fill a new project with made-up data.

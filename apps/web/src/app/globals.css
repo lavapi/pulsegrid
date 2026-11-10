@@ -22,6 +22,9 @@
   --warning-soft: #fffbeb;
   --danger: #dc2626;
   --danger-soft: #fef2f2;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
   --neutral-soft: #f1f3f6;
 }
 
@@ -45,6 +48,9 @@
   --warning-soft: rgb(251 191 36 / 0.12);
   --danger: #f87171;
   --danger-soft: rgb(248 113 113 / 0.12);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
   --neutral-soft: rgb(152 161 179 / 0.12);
 }
 
