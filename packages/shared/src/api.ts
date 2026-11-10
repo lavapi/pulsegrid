@@ -127,7 +127,7 @@ export const ACTIVITY_CATEGORIES = {
   secrets: { label: 'Secrets', prefixes: ['secret.'] },
   changes: {
     label: 'Deploys, reboots and experiments',
-    prefixes: ['cloud.action.', 'cloud.activity.', 'cloud.experiment.'],
+    prefixes: ['cloud.action.', 'cloud.activity.', 'cloud.experiment.', 'cloud.experiment-run.', 'cloud.experiment-group.'],
   },
   pipelines: { label: 'Pipelines', prefixes: ['pipeline.'] },
   people: { label: 'People', prefixes: ['team.', 'people.', 'project.'] },

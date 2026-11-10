@@ -91,6 +91,14 @@ Everyone can see templates and experiments. Starting or stopping one needs the *
 
 An experiment's page refreshes every 5 seconds while it runs. It shows each step's state and timing, why the experiment ended, and who started it from PulseGrid; experiments started elsewhere show **Outside PulseGrid**. Databases and caches the experiment picked that PulseGrid knows are listed with their Load charts, so you can see the effect. Every start and stop is recorded in Activity, and so is every refused attempt.
 
+### Groups and Run all
+
+**Groups** are named lists of templates in one account, kept in PulseGrid. A template can be in several groups. **Run group** starts every template in the group at the same time, and **Run all** in the page header starts every template in the account. Both ask you to type the group's name, or `All experiments`. One run starts at most 25 templates, to stay under the AWS limit on experiments running at once.
+
+Each run has its own page with the live state of every experiment, linked to its page, and refreshes every 5 seconds while any is running. A template that no longer exists in AWS, or that AWS refuses to start, is shown with the reason, and the others still run. **Stop all** stops every experiment of the run that's still active. Recent runs are listed on the Experiments page.
+
+Creating, changing, deleting and running groups need the same permission, key and environment as single experiments, so production stays read-only. Group changes, runs and Stop all are recorded in Activity, along with each experiment they started or stopped. No extra AWS permissions are needed.
+
 The read-only policy includes `fis:ListExperimentTemplates`, `fis:GetExperimentTemplate`, `fis:ListExperiments`, `fis:GetExperiment` and `fis:ListExperimentResolvedTargets`. The extended policy adds `fis:StartExperiment` and `fis:StopExperiment`. FIS runs each experiment with the role in its template, so the key itself never gets the permissions the experiment uses.
 
 ## App secrets

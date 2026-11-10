@@ -2,6 +2,8 @@ import type {
   ActionRunStatus,
   CloudAccountStatus,
   DomainKind,
+  ExperimentRunItem,
+  ExperimentTemplateRef,
   ResourceHealth,
   ResourceType,
   SyncIssue,
@@ -110,6 +112,25 @@ export interface AuditEventsTable {
 
 type JsonColumn<T> = ColumnType<T, string, string>;
 
+
+export interface ExperimentGroupsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  cloud_account_id: string;
+  name: string;
+  templates: JsonColumn<ExperimentTemplateRef[]>;
+  created_at: CreatedAt;
+}
+
+export interface ExperimentRunsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  cloud_account_id: string;
+  label: string;
+  items: ColumnType<ExperimentRunItem[], string, never>;
+  started_by_email: string | null;
+  started_at: CreatedAt;
+}
 
 export interface EnvironmentsTable {
   id: Generated<string>;
@@ -231,6 +252,8 @@ export interface Database {
   resources: ResourcesTable;
   environments: EnvironmentsTable;
   environment_domains: EnvironmentDomainsTable;
+  experiment_groups: ExperimentGroupsTable;
+  experiment_runs: ExperimentRunsTable;
   roles: RolesTable;
   role_permissions: RolePermissionsTable;
   action_runs: ActionRunsTable;

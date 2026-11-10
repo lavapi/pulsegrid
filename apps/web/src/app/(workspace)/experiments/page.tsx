@@ -1,7 +1,8 @@
-import type { ExperimentsView, ExperimentTemplate } from '@pulsegrid/shared';
+import { type ExperimentsView, type ExperimentTemplate, RUN_ALL_LABEL } from '@pulsegrid/shared';
 import { FlaskConical } from 'lucide-react';
 import Link from 'next/link';
-import { StartExperimentButton } from '@/components/experiments/experiment-buttons';
+import { RunExperimentsButton, StartExperimentButton } from '@/components/experiments/experiment-buttons';
+import { ExperimentGroups, RecentRuns } from '@/components/experiments/experiment-groups';
 import { StateBadge, StepSummary, StopAlarms, TargetList } from '@/components/experiments/experiment-parts';
 import { Card, CardHeader } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -72,6 +73,17 @@ export default async function ExperimentsPage() {
       <PageHeader
         title="Fault experiments"
         description={`AWS FIS experiment templates in ${selected.name}. Templates are made in AWS; run and watch them here.`}
+        action={
+          view.access.canRun &&
+          view.templates.length > 0 && (
+            <RunExperimentsButton
+              accountId={selected.id}
+              label={RUN_ALL_LABEL}
+              templateLabels={view.templates.map(({ label }) => label)}
+              triggerLabel="Run all"
+            />
+          )
+        }
       />
       {view.access.blockedReason && (
         <p className="rounded-lg bg-muted px-4 py-3 text-[13px] text-muted-foreground">
@@ -86,6 +98,10 @@ export default async function ExperimentsPage() {
           description="Create a template in the AWS FIS console or with Terraform, then it shows up here."
         />
       )}
+      {(view.templates.length > 0 || view.groups.length > 0) && (
+        <ExperimentGroups accountId={selected.id} view={view} />
+      )}
+      {view.runs.length > 0 && <RecentRuns runs={view.runs} />}
       <div className="grid gap-4 xl:grid-cols-2">
         {view.templates.map((template) => (
           <TemplateCard

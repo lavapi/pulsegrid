@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- Fault experiment templates can be put into named groups. **Run group** starts every template in a group at the same time, and **Run all** starts every template in the account, each after typing the name to confirm. Each run has a live page with every experiment's state, the reason any didn't start, and **Stop all**.
+
 ## [0.11.0] - 2026-11-10
 
 ### Added

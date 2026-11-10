@@ -83,9 +83,65 @@ export interface ExperimentDetail extends ExperimentSummary {
   access: ExperimentAccess;
 }
 
+/** The most templates one group or one run can hold, to stay under AWS's limit on experiments running at once. */
+export const EXPERIMENT_RUN_LIMIT = 25;
+export const EXPERIMENT_GROUP_NAME_LIMIT = 60;
+export const RUN_ALL_LABEL = 'All experiments';
+
+export interface ExperimentTemplateRef {
+  region: string;
+  templateId: string;
+}
+
+export const templateKey = ({ region, templateId }: ExperimentTemplateRef): string => `${region}/${templateId}`;
+
+export interface ExperimentGroup {
+  id: string;
+  name: string;
+  templates: ExperimentTemplateRef[];
+}
+
+export interface ExperimentGroupInput {
+  name: string;
+  templates: ExperimentTemplateRef[];
+}
+
+export interface ExperimentRunItem extends ExperimentTemplateRef {
+  label: string;
+  experimentId: string | null;
+  /** Why this template didn't start, or null when it did. */
+  error: string | null;
+}
+
+export interface ExperimentRunSummary {
+  id: string;
+  label: string;
+  startedAt: string;
+  startedBy: string | null;
+  started: number;
+  failed: number;
+}
+
+export interface ExperimentRunItemState extends ExperimentRunItem {
+  /** The live state in AWS, or null when it didn't start or AWS no longer has it. */
+  state: ExperimentState | null;
+}
+
+export interface ExperimentRunDetail extends Omit<ExperimentRunSummary, 'started' | 'failed'> {
+  items: ExperimentRunItemState[];
+  access: ExperimentAccess;
+  error: string | null;
+}
+
+export interface StartedExperimentRun {
+  id: string;
+}
+
 export interface ExperimentsView {
   templates: ExperimentTemplate[];
   experiments: ExperimentSummary[];
+  groups: ExperimentGroup[];
+  runs: ExperimentRunSummary[];
   access: ExperimentAccess;
   error: string | null;
 }
