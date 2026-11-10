@@ -16,7 +16,7 @@ Fixes go into the latest release. Update to the newest version before reporting,
 
 - Signing in, sessions, two-factor authentication and temporary passwords.
 - Access between projects: someone reaching a project, its data or its Activity without being a member.
-- Roles and permissions, including production staying read-only.
+- Roles and permissions, including the separate staging and production permissions.
 - Stored secrets: cloud access keys, Git tokens and two-factor secrets, and anything that could expose them.
 - The API, the web app, the Docker images and the Terraform modules in this repository.
 
@@ -25,5 +25,5 @@ Problems in your own AWS account, GitHub organization or hosting are out of scop
 ## Running it safely
 
 - Run it behind HTTPS, and keep `TOKEN_ENCRYPTION_KEY` secret and backed up.
-- Give cloud access keys the read-only policy from **Integrations** wherever you can, and the extended policy only for non-production accounts.
+- Give cloud access keys only the PulseGrid policy from **Integrations**, never personal or admin keys. Grant production permissions only to the roles that need them.
 - Keep the database and Redis off the public internet.

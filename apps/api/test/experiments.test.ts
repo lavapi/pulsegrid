@@ -138,15 +138,23 @@ describe('fault experiments', () => {
     expect(event?.metadata).toMatchObject({ template: 'EXT1', region: REGION, cloudAccount: awsAccount });
   });
 
-  it('keeps production read-only, for starting and stopping', async () => {
+  it('needs the production permission to start or stop in production', async () => {
     const { id } = await addAccount('Production');
     const refused = await start(id);
     expect(refused.status).toBe(403);
-    expect(refused.body.message).toBe('Production is read-only.');
+    expect(refused.body.message).toBe('Ask your super admin for the Run production fault experiments permission.');
     await http().post(`/api/cloud/accounts/${id}/experiments/${REGION}/EXP1/stop`).set('Cookie', developer).expect(403);
     expect(source.start).not.toHaveBeenCalled();
     expect(source.stop).not.toHaveBeenCalled();
     expect((await actions('EXT1')).map(({ action }) => action)).toContain('access.denied');
+
+    await setExtraPermissions(context, context.acme, 'developer', ['production.experiment.run']);
+    await start(id).expect(201);
+    await http().post(`/api/cloud/accounts/${id}/experiments/${REGION}/EXP1/stop`).set('Cookie', developer).expect(204);
+    const staging = await addAccount('Staging');
+    expect((await start(staging.id)).body.message).toBe(
+      'Ask your super admin for the Run staging fault experiments permission.',
+    );
   });
 
   it('needs the permission and an access key', async () => {
@@ -241,7 +249,9 @@ describe('fault experiments', () => {
       expect((await createGroup(id, [{ region: 'us-east-1', templateId: 'EXT1' }])).status).toBe(400);
       await createGroup(id, both, viewer).expect(403);
       const production = await addAccount('Production');
-      expect((await createGroup(production.id)).body.message).toBe('Production is read-only.');
+      expect((await createGroup(production.id)).body.message).toBe(
+        'Ask your super admin for the Run production fault experiments permission.',
+      );
     });
 
     it('runs a group with one click and reports templates that did not start', async () => {
@@ -300,11 +310,14 @@ describe('fault experiments', () => {
       ]);
     });
 
-    it('keeps production read-only and other projects out', async () => {
+    it('needs the production permission in production, and keeps other projects out', async () => {
       const { id } = await addAccount('Production');
       const refused = await http().post(runs(id)).set('Cookie', developer).send({});
       expect(refused.status).toBe(403);
       expect(source.start).not.toHaveBeenCalled();
+      await setExtraPermissions(context, context.acme, 'developer', ['experiment.run', 'production.experiment.run']);
+      await createGroup(id).expect(201);
+      await http().post(runs(id)).set('Cookie', developer).send({}).expect(201);
       const staging = await addAccount('Staging');
       const { body: run } = await http().post(runs(staging.id)).set('Cookie', developer).send({}).expect(201);
       await http().get(`${runs(staging.id)}/${run.id}`).set('Cookie', otherOwner).expect(404);

@@ -57,19 +57,22 @@ Roles belong to a project, so the same person can be a Viewer in one project and
 
 ## Cloud actions
 
-Force deploying a service, rebooting a database, cache or server, running fault experiments, and reading or writing app secrets are off for every role until the super admin ticks them. They apply to every account in the project, and the access key needs the extended policy from Integrations.
+Running pipelines, force deploying a service, rebooting a database, cache or server, running fault experiments, and reading or writing app secrets each have a staging and a production permission. They're off for every role until the super admin ticks them, except **Run staging pipelines**, which Admins and Developers start with. They apply to every account in the project.
 
-Production is read-only. No action runs in a production environment, or on an account with no environment, and that includes the super admin. Only the super admin decides which environments are production. See [Environments](environments.md#production).
+Which permission applies depends on the environment: production environments need the production permission, others the staging one. Nothing runs on an account with no environment. The super admin has every permission, production included. Only the super admin decides which environments are production. See [Environments](environments.md#production).
 
-| Action | Note |
+Each row is two permissions in **Roles**: the staging one shown here, and the same with production, such as **Reboot a production database**.
+
+| Permission | Note |
 |---|---|
+| Run staging pipelines | Runs, re-runs and cancels pipelines. See [Pipelines](pipelines.md). |
 | Force deploy a staging service | |
 | Reboot a staging database | |
 | Reboot a staging cache | Rebooting can lose data stored in the cache, and caches in cluster mode can't be rebooted |
 | Reboot a staging server | |
-| Run staging fault experiments | Starts and stops AWS FIS experiments on the **Experiments** page. See [Fault experiments](connect-aws-account.md#fault-experiments). |
-| Read app secrets | Shows a secret's keys, and a value when you select **Show**. |
-| Write app secrets | Also adds, edits and deletes keys, and includes reading. |
+| Run staging fault experiments | Starts and stops AWS FIS experiments and groups on the **Experiments** page. See [Fault experiments](connect-aws-account.md#fault-experiments). |
+| Read staging app secrets | Shows a secret's keys, and a value when you select **Show**. |
+| Write staging app secrets | Also adds, edits and deletes keys, and includes reading. |
 
 The buttons appear on a resource's page in Infrastructure. Every action is recorded in the audit log with the person who ran it, because AWS only sees the shared key.
 
@@ -96,7 +99,7 @@ The worker also checks connected accounts every 30 seconds, so deployments and c
 | EC2 stop or start | Yes |
 | EC2 reboot | No. AWS keeps reporting `running`, so a reboot can't be seen |
 
-It can take up to 30 seconds to appear, and very short changes may never show. AWS's status doesn't say who started the work, so no name is shown. These checks only need the read-only policy, and pause for two minutes if AWS returns an error.
+It can take up to 30 seconds to appear, and very short changes may never show. AWS's status doesn't say who started the work, so no name is shown. These checks only use read actions from the PulseGrid policy, and pause for two minutes if AWS returns an error.
 
 Only one action can run on a resource at a time, and outside work counts. Past the time limit, the card shows "Timed out", because the action may still be running in AWS. Passing status checks mean a server is up, not that the application on it is healthy. If the key can't read status checks, the card says the reboot was sent but can't be confirmed.
 

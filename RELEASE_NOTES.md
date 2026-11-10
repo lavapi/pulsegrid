@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Production is now controlled by roles instead of being read-only for everyone. Each action has a staging and a production permission under **Roles**. Nothing changes until you tick production permissions on a role; the super admin already has them.
+- Replace the IAM policy on every AWS key, production included, with the single **PulseGrid policy** from Integrations. Test each key afterwards: PulseGrid lists any actions it's missing.
+
 ## [0.12.0] - 2026-11-10
 
 - Group fault experiments and start a whole group, or every template, in one click. Watch them together on one page and stop them all at once. Groups follow the same rules as single experiments and need no new AWS permissions. Run `pnpm db:migrate` after updating.

@@ -61,7 +61,6 @@ export default async function ProviderIntegrationPage({
         <AddCloudAccountForm provider={provider} environments={environments} />
       </Card>
       <ProviderSetupCard setup={provider.setup} />
-      {provider.actionsSetup && <ProviderSetupCard setup={provider.actionsSetup} />}
     </>
   );
 }

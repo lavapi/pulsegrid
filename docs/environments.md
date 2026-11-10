@@ -12,7 +12,7 @@ Admins can rename, add or remove environments under **Manage environments**, and
 
 ## Production
 
-Each environment is either production or not, and production environments are read-only: no cloud actions, secret values or pipeline runs. A new environment counts as production unless its name contains a non-production word like `staging`, `dev`, `qa` or `test`. Renaming an environment doesn't change this.
+Each environment is either production or not. Cloud actions, secret values and pipeline runs in a production environment need the production permissions in Roles, so a role can act on staging without touching production. A new environment counts as production unless its name contains a non-production word like `staging`, `dev`, `qa` or `test`. Renaming an environment doesn't change this.
 
 Only the super admin can:
 

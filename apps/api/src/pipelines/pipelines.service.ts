@@ -1,5 +1,6 @@
 import {
   isActivePipelineStatus,
+  permissionFor,
   type PipelineActionAccess,
   type PipelineApp,
   gitProvider,
@@ -13,6 +14,7 @@ import {
   type PipelineRunOptions,
   type PipelineSummary,
   type ReleasePipelineChoice,
+  type UserPermission,
 } from '@pulsegrid/shared';
 import {
   BadRequestException,
@@ -26,6 +28,7 @@ import {
 import { AuditService } from '../audit/audit.service';
 import type { AuthContext } from '../auth/session/auth-context';
 import { TenantDatabase } from '../database/tenant-database';
+import { askFor } from '../inventory/environments/environment-permissions';
 import { chunk } from '../common/chunk';
 import { GitConnectionsService } from './git/git-connections.service';
 import { type GitClient, GitProviderError, type GitWorkflow } from './git/git-provider';
@@ -82,14 +85,11 @@ export interface RunActionRequest {
   runId: string;
 }
 
-export const accessFor = (canRun: boolean, { production }: Protection): PipelineActionAccess => {
-  if (production) {
-    return { canAct: false, production, reason: 'Production is read-only.' };
-  }
-  if (!canRun) {
-    return { canAct: false, production, reason: "Your role can see pipelines but not run them." };
-  }
-  return { canAct: true, production, reason: null };
+export const accessFor = (granted: ReadonlySet<UserPermission>, { production }: Protection): PipelineActionAccess => {
+  const needed = permissionFor('pipeline.run', production);
+  return granted.has(needed)
+    ? { canAct: true, production, reason: null }
+    : { canAct: false, production, reason: askFor(needed) };
 };
 
 const validateInputs = (
@@ -550,7 +550,7 @@ export class PipelinesService {
     context: PipelineContext,
     target: ProtectionTarget = {},
   ): PipelineActionAccess {
-    return accessFor(auth.permissions.has('pipeline.run'), protectionFor(context, target));
+    return accessFor(auth.permissions, protectionFor(context, target));
   }
 
   private async runOptions(

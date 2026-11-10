@@ -59,6 +59,8 @@ export interface CredentialCheck {
   accountId: string;
   services: CredentialServiceCheck[];
   canWrite: boolean | null;
+  /** Actions from the PulseGrid policy that the credentials lack, or null when that couldn't be checked. */
+  missingActions: string[] | null;
 }
 
 export interface SyncIssue {

@@ -43,7 +43,7 @@ The services run in public subnets so that no NAT gateway is needed, and they on
 
 ### What you accept by sharing
 
-- **Stored keys live in this account.** They're encrypted, but `TOKEN_ENCRYPTION_KEY` sits in the same account. Anyone with admin rights here can reach every AWS key stored in the dashboard, so use read-only keys for production and limit who has admin rights.
+- **Stored keys live in this account.** They're encrypted, but `TOKEN_ENCRYPTION_KEY` sits in the same account. Anyone with admin rights here can reach every AWS key stored in the dashboard, so limit who has admin rights here.
 - **The dashboard goes down with the stack.** Rebooting the shared database or cache from the dashboard takes the dashboard down for a moment too.
 - **Backups are shared.** Restoring the Aurora cluster also restores the dashboard's data.
 
@@ -119,7 +119,7 @@ To limit who can reach the hostname, set `allowed_cidrs` to up to three addresse
 1. Open your hostname. The setup wizard asks for a one-time code.
 2. Find the code in the `/ecs/dashops-api` log group in CloudWatch.
 3. Create your first project and super admin.
-4. Add your AWS accounts under **Settings > Integrations**. Use the read-only policy on production keys. See [connect-aws-account.md](connect-aws-account.md).
+4. Add your AWS accounts under **Settings > Integrations**. Every key uses the PulseGrid policy. See [connect-aws-account.md](connect-aws-account.md).
 
 ## Keep the state safe
 

@@ -1,8 +1,7 @@
-import { DATA_PERMISSIONS, type SecretAccess, type UserPermission } from '@pulsegrid/shared';
-import { environmentBlockedReason } from '../actions/action-rules';
+import type { SecretAccess, UserPermission } from '@pulsegrid/shared';
 import type { AccountEnvironment } from '../environments/account-environment';
+import { environmentBlockedReason } from '../environments/environment-permissions';
 
-const NEEDS_PERMISSION = `Ask your super admin for the ${DATA_PERMISSIONS['secret.read'].label} permission.`;
 const MANAGED = 'AWS manages this secret, so it can only be changed by its owning service.';
 
 interface SecretRuleInput {
@@ -18,13 +17,10 @@ export const secretAccess = ({
   environment,
   managedBy,
 }: SecretRuleInput): SecretAccess => {
-  const blocked = environmentBlockedReason(environment);
-  if (blocked) {
-    return denied(blocked);
-  }
-  const canChange = granted.has('secret.write');
-  if (!canChange && !granted.has('secret.read')) {
-    return denied(NEEDS_PERMISSION);
+  const readBlocked = environmentBlockedReason('secret.read', environment, granted);
+  const canChange = environmentBlockedReason('secret.write', environment, granted) === null;
+  if (readBlocked && !canChange) {
+    return denied(readBlocked);
   }
   const managed = Boolean(managedBy);
   return { canRead: true, canWrite: canChange && !managed, reason: managed ? MANAGED : null };
