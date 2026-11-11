@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-11
+
 - See ECS blue/green deployments: each stage, blue and green side by side, and rollbacks with the reason. Releases is ready for testing as soon as green has test traffic. Add `ecs:ListServiceDeployments`, `ecs:DescribeServiceDeployments` and `ecs:DescribeServiceRevisions` to every key's IAM policy.
 - Group runs and Run all no longer fail tests past AWS's limit of experiments running at once. You choose how many run at a time, and the rest start as earlier ones end. Run `pnpm db:migrate` after updating, and add `servicequotas:ListServiceQuotas` to every key's IAM policy so PulseGrid can read the account's quota.
 
