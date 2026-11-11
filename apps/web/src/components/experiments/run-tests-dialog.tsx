@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Field, Input } from '@/components/ui/input';
+import { ProductionNotice, useProductionTarget } from '@/components/ui/production-notice';
 import { apiSendForJson } from '@/lib/browser-api';
 import { experimentRunPath, orderText, waveChoice } from '@/lib/experiments';
 
@@ -49,6 +50,7 @@ export function RunTestsButton({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
+  const production = useProductionTarget(true);
   const [capacity, setCapacity] = useState<ExperimentCapacity[] | null>(null);
   const [order, setOrder] = useState<RunOrder | null>(null);
   const [waveSize, setWaveSize] = useState('');
@@ -110,6 +112,7 @@ export function RunTestsButton({
           finishes, a stop alarm fires, or someone stops it.
         </DialogDescription>
         <div className="mt-4 flex flex-col gap-4">
+          <ProductionNotice target={production} />
           {capacity === null ? (
             <p className="text-[13px] text-muted-foreground">Checking how many tests AWS allows at once…</p>
           ) : (

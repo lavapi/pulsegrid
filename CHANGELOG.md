@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Changed
+
+- Production is marked by a thin red line on the top bar and a red outline on the account switcher, instead of a full-width red banner. Dialogs that change production, such as force deploy, reboot, secret changes, failover tests and production pipelines, show a red Production box, and resource actions and secret changes ask for the resource's name before confirming.
+
+### Fixed
+
+- The top bar and sidebar stay in place when scrolling on production accounts, instead of leaving a gap above the top bar.
+
 ## [0.17.0] - 2026-11-11
 
 ### Added

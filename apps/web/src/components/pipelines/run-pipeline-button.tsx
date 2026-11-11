@@ -99,6 +99,8 @@ export function RunPipelineButton({
       description={`This starts a new run in ${repository}.`}
       confirmLabel="Run pipeline"
       blockedReason={access.reason}
+      warnProduction={access.production ? `${name} (production pipeline)` : false}
+      confirmName={name}
       pending={pending}
       onConfirm={() =>
         send(

@@ -11,6 +11,7 @@ import { EnvironmentBadge } from '@/components/environment-badge';
 import { ProviderIcon } from '@/components/provider-icon';
 import { environmentLabel } from '@/lib/account-environment';
 import { followsAccountSwitcher, pathAfterSwitch, selectedFirst } from '@/lib/account-selection';
+import { cn } from '@/lib/utils';
 
 const SEARCH_THRESHOLD = 6;
 const ALL_ACCOUNT_PATHS = ['/costs', '/environments', '/releases'];
@@ -66,7 +67,10 @@ export function AccountSwitcher({ accounts, selectedId }: SwitcherProps) {
       <Popover.Trigger
         aria-label={`Cloud account: ${selected.name}, ${environmentLabel(selected)}`}
         disabled={pending}
-        className="inline-flex h-9 min-w-0 max-w-[360px] items-center gap-2 rounded-lg border bg-card px-3 font-medium transition-colors hover:bg-muted disabled:opacity-60"
+        className={cn(
+          'inline-flex h-9 min-w-0 max-w-[360px] items-center gap-2 rounded-lg border bg-card px-3 font-medium transition-colors hover:bg-muted disabled:opacity-60',
+          selected.isProduction && 'border-production ring-1 ring-production',
+        )}
       >
         <ProviderIcon provider={selected.provider} size={18} />
         <span className="hidden truncate sm:inline">{selected.name}</span>

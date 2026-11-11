@@ -27,6 +27,8 @@ type SecretLayout = (typeof SECRET_LAYOUTS)[number]['id'];
 
 interface SecretActions {
   pending: boolean;
+  /** Typed to confirm a change in production. */
+  secretName: string;
   reveal: (key: string | null) => Promise<string | null>;
   save: (key: string | null, name: string | null, value: string) => void;
   remove: (key: string) => void;
@@ -44,6 +46,8 @@ function AddKeyDialog({ actions }: { actions: SecretActions }) {
       confirmLabel="Add key"
       canConfirm={name.trim() !== ''}
       pending={actions.pending}
+      warnProduction
+      confirmName={actions.secretName}
       onConfirm={() => {
         actions.save(null, name.trim(), value);
         setName('');
@@ -115,6 +119,8 @@ function EditDialog({
       canConfirm={original !== null && (secretKey === null || name.trim() !== '')}
       blockedReason={validJson ? null : "This isn't valid JSON."}
       pending={actions.pending}
+      warnProduction
+      confirmName={actions.secretName}
       onOpenChange={load}
       onConfirm={() => actions.save(secretKey, secretKey === null ? null : name.trim(), value)}
     >
@@ -211,6 +217,8 @@ function SecretRow({
             confirmLabel="Delete key"
             danger
             pending={actions.pending}
+            warnProduction
+            confirmName={actions.secretName}
             onConfirm={() => actions.remove(secretKey)}
           />
         )}
@@ -284,7 +292,15 @@ function SecretRows({
   );
 }
 
-export function SecretPanel({ resourceId, view }: { resourceId: string; view: SecretView }) {
+export function SecretPanel({
+  resourceId,
+  resourceName,
+  view,
+}: {
+  resourceId: string;
+  resourceName: string;
+  view: SecretView;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -305,6 +321,7 @@ export function SecretPanel({ resourceId, view }: { resourceId: string; view: Se
 
   const actions: SecretActions = {
     pending,
+    secretName: resourceName,
     reveal: async (key) => {
       const { data, error: failure } = await apiSendForJson<{ value: string }>(`${path}/reveal`, 'POST', {
         key,

@@ -140,7 +140,7 @@ export default async function ResourceDetailPage({
         actions={actions}
         initialRun={run}
       />
-      {secret && <SecretPanel resourceId={resource.id} view={secret} />}
+      {secret && <SecretPanel resourceId={resource.id} resourceName={resource.name} view={secret} />}
       {resource.type === 'ecs-service' && <ServiceDeployments resourceId={resource.id} />}
       {resource.type === 'ecs-service' && <ServiceLogs resourceId={resource.id} />}
       {supportsLoad(resource.type) && <ResourceLoad resourceId={resource.id} />}
