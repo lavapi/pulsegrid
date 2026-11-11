@@ -11,7 +11,8 @@ import { ExperimentReportCapture } from './experiments/experiment-report-capture
 import { ExperimentReportStore } from './experiments/experiment-report.store';
 import { ExperimentStarter } from './experiments/experiment-starter';
 import { ExperimentWaveQueue, WAVE_QUEUE_NAME } from './experiments/experiment-wave-queue';
-import { ExperimentWaves } from './experiments/experiment-waves';
+import { EnvironmentLock } from './experiments/environment-lock';
+import { RunSequencer } from './experiments/run-sequencer';
 import { COST_QUEUE_NAME, CostQueue } from './costs/cost-queue';
 import { CostRefreshService } from './costs/cost-refresh.service';
 import { TokenCipher } from './connection/token-cipher';
@@ -49,7 +50,8 @@ import { SYNC_QUEUE_NAME, SyncQueue } from './sync/sync-queue';
     ExperimentReportStore,
     ExperimentReportCapture,
     ExperimentStarter,
-    ExperimentWaves,
+    EnvironmentLock,
+    RunSequencer,
     {
       provide: ExperimentWaveQueue,
       inject: [APP_CONFIG],
@@ -91,7 +93,8 @@ import { SYNC_QUEUE_NAME, SyncQueue } from './sync/sync-queue';
     ExperimentReportStore,
     ExperimentStarter,
     ExperimentWaveQueue,
-    ExperimentWaves,
+    EnvironmentLock,
+    RunSequencer,
     ProviderRegistry,
     InventorySyncService,
     SyncProgressStore,

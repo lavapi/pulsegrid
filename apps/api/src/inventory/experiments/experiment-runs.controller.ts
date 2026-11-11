@@ -1,4 +1,4 @@
-import type { ExperimentCapacity, ExperimentRunDetail, RunOrder, StartedExperimentRun } from '@pulsegrid/shared';
+import type { ExperimentRunDetail, RunOrder, StartedExperimentRun } from '@pulsegrid/shared';
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
@@ -36,12 +36,6 @@ export class ExperimentRunsController {
     @Query(new ZodPipe(orderSchema, INVALID_REQUEST)) query: z.infer<typeof orderSchema>,
   ): Promise<RunOrder> {
     return this.runs.order(auth, id, query.groupId);
-  }
-
-  @Get('capacity')
-  @Throttle(READ_LIMIT)
-  capacity(@CurrentAuth() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string): Promise<ExperimentCapacity[]> {
-    return this.runs.capacity(auth, id);
   }
 
   @Get(':runId')

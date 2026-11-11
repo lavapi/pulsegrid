@@ -23,8 +23,8 @@ import {
 import type { ExperimentContext, ExperimentRecord, ExperimentSource } from '../provider';
 import { isAccessDenied } from './aws-error-messages';
 import { fisFootprint } from './aws-fis-footprint';
-import { fisConcurrencyLimit } from './aws-fis-quota';
-import { fisIsRecovered } from './aws-fis-recovery';
+import { fisEnvironmentHealth, fisRestartStopped } from './aws-fis-health';
+import { fisNotReady } from './aws-fis-readiness';
 import type { AwsKey } from './aws-key';
 
 const TEMPLATE_LIMIT = 25;
@@ -83,6 +83,7 @@ const targetsOf = (targets: Record<string, ExperimentTemplateTarget> | undefined
     resourceIds: target.resourceArns ?? [],
     tags: target.resourceTags ?? {},
     parameters: target.parameters ?? {},
+    selectionMode: target.selectionMode ?? 'ALL',
   }));
 
 const stepsOf = (
@@ -226,13 +227,17 @@ export const AWS_EXPERIMENT_SOURCE: ExperimentSource<AwsKey> = {
     await client(context).send(new StopExperimentCommand({ id }));
   },
 
-  concurrencyLimit: fisConcurrencyLimit,
-
   isQuotaFull: (error) => (error as { name?: string }).name === QUOTA_EXCEEDED,
 
   footprint: fisFootprint,
 
-  isRecovered: fisIsRecovered,
+  environmentHealth: fisEnvironmentHealth,
+
+  notReady: fisNotReady,
+
+  restartStopped: fisRestartStopped,
+
+  resolvedTargets: (context, experimentId) => resolvedIds(client(context), experimentId),
 
   failureMessage: (error) => {
     if (isAccessDenied(error)) {

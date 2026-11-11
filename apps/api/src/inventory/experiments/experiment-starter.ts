@@ -30,7 +30,7 @@ export type StartOutcome =
   | { kind: 'busy'; message: string }
   | { kind: 'failed'; message: string };
 
-/** Starts one test and records who started it. Used for single tests, the first wave of a run, and later waves. */
+/** Starts one test and records who started it. Used for single tests and for each test of a run. */
 @Injectable()
 export class ExperimentStarter {
   private readonly logger = new Logger(ExperimentStarter.name);

@@ -15,6 +15,10 @@ const TARGET_TYPES: Record<string, ResourceType> = {
 /** Tests that cut a whole Availability Zone off, rather than one resource in it. */
 const ZONE_TARGET_TYPES = ['aws:ec2:subnet', 'aws:ec2:transit-gateway'];
 const ZONE_ACTIONS = ['aws:network:disrupt-connectivity', 'aws:network:route-table-disrupt-cross-region-connectivity'];
+const STOP_INSTANCES = 'aws:ec2:stop-instances';
+const STOP_TASK = 'aws:ecs:stop-task';
+const ECS_TASK = 'aws:ecs:task';
+const ALL = 'ALL';
 
 const anyOf = (targetType: string): TouchedResource => ({
   key: resourceKey(TARGET_TYPES[targetType] ?? targetType, ANY),
@@ -63,6 +67,7 @@ export const fisFootprint = (template: ExperimentTemplate, inventory: readonly I
   const zoneWide =
     template.targets.some(({ resourceType }) => ZONE_TARGET_TYPES.includes(resourceType)) ||
     template.steps.some(({ actionId }) => ZONE_ACTIONS.includes(actionId));
+  const actions = template.steps.map(({ actionId }) => actionId);
   return {
     resources: unique(
       template.targets
@@ -70,5 +75,9 @@ export const fisFootprint = (template: ExperimentTemplate, inventory: readonly I
         .flatMap((target) => matchTarget(target, inventory)),
     ),
     zoneWide,
+    stopsInstances: actions.includes(STOP_INSTANCES),
+    needsSpareTask:
+      actions.includes(STOP_TASK) &&
+      template.targets.some(({ resourceType, selectionMode }) => resourceType === ECS_TASK && (selectionMode ?? ALL) !== ALL),
   };
 };

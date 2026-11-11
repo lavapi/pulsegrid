@@ -4,7 +4,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CredentialVault } from '../src/inventory/connection/credential-vault';
 import { ExperimentReportCapture } from '../src/inventory/experiments/experiment-report-capture';
-import { ExperimentWaves } from '../src/inventory/experiments/experiment-waves';
+import { NOTES, RunSequencer } from '../src/inventory/experiments/run-sequencer';
 import { newEnvironment } from '../src/inventory/environments/account-environment';
 import { awsProvider } from '../src/inventory/providers/aws/aws.provider';
 import {
@@ -58,12 +58,15 @@ const source = {
   getExperiment: vi.fn<ExperimentSource['getExperiment']>(),
   start: vi.fn<ExperimentSource['start']>(),
   stop: vi.fn<ExperimentSource['stop']>(),
-  concurrencyLimit: vi.fn<ExperimentSource['concurrencyLimit']>(),
   isQuotaFull: (error: unknown) => (error as Error).name === 'ServiceQuotaExceededException',
   footprint: vi.fn<ExperimentSource['footprint']>(),
-  isRecovered: vi.fn<ExperimentSource['isRecovered']>(),
+  environmentHealth: vi.fn<ExperimentSource['environmentHealth']>(),
+  notReady: vi.fn<ExperimentSource['notReady']>(),
+  restartStopped: vi.fn<ExperimentSource['restartStopped']>(),
+  resolvedTargets: vi.fn<ExperimentSource['resolvedTargets']>(),
   failureMessage: () => 'AWS refused this experiment.',
 };
+const FOOTPRINT = { resources: [], zoneWide: false, stopsInstances: false, needsSpareTask: false };
 const provider: CloudProvider = { ...awsProvider, actions: [], experimentSource: source };
 
 describe('failover tests', () => {
@@ -137,9 +140,13 @@ describe('failover tests', () => {
     ]);
     source.start.mockResolvedValue('EXP2');
     source.stop.mockResolvedValue();
-    source.concurrencyLimit.mockResolvedValue({ limit: 5, known: true });
-    source.footprint.mockReturnValue({ resources: [], zoneWide: false });
-    source.isRecovered.mockResolvedValue(true);
+    source.footprint.mockReturnValue(FOOTPRINT);
+    source.environmentHealth.mockResolvedValue([]);
+    source.notReady.mockResolvedValue(null);
+    source.restartStopped.mockResolvedValue({ started: [], waiting: [] });
+    source.resolvedTargets.mockResolvedValue([]);
+    await context.owner.deleteFrom('experiment_reports').execute();
+    await context.owner.deleteFrom('experiment_runs').execute();
     await setExtraPermissions(context, context.acme, 'developer', ['experiment.run']);
   });
 
@@ -245,6 +252,9 @@ describe('failover tests', () => {
     const both = [first, { region: REGION, templateId: 'EXT2' }];
     const createGroup = (accountId: string, templates = both, cookie = developer) =>
       http().post(groups(accountId)).set('Cookie', cookie).send({ name: 'Data layer', templates });
+    const detail = async (accountId: string, runId: string) =>
+      (await http().get(`${runs(accountId)}/${runId}`).set('Cookie', viewer).expect(200)).body;
+    const advance = (runId: string) => context.app.get(RunSequencer).advance(context.acme.tenant.id, runId);
 
     beforeEach(() => {
       source.listTemplates.mockResolvedValue([TEMPLATE, SECOND]);
@@ -284,75 +294,74 @@ describe('failover tests', () => {
       );
     });
 
-    it('runs a group with one click and reports templates that did not start', async () => {
+    it('runs a group one test at a time, and reports templates that did not start', async () => {
       const { id } = await addAccount('Staging');
-      const templates = [...both, { region: REGION, templateId: 'GONE' }];
-      const { body: group } = await createGroup(id, templates).expect(201);
-      source.start.mockImplementation(async (_context, templateId) => {
-        if (templateId === 'EXT2') {
-          throw Object.assign(new Error('raw'), { name: 'ValidationException' });
-        }
-        return 'RUNEXT1';
-      });
-      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({ groupId: group.id, waveSize: 5 }).expect(201);
-      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running')]);
-      const { body: detail } = await http().get(`${runs(id)}/${run.id}`).set('Cookie', viewer).expect(200);
-      expect(detail).toMatchObject({ label: 'Data layer', startedBy: 'dev@example.test', error: null });
-      expect(detail.items).toEqual([
-        { region: REGION, templateId: 'EXT1', label: 'Database failover', experimentId: 'RUNEXT1', error: null, waiting: false, note: null, resources: [], zoneWide: false, state: 'running', report: null },
-        { region: REGION, templateId: 'EXT2', label: 'Cache reboot', experimentId: null, error: 'AWS refused this experiment.', waiting: false, note: null, resources: [], zoneWide: false, state: null, report: null },
-        { region: REGION, templateId: 'GONE', label: 'GONE', experimentId: null, error: 'This template no longer exists in AWS.', state: null, report: null },
+      const { body: group } = await createGroup(id, [...both, { region: REGION, templateId: 'GONE' }]).expect(201);
+      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({ groupId: group.id }).expect(201);
+      expect(source.start).toHaveBeenCalledTimes(1);
+      expect((await detail(id, run.id)).items).toMatchObject([
+        { templateId: 'EXT1', experimentId: 'RUNEXT1', settling: true, waiting: false, startedAt: expect.any(String) },
+        { templateId: 'EXT2', experimentId: null, waiting: true, note: NOTES.previous },
+        { templateId: 'GONE', experimentId: null, error: 'This template no longer exists in AWS.' },
       ]);
+
+      source.getExperiment.mockResolvedValue(record('RUNEXT1', 'EXT1', 'running'));
+      await advance(run.id);
+      expect(source.start).toHaveBeenCalledTimes(1);
+
+      source.getExperiment.mockResolvedValue(record('RUNEXT1', 'EXT1', 'completed'));
+      source.start.mockRejectedValue(Object.assign(new Error('raw'), { name: 'ValidationException' }));
+      await advance(run.id);
+      const body = await detail(id, run.id);
+      expect(body.items[0]).toMatchObject({ settling: false, endedAt: '2026-11-10T12:10:00.000Z', healthyAt: expect.any(String) });
+      expect(body.items[1]).toMatchObject({ waiting: false, error: 'AWS refused this experiment.' });
+      expect(body).toMatchObject({ label: 'Data layer', startedBy: 'dev@example.test', stoppedReason: null, result: 'failed' });
       expect(await actions('RUNEXT1')).toEqual([{ action: 'cloud.experiment.started', actor_email: 'dev@example.test' }]);
       const [event] = await context.owner.selectFrom('audit_events').select(['action', 'metadata']).where('target_id', '=', run.id).execute();
-      expect(event).toMatchObject({ action: 'cloud.experiment-run.started', metadata: { label: 'Data layer', started: 1, failed: 2 } });
-      const { body: view } = await http().get(`/api/cloud/accounts/${id}/experiments`).set('Cookie', viewer).expect(200);
-      expect(view.runs).toEqual([
-        { id: run.id, label: 'Data layer', startedAt: expect.any(String), startedBy: 'dev@example.test', started: 1, failed: 2 },
-      ]);
+      expect(event).toMatchObject({ action: 'cloud.experiment-run.started', metadata: { label: 'Data layer', tests: 3, production: false } });
     });
 
-    it('runs every template with one click, and refuses when there is nothing to run', async () => {
+    it('runs every template, and refuses when there is nothing to run', async () => {
       const { id } = await addAccount('Staging');
-      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
-      expect(source.start).toHaveBeenCalledTimes(2);
-      source.listExperiments.mockResolvedValue([]);
-      source.getExperiment.mockResolvedValue(null);
-      const { body: detail } = await http().get(`${runs(id)}/${run.id}`).set('Cookie', viewer).expect(200);
-      expect(detail.label).toBe('All tests');
-      expect(detail.items.map(({ experimentId }: { experimentId: string }) => experimentId)).toEqual(['RUNEXT1', 'RUNEXT2']);
+      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({}).expect(201);
+      expect(source.start).toHaveBeenCalledTimes(1);
+      expect((await detail(id, run.id)).label).toBe('All tests');
       source.listTemplates.mockResolvedValue([]);
-      const empty = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 });
+      const empty = await http().post(runs(id)).set('Cookie', developer).send({});
       expect(empty.status).toBe(409);
       expect(empty.body.message).toBe('There are no failover test templates to run.');
     });
 
-    it('stops every experiment of a run that is still active', async () => {
+    it('stops the running test and cancels the rest on Stop all', async () => {
       const { id } = await addAccount('Staging');
-      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
-      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running'), summary('RUNEXT2', 'EXT2', 'completed')]);
+      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({}).expect(201);
+      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running')]);
       await http().post(`${runs(id)}/${run.id}/stop`).set('Cookie', developer).expect(204);
-      expect(source.stop).toHaveBeenCalledTimes(1);
       expect(source.stop).toHaveBeenCalledWith({ credentials: KEY, region: REGION }, 'RUNEXT1');
-      expect((await actions(run.id)).map(({ action }) => action)).toEqual([
-        'cloud.experiment-run.started',
-        'cloud.experiment-run.stopped',
-      ]);
+      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'stopped')]);
+      source.getExperiment.mockResolvedValue(record('RUNEXT1', 'EXT1', 'stopped'));
+      await advance(run.id);
+      expect(source.start).toHaveBeenCalledTimes(1);
+      const body = await detail(id, run.id);
+      expect(body.items.map(({ cancelled }: { cancelled?: boolean }) => Boolean(cancelled))).toEqual([false, true]);
+      expect(body.result).toBe('stopped');
+      expect((await actions(run.id)).map(({ action }) => action)).toEqual(['cloud.experiment-run.started', 'cloud.experiment-run.stopped']);
     });
 
-    it('needs the production permission in production, and keeps other projects out', async () => {
+    it('needs the production permission and an explicit confirmation in production, and keeps other projects out', async () => {
       const { id } = await addAccount('Production');
-      const refused = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 });
-      expect(refused.status).toBe(403);
-      expect(source.start).not.toHaveBeenCalled();
+      expect((await http().post(runs(id)).set('Cookie', developer).send({ confirmProduction: true })).status).toBe(403);
       await setExtraPermissions(context, context.acme, 'developer', ['experiment.run', 'production.experiment.run']);
-      await createGroup(id).expect(201);
-      await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
+      const unconfirmed = await http().post(runs(id)).set('Cookie', developer).send({});
+      expect(unconfirmed.status).toBe(400);
+      expect(unconfirmed.body.message).toBe('Confirm that these tests run in production before starting them.');
+      expect(source.start).not.toHaveBeenCalled();
+      await http().post(runs(id)).set('Cookie', developer).send({ confirmProduction: true }).expect(201);
       const staging = await addAccount('Staging');
-      const { body: run } = await http().post(runs(staging.id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
+      const { body: run } = await http().post(runs(staging.id)).set('Cookie', developer).send({}).expect(201);
       await http().get(`${runs(staging.id)}/${run.id}`).set('Cookie', otherOwner).expect(404);
-      await http().post(runs(staging.id)).set('Cookie', viewer).send({ waveSize: 5 }).expect(403);
-      await http().post(runs(staging.id)).set('Cookie', developer).send({ groupId: 'nope', waveSize: 5 }).expect(400);
+      await http().post(runs(staging.id)).set('Cookie', viewer).send({}).expect(403);
+      await http().post(runs(staging.id)).set('Cookie', developer).send({ groupId: 'nope' }).expect(400);
     });
   });
   describe('reports', () => {
@@ -361,6 +370,7 @@ describe('failover tests', () => {
       http().get(`/api/experiment-reports?account=${accountId}${query}`).set('Cookie', cookie);
     const capture = (accountId: string) =>
       context.app.get(ExperimentReportCapture).captureAccount({ tenantId: context.acme.tenant.id, accountId });
+    const advance = (runId: string) => context.app.get(RunSequencer).advance(context.acme.tenant.id, runId);
     const reportCount = async (accountId: string) =>
       (await context.owner.selectFrom('experiment_reports').select('id').where('cloud_account_id', '=', accountId).execute()).length;
 
@@ -394,12 +404,14 @@ describe('failover tests', () => {
 
     it('reports a group run in one place once its tests end', async () => {
       const { id } = await addAccount('Staging');
-      const { body: started } = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
+      const { body: started } = await http().post(runs(id)).set('Cookie', developer).send({}).expect(201);
       source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running'), summary('RUNEXT2', 'EXT2', 'running')]);
       const { body: live } = await http().get(`${runs(id)}/${started.id}`).set('Cookie', viewer).expect(200);
       expect(live).toMatchObject({ result: 'running', endedAt: null, environmentName: 'Staging' });
 
       source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'completed'), summary('RUNEXT2', 'EXT2', 'stopped')]);
+      await advance(started.id);
+      await advance(started.id);
       const { body: done } = await http().get(`${runs(id)}/${started.id}`).set('Cookie', viewer).expect(200);
       expect(done).toMatchObject({ result: 'stopped', endedAt: '2026-11-10T12:10:00.000Z' });
       expect(done.items.map(({ report }: { report: { result: string } }) => report.result)).toEqual(['passed', 'stopped']);
@@ -411,7 +423,7 @@ describe('failover tests', () => {
         kind: 'run',
         id: started.id,
         result: 'stopped',
-        counts: { total: 2, passed: 1, stopped: 1, failed: 0, notStarted: 0 },
+        counts: { total: 2, passed: 1, stopped: 1, failed: 0, notStarted: 0, skipped: 0, repairs: 0 },
       });
       expect(body.entries.filter(({ kind }: { kind: string }) => kind === 'test')).toEqual([]);
       expect(body.labels).toContain('All tests');
@@ -459,7 +471,7 @@ describe('failover tests', () => {
 
     it('lets only people who manage environments delete reports and runs', async () => {
       const { id } = await addAccount('Staging');
-      const { body: started } = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
+      const { body: started } = await http().post(runs(id)).set('Cookie', developer).send({}).expect(201);
       source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'completed'), summary('RUNEXT2', 'EXT2', 'completed')]);
       await http().get(`${runs(id)}/${started.id}`).set('Cookie', viewer).expect(200);
       await http().delete(`/api/experiment-reports/runs/${started.id}`).set('Cookie', developer).expect(403);
@@ -470,191 +482,175 @@ describe('failover tests', () => {
       await history(id, '', otherOwner).expect(200, { entries: [], labels: [] });
     });
   });
-  describe('waves', () => {
+  describe('one test at a time', () => {
     const runs = (accountId: string) => `/api/cloud/accounts/${accountId}/experiment-runs`;
-    const startRun = (accountId: string, waveSize: number) =>
-      http().post(runs(accountId)).set('Cookie', developer).send({ waveSize });
+    const startRun = (accountId: string, body: object = {}) => http().post(runs(accountId)).set('Cookie', developer).send(body);
     const detail = async (accountId: string, runId: string) =>
       (await http().get(`${runs(accountId)}/${runId}`).set('Cookie', viewer).expect(200)).body;
-    const advanceAll = () => context.app.get(ExperimentWaves).advanceAll();
-    const advance = (runId: string) => context.app.get(ExperimentWaves).advance(context.acme.tenant.id, runId);
-    const stages = (body: { items: { experimentId: string | null; waiting?: boolean; cancelled?: boolean }[] }) =>
-      body.items.map(({ experimentId, waiting, cancelled }) => (waiting ? 'waiting' : cancelled ? 'cancelled' : experimentId));
-
-    beforeEach(() => {
-      source.listTemplates.mockResolvedValue([TEMPLATE, SECOND, THIRD]);
-      source.listExperiments.mockResolvedValue([]);
-      source.getExperiment.mockResolvedValue(null);
-      source.start.mockImplementation(async (_context, templateId) => `RUN${templateId}`);
-    });
-
-    it('shows the quota and what is running, for the dialog', async () => {
-      const { id } = await addAccount('Staging');
-      source.concurrencyLimit.mockResolvedValue({ limit: 10, known: true });
-      source.listExperiments.mockResolvedValue([summary('OUT1', 'EXT9', 'running'), summary('OLD', 'EXT9', 'completed')]);
-      const { body } = await http().get(`${runs(id)}/capacity`).set('Cookie', viewer).expect(200);
-      expect(body).toEqual([{ region: REGION, quota: 10, quotaKnown: true, running: 1 }]);
-    });
-
-    it('starts the first wave at once and the next as tests end', async () => {
-      const { id } = await addAccount('Staging');
-      const { body: run } = await startRun(id, 2).expect(201);
-      expect(source.start).toHaveBeenCalledTimes(2);
-      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running'), summary('RUNEXT2', 'EXT2', 'running')]);
-      const live = await detail(id, run.id);
-      expect(stages(live)).toEqual(['RUNEXT1', 'RUNEXT2', 'waiting']);
-      expect(live).toMatchObject({ result: 'running', waveSize: 2 });
-
-      await advance(run.id);
-      expect(stages(await detail(id, run.id))).toEqual(['RUNEXT1', 'RUNEXT2', 'waiting']);
-
-      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'completed'), summary('RUNEXT2', 'EXT2', 'running')]);
-      await advanceAll();
-      expect(stages(await detail(id, run.id))).toEqual(['RUNEXT1', 'RUNEXT2', 'RUNEXT3']);
-      const [event] = await actions('RUNEXT3');
-      expect(event).toEqual({ action: 'cloud.experiment.started', actor_email: 'dev@example.test' });
-    });
-
-    it('stays within the account quota, counting tests started elsewhere', async () => {
-      const { id } = await addAccount('Staging');
-      source.concurrencyLimit.mockResolvedValue({ limit: 2, known: true });
-      source.listExperiments.mockResolvedValue([summary('OUT1', 'EXT9', 'running')]);
-      const { body: run } = await startRun(id, 5).expect(201);
-      expect(stages(await detail(id, run.id))).toEqual(['RUNEXT1', 'waiting', 'waiting']);
-    });
-
-    it('keeps a test waiting when AWS says the quota is full, instead of failing it', async () => {
-      const { id } = await addAccount('Staging');
-      source.start.mockImplementation(async (_context, templateId) => {
-        if (templateId === 'EXT2') {
-          throw Object.assign(new Error('full'), { name: 'ServiceQuotaExceededException' });
-        }
-        return `RUN${templateId}`;
-      });
-      const { body: run } = await startRun(id, 3).expect(201);
-      const body = await detail(id, run.id);
-      expect(stages(body)).toEqual(['RUNEXT1', 'waiting', 'waiting']);
-      expect(body.items.every(({ error }: { error: string | null }) => error === null)).toBe(true);
-    });
-
-    it('cancels waiting tests on Stop all, which counts the run as stopped', async () => {
-      const { id } = await addAccount('Staging');
-      const { body: run } = await startRun(id, 1).expect(201);
-      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running')]);
-      await http().post(`${runs(id)}/${run.id}/stop`).set('Cookie', developer).expect(204);
-      expect(source.stop).toHaveBeenCalledWith({ credentials: KEY, region: REGION }, 'RUNEXT1');
-      source.start.mockClear();
-      source.listExperiments.mockResolvedValue([]);
-      await advance(run.id);
-      expect(source.start).not.toHaveBeenCalled();
-      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'stopped')]);
-      source.getExperiment.mockResolvedValue(record('RUNEXT1', 'EXT1', 'stopped'));
-      const body = await detail(id, run.id);
-      expect(stages(body)).toEqual(['RUNEXT1', 'cancelled', 'cancelled']);
-      expect(body.result).toBe('stopped');
-      const { body: history } = await http().get(`/api/experiment-reports?account=${id}`).set('Cookie', viewer).expect(200);
-      expect(history.entries.find(({ id: entryId }: { id: string }) => entryId === run.id)?.counts).toMatchObject({
-        total: 3,
-        stopped: 1,
-        cancelled: 2,
-        notStarted: 0,
-      });
-    });
-
-    it('refuses a wave size outside 1 to 25, and remembers a group last one', async () => {
-      const { id } = await addAccount('Staging');
-      await startRun(id, 0).expect(400);
-      await startRun(id, 26).expect(400);
-      const { body: group } = await http()
-        .post(`/api/cloud/accounts/${id}/experiment-groups`)
-        .set('Cookie', developer)
-        .send({ name: 'Zones', templates: [{ region: REGION, templateId: 'EXT1' }] })
-        .expect(201);
-      expect(group.waveSize).toBeNull();
-      await http().post(runs(id)).set('Cookie', developer).send({ groupId: group.id, waveSize: 1 }).expect(201);
-      const { body: view } = await http().get(`/api/cloud/accounts/${id}/experiments`).set('Cookie', viewer).expect(200);
-      expect(view.groups.find(({ id: groupId }: { id: string }) => groupId === group.id)?.waveSize).toBe(1);
-    });
-  });
-  describe('tests on one resource', () => {
-    const runs = (accountId: string) => `/api/cloud/accounts/${accountId}/experiment-runs`;
-    const db = { key: 'rds-instance|db-1', name: 'staging-db' };
-    const detail = async (accountId: string, runId: string) =>
-      (await http().get(`${runs(accountId)}/${runId}`).set('Cookie', viewer).expect(200)).body;
-    const advance = (runId: string) => context.app.get(ExperimentWaves).advance(context.acme.tenant.id, runId);
-    const notes = (body: { items: { experimentId: string | null; note?: string | null }[] }) =>
-      body.items.map(({ experimentId, note }) => experimentId ?? note);
-    const endedMinutesAgo = (runId: string, minutes: number) =>
+    const advance = (runId: string) => context.app.get(RunSequencer).advance(context.acme.tenant.id, runId);
+    const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+    const setOnItems = (runId: string, field: string, minutes: number) =>
       context.owner
         .updateTable('experiment_runs')
         .set({
-          items: sql`(select jsonb_agg(case when item ? 'endedAt' then item || jsonb_build_object('endedAt', ${new Date(Date.now() - minutes * 60_000).toISOString()}::text) else item end) from jsonb_array_elements(items) item)`,
+          items: sql`(select jsonb_agg(case when item ? ${field}::text then item || jsonb_build_object(${field}::text, ${ago(minutes)}::text) else item end) from jsonb_array_elements(items) item)`,
         })
         .where('id', '=', runId)
         .execute();
 
+    const endedNow = (id: string, state: ExperimentState) => ({ ...record(id, id.replace('RUN', ''), state), endedAt: new Date().toISOString() });
+
     beforeEach(() => {
       source.listTemplates.mockResolvedValue([TEMPLATE, SECOND, THIRD]);
       source.listExperiments.mockResolvedValue([]);
-      source.getExperiment.mockResolvedValue(null);
+      source.getExperiment.mockImplementation(async (_context, id) => endedNow(id, 'completed'));
       source.start.mockImplementation(async (_context, templateId) => `RUN${templateId}`);
-      source.footprint.mockImplementation((template) =>
-        template.id === 'EXT3' ? { resources: [], zoneWide: true } : { resources: [db], zoneWide: false },
+      source.footprint.mockImplementation((template) => ({ ...FOOTPRINT, zoneWide: template.id === 'EXT1' }));
+    });
+
+    it('shows the tests in run order, zone-wide ones last, and whether the environment is busy', async () => {
+      const { id } = await addAccount('Staging');
+      const { body } = await http().get(`${runs(id)}/order`).set('Cookie', viewer).expect(200);
+      expect(body).toEqual({
+        tests: [
+          { label: 'Cache reboot', zoneWide: false },
+          { label: 'Zone outage', zoneWide: false },
+          { label: 'Database failover', zoneWide: true },
+        ],
+        busy: null,
+      });
+      source.listExperiments.mockResolvedValue([summary('OUT1', 'EXT9', 'running')]);
+      const { body: busy } = await http().get(`${runs(id)}/order`).set('Cookie', viewer).expect(200);
+      expect(busy.busy).toBe('Experiment OUT1 is running in Staging account.');
+    });
+
+    it('starts each test only after the previous one ended and the environment is healthy again', async () => {
+      const { id } = await addAccount('Staging');
+      const { body: run } = await startRun(id).expect(201);
+      expect(source.start).toHaveBeenLastCalledWith(expect.anything(), 'EXT2', expect.any(String));
+
+      source.environmentHealth.mockResolvedValue(['game-api: 1 of 2 tasks running']);
+      await advance(run.id);
+      let body = await detail(id, run.id);
+      expect(body.items[0]).toMatchObject({ experimentId: 'RUNEXT2', settling: true, endedAt: expect.any(String) });
+      expect(body.items[1].note).toBe('Waiting for the environment to be healthy: game-api: 1 of 2 tasks running');
+      expect(source.start).toHaveBeenCalledTimes(1);
+
+      source.environmentHealth.mockResolvedValue([]);
+      await advance(run.id);
+      body = await detail(id, run.id);
+      expect(body.items.map(({ experimentId }: { experimentId: string | null }) => experimentId)).toEqual(['RUNEXT2', 'RUNEXT3', null]);
+      expect(body.items[0].healthyAt).toEqual(expect.any(String));
+      await advance(run.id);
+      await advance(run.id);
+      expect(source.start).toHaveBeenLastCalledWith(expect.anything(), 'EXT1', expect.any(String));
+      expect(source.start).toHaveBeenCalledTimes(3);
+    });
+
+    it('stops the run when the environment is still unhealthy 30 minutes after a test', async () => {
+      const { id } = await addAccount('Staging');
+      const { body: run } = await startRun(id).expect(201);
+      source.environmentHealth.mockResolvedValue(['Database staging-db is rebooting']);
+      await advance(run.id);
+      await setOnItems(run.id, 'endedAt', 31);
+      await advance(run.id);
+      const body = await detail(id, run.id);
+      expect(body.stoppedReason).toBe(
+        "Stopped: the environment wasn't healthy 30 minutes after Cache reboot. Database staging-db is rebooting.",
+      );
+      expect(body.items.slice(1).map(({ cancelled }: { cancelled?: boolean }) => cancelled)).toEqual([true, true]);
+      await advance(run.id);
+      expect(source.start).toHaveBeenCalledTimes(1);
+    });
+
+    it('waits for a healthy environment before the first test, and stops after 30 minutes', async () => {
+      const { id } = await addAccount('Staging');
+      source.environmentHealth.mockResolvedValue(['Stop alarm staging-errors is ALARM']);
+      const { body: run } = await startRun(id).expect(201);
+      expect(source.start).not.toHaveBeenCalled();
+      expect((await detail(id, run.id)).items[0]).toMatchObject({ waiting: true, gateSince: expect.any(String) });
+      await setOnItems(run.id, 'gateSince', 31);
+      await advance(run.id);
+      expect((await detail(id, run.id)).stoppedReason).toBe(
+        "Stopped: the environment wasn't healthy 30 minutes before Cache reboot. Stop alarm staging-errors is ALARM.",
       );
     });
 
-    it('shows the order before a run starts', async () => {
+    it('skips a test whose targets are not ready, with the reason, and goes on', async () => {
       const { id } = await addAccount('Staging');
-      const { body } = await http().get(`${runs(id)}/order`).set('Cookie', viewer).expect(200);
-      expect(body).toEqual({ tests: 3, sharing: 2, zoneWide: 1 });
-    });
-
-    it('runs tests on one database one after another, waits for it to recover, and the zone-wide test last', async () => {
-      const { id } = await addAccount('Staging');
-      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
-      expect(source.start).toHaveBeenCalledTimes(1);
-      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running')]);
-      await advance(run.id);
-      expect(notes(await detail(id, run.id))).toEqual([
-        'RUNEXT1',
-        'Waiting for the test on staging-db to finish.',
-        'Zone-wide test: runs alone after the others finish and recover.',
-      ]);
-
-      source.listExperiments.mockResolvedValue([]);
-      await advance(run.id);
-      expect(notes(await detail(id, run.id))[1]).toBe('Waiting for staging-db to recover.');
-
-      await endedMinutesAgo(run.id, 3);
-      await advance(run.id);
-      expect(notes(await detail(id, run.id))).toEqual([
-        'RUNEXT1',
-        'RUNEXT2',
-        'Zone-wide test: runs alone after the others finish and recover.',
-      ]);
-
-      await advance(run.id);
-      await endedMinutesAgo(run.id, 3);
-      await advance(run.id);
-      expect(notes(await detail(id, run.id))).toEqual(['RUNEXT1', 'RUNEXT2', 'RUNEXT3']);
-    });
-
-    it('cancels tests waiting for a resource that does not recover within 30 minutes', async () => {
-      const { id } = await addAccount('Staging');
-      source.isRecovered.mockResolvedValue(false);
-      const resource = await context.owner
-        .selectFrom('resources')
-        .select('id')
-        .where('cloud_account_id', '=', id)
-        .executeTakeFirstOrThrow();
-      const known = { key: `rds-instance|${resource.id}`, name: 'staging-db' };
-      source.footprint.mockImplementation(() => ({ resources: [known], zoneWide: false }));
-      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
-      await advance(run.id);
-      await endedMinutesAgo(run.id, 31);
+      const resource = await context.owner.selectFrom('resources').select('id').where('cloud_account_id', '=', id).executeTakeFirstOrThrow();
+      source.footprint.mockImplementation((template) => ({
+        ...FOOTPRINT,
+        resources: template.id === 'EXT2' ? [{ key: `rds-instance|${resource.id}`, name: 'staging-db' }] : [],
+      }));
+      source.notReady.mockResolvedValue("staging-db isn't available (rebooting)");
+      const { body: run } = await startRun(id).expect(201);
       await advance(run.id);
       const body = await detail(id, run.id);
-      expect(body.items[1]).toMatchObject({ cancelled: true, note: "Cancelled: staging-db didn't recover within 30 minutes." });
+      expect(body.items[1]).toMatchObject({ templateId: 'EXT2', waiting: false, skipped: "staging-db isn't available (rebooting)" });
+      expect(source.start.mock.calls.map(([, templateId]) => templateId)).toEqual(['EXT1', 'EXT3']);
+    });
+
+    it('starts servers a failed test left stopped, and says so in the report', async () => {
+      const { id } = await addAccount('Staging');
+      source.footprint.mockImplementation(() => ({ ...FOOTPRINT, stopsInstances: true }));
+      source.getExperiment.mockImplementation(async (_context, experimentId) => endedNow(experimentId, 'failed'));
+      source.resolvedTargets.mockResolvedValue(['arn:aws:ec2:eu-central-1:1:instance/i-0abc']);
+      source.restartStopped.mockResolvedValueOnce({ started: [], waiting: ['i-0abc'] });
+      source.restartStopped.mockResolvedValueOnce({ started: ['i-0abc'], waiting: [] });
+      const { body: run } = await startRun(id).expect(201);
+      await advance(run.id);
+      expect((await detail(id, run.id)).items[0]).toMatchObject({ repairPending: true, settling: true });
+      expect(source.start).toHaveBeenCalledTimes(1);
+      await advance(run.id);
+      const body = await detail(id, run.id);
+      expect(body.items[0]).toMatchObject({ repairPending: false, repairs: [{ at: expect.any(String), text: 'Started i-0abc again' }] });
+      expect(source.start).toHaveBeenCalledTimes(2);
+      const { body: history } = await http().get(`/api/experiment-reports?account=${id}`).set('Cookie', viewer).expect(200);
+      expect(history.entries.find(({ id: entryId }: { id: string }) => entryId === run.id)?.counts).toMatchObject({ repairs: 1 });
+    });
+
+    it('asks to start a server by hand when it does not start within 30 minutes', async () => {
+      const { id } = await addAccount('Staging');
+      source.footprint.mockImplementation(() => ({ ...FOOTPRINT, stopsInstances: true }));
+      source.getExperiment.mockImplementation(async (_context, experimentId) => endedNow(experimentId, 'stopped'));
+      source.resolvedTargets.mockResolvedValue(['i-0abc']);
+      source.restartStopped.mockResolvedValue({ started: [], waiting: ['i-0abc'] });
+      const { body: run } = await startRun(id).expect(201);
+      await advance(run.id);
+      await setOnItems(run.id, 'endedAt', 31);
+      await advance(run.id);
+      expect((await detail(id, run.id)).items[0].repairs).toEqual([{ at: null, text: "Couldn't start i-0abc again; start it by hand" }]);
+    });
+
+    it('never starts a test while another runs in the environment', async () => {
+      const { id } = await addAccount('Staging');
+      const { body: run } = await startRun(id).expect(201);
+      source.listExperiments.mockResolvedValue([summary('RUNEXT2', 'EXT2', 'running')]);
+      const single = await http().post(`/api/cloud/accounts/${id}/experiments`).set('Cookie', developer).send({ region: REGION, templateId: 'EXT1' });
+      expect(single.status).toBe(409);
+      expect(single.body.message).toMatch(/^Only one failover test runs at a time in an environment\./);
+
+      const other = await addAccount('Staging');
+      source.listExperiments.mockResolvedValue([]);
+      const { body: second } = await startRun(other.id).expect(201);
+      expect(source.start).toHaveBeenCalledTimes(1);
+      expect((await detail(other.id, second.id)).items[0].note).toBe(
+        `Waiting: The run "All tests" is running a test in this environment.`,
+      );
+      await advance(run.id);
+      await advance(second.id);
+      expect(source.start).toHaveBeenCalledTimes(2);
+    });
+
+    it('refuses to start in production while anything else runs there', async () => {
+      await setExtraPermissions(context, context.acme, 'developer', ['experiment.run', 'production.experiment.run']);
+      const { id } = await addAccount('Production');
+      source.listExperiments.mockResolvedValue([summary('OUT1', 'EXT9', 'running')]);
+      const refused = await startRun(id, { confirmProduction: true });
+      expect(refused.status).toBe(409);
+      expect(refused.body.message).toBe("Production is busy, so the run didn't start. Experiment OUT1 is running in Production account.");
+      expect(source.start).not.toHaveBeenCalled();
     });
   });
 });

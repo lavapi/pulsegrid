@@ -27,6 +27,8 @@ export interface ExperimentTarget {
   tags?: Record<string, string>;
   /** Extra target settings, such as the cluster and service of ECS tasks. */
   parameters?: Record<string, string>;
+  /** How many of the matching resources it picks: ALL, COUNT(n) or PERCENT(n). */
+  selectionMode?: string;
 }
 
 export interface ExperimentStep {
@@ -87,11 +89,9 @@ export interface ExperimentDetail extends ExperimentSummary {
   access: ExperimentAccess;
 }
 
-/** The most templates one group or one run can hold. AWS's limit on tests running at once is separate, and runs work within it in waves. */
+/** The most templates one group or one run can hold. A run starts them one at a time. */
 export const EXPERIMENT_RUN_LIMIT = 25;
 
-/** AWS FIS allows 5 experiments at once per account and region unless the quota was raised. */
-export const DEFAULT_EXPERIMENT_QUOTA = 5;
 export const EXPERIMENT_GROUP_NAME_LIMIT = 60;
 export const RUN_ALL_LABEL = 'All tests';
 
@@ -120,20 +120,44 @@ export interface ExperimentRunItem extends ExperimentTemplateRef {
   experimentId: string | null;
   /** Why this template didn't start, or null when it did. */
   error: string | null;
-  /** Not started yet: it starts when a slot in the run's wave frees up and what it touches has recovered. */
+  /** Not started yet: it starts after the previous test has ended and the environment is healthy again. */
   waiting?: boolean;
-  /** Stop all cancelled it before it started, or a resource it needs didn't recover in time. */
+  /** Stop all cancelled it, or the run stopped before it started. */
   cancelled?: boolean;
+  /** Not run because its targets weren't ready; the reason, such as "staging-valkey isn't available". */
+  skipped?: string | null;
   /** Why it's still waiting or was cancelled, in plain words. */
   note?: string | null;
-  /** The resources this test acts on, so tests on the same resource never overlap. */
+  /** The resources this test acts on, checked before it starts. */
   resources?: TouchedResource[];
-  /** Acts on a whole Availability Zone, so it runs alone after every other test. */
+  /** Acts on a whole Availability Zone, so it runs after every other test. */
   zoneWide?: boolean;
-  /** When the test ended, once the scheduler has seen it end. */
+  /** Stops EC2 instances, so PulseGrid starts them again if the test ends badly. */
+  stopsInstances?: boolean;
+  /** Stops some of a service's tasks, so the service needs at least two running first. */
+  needsSpareTask?: boolean;
+  /** Started and not yet followed by a healthy environment, so the next test waits. */
+  settling?: boolean;
+  /** Still has servers to start again after it ended badly. */
+  repairPending?: boolean;
+  /** Stop alarms of its template, which must be OK before and after it. */
+  alarms?: string[];
+  startedAt?: string | null;
+  /** When the test ended, once PulseGrid has seen it end. */
   endedAt?: string | null;
-  /** Its resources are healthy again after it ended. */
-  recovered?: boolean;
+  /** When the whole environment was healthy again after it. */
+  healthyAt?: string | null;
+  /** When it started waiting for the environment to be healthy before starting. */
+  gateSince?: string | null;
+  /** What PulseGrid had to put right after it. */
+  repairs?: Repair[];
+}
+
+export interface Repair {
+  /** When it happened, or null for something PulseGrid couldn't do and a person must. */
+  at: string | null;
+  /** In plain words, such as "Started game-proxy-1 (i-0ab12) again". */
+  text: string;
 }
 
 export interface TouchedResource {
@@ -142,26 +166,17 @@ export interface TouchedResource {
   name: string;
 }
 
-/** What a run will do, shown before it starts. */
+/** The tests a run will start, one at a time, in this order: zone-wide tests last. */
 export interface RunOrder {
-  tests: number;
-  /** Tests that share a resource with another test, so they wait for it to finish and recover. */
-  sharing: number;
-  zoneWide: number;
-}
-
-export interface ExperimentCapacity {
-  region: string;
-  /** How many tests AWS lets the account run at once in this region. */
-  quota: number;
-  /** False when the quota couldn't be read and AWS's default is assumed. */
-  quotaKnown: boolean;
-  running: number;
+  tests: { label: string; zoneWide: boolean }[];
+  /** Another failover test is running in the environment, so production refuses to start. */
+  busy: string | null;
 }
 
 export interface StartRunInput {
   groupId?: string;
-  waveSize: number;
+  /** Required in production: the person ticked that the tests run in production. */
+  confirmProduction?: boolean;
 }
 
 export interface ExperimentRunSummary {
@@ -192,7 +207,7 @@ const RESULT_BY_STATE: Partial<Record<ExperimentState, TestResult>> = {
 /** The result of an ended test, or null while it's still active. */
 export const testResult = (state: ExperimentState): TestResult | null => RESULT_BY_STATE[state] ?? null;
 
-/** Passed only when every test completed; any failure or test that didn't start fails the run. Cancelled tests count as stopped. */
+/** Passed only when every test completed or was skipped with a reason; any failure or test that didn't start fails the run. Cancelled tests count as stopped. */
 export const runResult = (results: readonly RunResult[], notStarted: number): RunResult => {
   if (results.includes('running')) {
     return 'running';
@@ -233,8 +248,10 @@ export interface ExperimentRunItemState extends ExperimentRunItem {
 
 export interface ExperimentRunDetail extends Omit<ExperimentRunSummary, 'started' | 'failed'> {
   accountName: string;
-  /** How many tests run at a time, or null for runs from before waves, which started everything at once. */
+  /** How many tests ran at a time: 1 for runs since tests went one at a time, more for older runs. */
   waveSize: number | null;
+  /** Why the run stopped early, such as the environment not becoming healthy in time. */
+  stoppedReason: string | null;
   environmentName: string | null;
   result: RunResult;
   endedAt: string | null;
@@ -278,6 +295,8 @@ export interface RunCounts {
   notStarted: number;
   waiting: number;
   cancelled: number;
+  skipped: number;
+  repairs: number;
 }
 
 export interface TestHistoryEntry {

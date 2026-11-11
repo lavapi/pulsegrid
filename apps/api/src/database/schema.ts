@@ -132,6 +132,7 @@ export interface ExperimentRunsTable {
   label: string;
   items: ColumnType<ExperimentRunItem[], string, string>;
   wave_size: ColumnType<number | null, number | null | undefined, never>;
+  stopped_reason: ColumnType<string | null, string | null | undefined, string | null>;
   started_by_email: string | null;
   started_at: CreatedAt;
 }

@@ -1,5 +1,5 @@
 import type { ExperimentReport, TestHistory, TestHistoryFilter } from '@pulsegrid/shared';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, StreamableFile } from '@nestjs/common';
 import { sql } from 'kysely';
 import { AuditService } from '../../audit/audit.service';
 import type { AuthContext } from '../../auth/session/auth-context';
@@ -8,6 +8,9 @@ import { TenantDatabase } from '../../database/tenant-database';
 import { type HistoryRun, historyCsv, historyEntries } from './experiment-history';
 import { type ReportRow, toReport } from './experiment-report.store';
 import { knownResources } from './experiment-resources';
+import { ExperimentRunsService } from './experiment-runs.service';
+import { renderReportPdf } from './report-pdf';
+import { pdfName, runPdf, safeTimeZone, testPdf } from './report-pdf-data';
 
 const REPORT_MISSING = 'That report no longer exists.';
 const RUN_MISSING = 'That test run no longer exists.';
@@ -30,7 +33,20 @@ export class ExperimentReportsService {
   constructor(
     private readonly database: TenantDatabase,
     private readonly audit: AuditService,
+    private readonly runs: ExperimentRunsService,
   ) {}
+
+  /** A run's report as a PDF table, with times in the reader's timezone. */
+  async runPdf(auth: AuthContext, accountId: string, runId: string, timeZone: string | undefined): Promise<StreamableFile> {
+    const run = await this.runs.detail(auth, accountId, runId);
+    return pdfFile(await renderReportPdf(runPdf(run), safeTimeZone(timeZone)), pdfName(run.label, run.startedAt));
+  }
+
+  /** A single test's report as a PDF table. */
+  async testPdf(auth: AuthContext, id: string, timeZone: string | undefined): Promise<StreamableFile> {
+    const report = await this.report(auth, id);
+    return pdfFile(await renderReportPdf(testPdf(report), safeTimeZone(timeZone)), pdfName(report.label, report.startedAt));
+  }
 
   async history(auth: AuthContext, query: HistoryQuery): Promise<TestHistory> {
     const { runs, reports } = await this.database.run(auth.tenantId, (trx) => this.load(trx, query));
@@ -157,3 +173,6 @@ export class ExperimentReportsService {
     });
   }
 }
+
+const pdfFile = (pdf: Buffer, name: string): StreamableFile =>
+  new StreamableFile(pdf, { type: 'application/pdf', disposition: `attachment; filename="${name}"`, length: pdf.length });

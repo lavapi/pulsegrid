@@ -1,10 +1,7 @@
 import {
-  EXPERIMENT_RUN_LIMIT,
-  type ExperimentCapacity,
   type ExperimentState,
   LOAD_WINDOW_MAX_MINUTES,
   type LoadWindow,
-  type RunOrder,
   type RunResult,
 } from '@pulsegrid/shared';
 
@@ -87,35 +84,6 @@ export const reportWindow = (from: string | null, to: string | null, now = new D
   return { from: new Date(start).toISOString(), to: new Date(Math.min(end, longest)).toISOString() };
 };
 
-/** The run dialog's summary of how tests will be ordered, or null when they all simply run in waves. */
-export const orderText = ({ tests, sharing, zoneWide }: RunOrder): string | null => {
-  const parts = [
-    sharing > 0 &&
-      `${sharing} ${sharing === 1 ? 'test shares' : 'tests share'} a resource with another, so they take turns and wait for it to recover`,
-    zoneWide > 0 && `${zoneWide} zone-wide ${zoneWide === 1 ? 'test runs' : 'tests run'} alone at the end`,
-  ].filter(Boolean);
-  return parts.length > 0 ? `Of ${tests} tests, ${parts.join('; ')}.` : null;
-};
-
-export interface WaveChoice {
-  /** The suggested number of tests at a time. */
-  suggested: number;
-  /** The most the run may use: the largest quota among its regions, within the run limit and test count. */
-  max: number;
-  /** Free slots across the run's regions: the smallest quota minus what's running. */
-  free: number;
-}
-
-/** What the run dialog suggests: the group's last choice, otherwise the free slots, never below 1. */
-export const waveChoice = (
-  capacity: readonly ExperimentCapacity[],
-  regions: readonly string[],
-  tests: number,
-  remembered: number | null,
-): WaveChoice => {
-  const relevant = capacity.filter(({ region }) => regions.includes(region));
-  const free = relevant.length > 0 ? Math.max(0, Math.min(...relevant.map(({ quota, running }) => quota - running))) : 0;
-  const max = Math.max(1, Math.min(EXPERIMENT_RUN_LIMIT, tests, ...relevant.map(({ quota }) => quota)));
-  const suggested = Math.min(max, Math.max(1, remembered ?? free));
-  return { suggested, max, free };
-};
+/** A PDF file name from a run or test name and its day, like failover-tests-all-tests-2026-11-11.pdf. */
+export const pdfFileName = (name: string, startedAt: string | null): string =>
+  `failover-tests-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${(startedAt ?? '').slice(0, 10)}.pdf`;
