@@ -64,6 +64,9 @@ Every account uses this one policy, production included. Roles in PulseGrid deci
         "elasticloadbalancing:DescribeTags",
         "elasticloadbalancing:DescribeTargetGroups",
         "elasticloadbalancing:DescribeTargetHealth",
+        "elasticloadbalancing:DescribeLoadBalancerAttributes",
+        "pi:DescribeDimensionKeys",
+        "pi:GetResourceMetrics",
         "iam:SimulatePrincipalPolicy",
         "ecs:UpdateService",
         "rds:RebootDBInstance",
@@ -77,6 +80,17 @@ Every account uses this one policy, production included. Roles in PulseGrid deci
         "ec2:StartInstances"
       ],
       "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::*-alb-logs-*",
+        "arn:aws:s3:::*-alb-logs-*/*"
+      ]
     }
   ]
 }
@@ -92,9 +106,11 @@ Every account uses this one policy, production included. Roles in PulseGrid deci
 | `ec2:` describe actions | Servers, VPCs, subnets, security groups and the map |
 | `ec2:DescribeInstanceTypes`, `ec2:DescribeVolumes` | Total memory, vCPUs and disk sizes on [Load](#load) |
 | `s3:ListAllMyBuckets`, `s3:GetBucketLocation`, `s3:GetBucketTagging` | Buckets and tag filters. Files in buckets are never read. |
-| `elasticloadbalancing:` describe actions | Load balancers, target health and tag filters |
+| `elasticloadbalancing:` describe actions | Load balancers, target health and tag filters. `DescribeLoadBalancerAttributes` finds where each load balancer keeps its logs for the [Request log](#request-log). |
+| `s3:ListBucket`, `s3:GetObject` on `*-alb-logs-*` buckets only | Reading load balancer log files for the [Request log](#request-log). No other bucket's files can be read. |
+| `pi:DescribeDimensionKeys`, `pi:GetResourceMetrics` | [Top SQL](#query-activity) from Performance Insights |
 | `secretsmanager:ListSecrets` | Secret names and details |
-| `logs:FilterLogEvents` | [Service logs](#service-logs) |
+| `logs:FilterLogEvents` | [Service logs](#service-logs) and the [PostgreSQL log](#query-activity) |
 | `cloudwatch:GetMetricData` | [Load](#load) charts, including those in failover test reports |
 | `cloudwatch:DescribeAlarms` | Checking that failover tests' stop alarms are OK before and after each test |
 | `cloudtrail:LookupEvents` | [AWS activity](#aws-activity) and changes made outside PulseGrid |
@@ -108,9 +124,10 @@ Every account uses this one policy, production included. Roles in PulseGrid deci
 | `secretsmanager:GetSecretValue`, `secretsmanager:PutSecretValue` | Showing and changing [app secret](#app-secrets) values |
 | `iam:SimulatePrincipalPolicy` | Testing a key for missing or extra permissions |
 
-Two things sit outside this policy:
+A few things sit outside this policy:
 
 - A secret encrypted with its own KMS key needs that key's policy to allow the IAM user.
+- A load balancer log bucket in another account, such as a log archive account, must also grant the key in its bucket policy. See [Request log](#request-log).
 - Each FIS experiment template has its own role, which FIS uses to inject the faults. The key never gets those permissions.
 
 Pipelines use a GitHub token rather than AWS. It needs **Actions: Read and write**, **Contents: Read-only** and **Metadata: Read-only**. See [pipelines.md](pipelines.md). PulseGrid's own hosting needs nothing extra: Terraform creates the role it runs with. See [install-aws.md](install-aws.md).
@@ -181,9 +198,45 @@ The card refreshes every 5 seconds while a deployment runs, and every 30 seconds
 
 ## Service logs
 
-ECS services show a **Logs** section. The dashboard finds the CloudWatch log group from the service's task definition, so services using another log driver show a message instead. Logs need the **View service logs** permission, and work in every environment, because reading them changes nothing. Opening a service's logs is recorded in Activity, once every 15 minutes per person and service while they keep reading. Lines are read when you look at them and are never stored. The longest range is 24 hours.
+ECS services show a **Logs** section. The dashboard finds the CloudWatch log group from the service's task definition, so services using another log driver show a message instead. Logs need the **View logs** permission, and work in every environment, because reading them changes nothing. Opening a service's logs is recorded in Activity, once every 15 minutes per person and service while they keep reading. Lines are read when you look at them and are never stored. The longest range is 24 hours.
 
 The PulseGrid policy includes `logs:FilterLogEvents` and `ecs:DescribeTaskDefinition`. The second also lets the key see plain environment variables in task definitions. The dashboard reads only the log settings.
+
+## Request log
+
+Application Load Balancer pages have a **Request log** tab: every HTTP request, read from the load balancer's access logs in S3 when you look. PulseGrid asks the load balancer where it sends its logs (bucket and prefix), then reads only the 5-minute files that overlap the chosen range, from AWS's standard path `<prefix>/AWSLogs/<account>/elasticloadbalancing/<region>/YYYY/MM/DD/`. Files are streamed and decompressed on the server. Nothing is stored in PulseGrid, and log lines are never written to its own logs.
+
+- **Requests:** time, host, method and path, the load balancer's and the target's status, response time, the target group, user agent and client address, newest first, 100 at a time. **Older** reads further back.
+- **Filters:** time range (15 minutes by default, 24 hours at most), host, path, status (2xx to 5xx, or an exact code), service, minimum response time and user agent.
+- **Summary** for the range: requests, 5xx rate, p50, p95 and p99 response time, the 10 busiest paths and hosts, and requests with no target, which the load balancer answered on its own, such as an unknown host. A busy 24 hours can have more files than one read covers; the summary then says it's from the newest part.
+- **TLS connections** shows the connection logs: client address, TLS protocol and cipher, handshake time and result.
+- With Cloudflare in front, the client address is Cloudflare's edge, not the visitor, and is labelled that way.
+- Paths are shown without their query string, which can hold emails, ids or tokens. **Show query strings** needs the **See query strings and values in logs** permission, which Admins have.
+- Files arrive every 5 minutes, so the last few minutes may not be there yet. Logs are kept as long as the bucket keeps them; PulseGrid reads back 90 days at most.
+
+Reading the logs needs **View logs**. When the logs are in another account's bucket, that bucket's policy must grant the key. If it doesn't, the tab says so and shows the exact ARN to grant. For example, in the bucket's policy:
+
+```json
+{
+  "Effect": "Allow",
+  "Principal": { "AWS": "arn:aws:iam::<account>:user/<pulsegrid-user>" },
+  "Action": ["s3:ListBucket", "s3:GetObject"],
+  "Resource": ["arn:aws:s3:::<bucket>", "arn:aws:s3:::<bucket>/<prefix>*"]
+}
+```
+
+The key's own policy allows reading only from buckets named like `*-alb-logs-*`. If your log bucket is named differently, add it to the second statement of the key's policy.
+
+## Query activity
+
+Aurora cluster and database instance pages have a **Query activity** tab.
+
+- **Top SQL** shows each instance's busiest statements from Performance Insights over 1 hour, 6 hours, 24 hours or 7 days: the statement with placeholders instead of values, average active sessions, its share of the instance's load, its top wait events, and calls per second and average latency when Performance Insights has them. Instances without Performance Insights say so. Instances are read one after another so Performance Insights isn't flooded.
+- **PostgreSQL log** reads the log RDS exports to CloudWatch Logs (`/aws/rds/cluster/<cluster>/postgresql`) with `logs:FilterLogEvents` only, newest first, up to 500 lines. Choose errors and warnings, errors, warnings, deadlocks, failed connections or everything, and search the text. A database that doesn't export its log says how to turn it on.
+- **Slow queries** lists statements PostgreSQL logged because they ran longer than `log_min_duration_statement`, with their duration. The list stays empty until that parameter is set in the database's parameter group; nothing changes in PulseGrid when it is.
+- Values in statements and in key details, such as `Key (email)=(…)`, are replaced with `?` unless you have **See query strings and values in logs**.
+
+Query activity needs **View logs**. Nothing is stored in PulseGrid. When AWS asks PulseGrid to slow down, the tab says so; try again a moment later.
 
 ## Load
 

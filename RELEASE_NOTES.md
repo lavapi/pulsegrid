@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Read load balancer requests and database query activity in PulseGrid. Load balancer pages have a Request log with filters and a summary of errors, response times and the busiest paths. Database pages show the busiest statements from Performance Insights, the PostgreSQL log and slow queries. Query strings and values in statements stay hidden unless you have the new **See query strings and values in logs** permission.
+- Run `pnpm db:migrate` after updating. Add `elasticloadbalancing:DescribeLoadBalancerAttributes`, `pi:DescribeDimensionKeys` and `pi:GetResourceMetrics` to every key's IAM policy, plus the new statement for `*-alb-logs-*` buckets. A log bucket in another account must also grant the key in its bucket policy.
+
 ## [0.18.0] - 2026-11-11
 
 - Failover test runs go one test at a time, and each starts only when the whole environment is healthy again: ECS services, load balancer targets, databases, caches and stop alarms. A test whose targets aren't ready is skipped with the reason. Servers a failed test left stopped are started again. Only one test runs at a time in an environment, and production runs need an extra confirmation.

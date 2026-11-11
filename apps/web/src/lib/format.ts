@@ -7,6 +7,18 @@ export const formatTime = (iso: string, mode: TimeMode = 'utc'): string =>
     ...(mode === 'utc' ? { timeZone: 'UTC' } : {}),
   }).format(new Date(iso));
 
+/** Down to the second, for log lines: 11 Nov, 14:05:09. */
+export const formatPreciseTime = (iso: string, mode: TimeMode = 'utc'): string =>
+  new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+    ...(mode === 'utc' ? { timeZone: 'UTC' } : {}),
+  }).format(new Date(iso));
+
 const offsetLabel = (offsetMinutes: number): string => {
   const hours = Math.trunc(Math.abs(offsetMinutes) / 60);
   const minutes = Math.abs(offsetMinutes) % 60;

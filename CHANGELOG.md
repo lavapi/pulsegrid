@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- Load balancer pages have a Request log tab: every HTTP request from the load balancer's access logs in S3, with filters by time, host, path, status, service, response time and user agent, newest first. A summary shows requests, 5xx rate, p50/p95/p99 response time, the busiest paths and hosts, and requests with no target. A TLS connections view reads the connection logs. Only the files overlapping the range are read, streamed and never stored. When a log bucket in another account hasn't granted access, the tab shows the exact ARN to grant.
+- Database pages have a Query activity tab: Top SQL from Performance Insights for each instance, the PostgreSQL log from CloudWatch Logs filtered by severity and text, and slow queries once `log_min_duration_statement` is set.
+- A **See query strings and values in logs** permission, which Admins have. Without it, paths lose their query string and values in statements are replaced with `?`.
+
+### Changed
+
+- **View service logs** is now **View logs**, and also covers the Request log and Query activity.
+- The AWS policy adds `elasticloadbalancing:DescribeLoadBalancerAttributes`, `pi:DescribeDimensionKeys`, `pi:GetResourceMetrics`, and `s3:ListBucket` and `s3:GetObject` limited to `*-alb-logs-*` buckets.
+
 ## [0.18.0] - 2026-11-11
 
 ### Added

@@ -8,7 +8,8 @@ export const WORKSPACE_PERMISSIONS = {
   'team.view': { label: 'View the team and roles' },
   'integrations.manage': { label: 'Manage integrations' },
   'environments.manage': { label: 'Manage environments' },
-  'logs.read': { label: 'View service logs' },
+  'logs.read': { label: 'View logs' },
+  'logs.sensitive': { label: 'See query strings and values in logs' },
 } as const;
 
 /** Permissions that act on an environment. Each is granted separately for staging and for production. */
