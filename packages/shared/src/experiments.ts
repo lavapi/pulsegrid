@@ -86,7 +86,7 @@ export interface ExperimentDetail extends ExperimentSummary {
 /** The most templates one group or one run can hold, to stay under AWS's limit on experiments running at once. */
 export const EXPERIMENT_RUN_LIMIT = 25;
 export const EXPERIMENT_GROUP_NAME_LIMIT = 60;
-export const RUN_ALL_LABEL = 'All experiments';
+export const RUN_ALL_LABEL = 'All tests';
 
 export interface ExperimentTemplateRef {
   region: string;
@@ -122,15 +122,137 @@ export interface ExperimentRunSummary {
   failed: number;
 }
 
+export const TEST_RESULTS = ['passed', 'stopped', 'failed'] as const;
+
+export type TestResult = (typeof TEST_RESULTS)[number];
+
+/** A run's result: a test result once every test has ended, or running, or unknown when AWS lost a result. */
+export type RunResult = TestResult | 'running' | 'unknown';
+
+export const RUN_RESULTS: readonly RunResult[] = [...TEST_RESULTS, 'running', 'unknown'];
+
+const RESULT_BY_STATE: Partial<Record<ExperimentState, TestResult>> = {
+  completed: 'passed',
+  stopped: 'stopped',
+  failed: 'failed',
+  cancelled: 'failed',
+};
+
+/** The result of an ended test, or null while it's still active. */
+export const testResult = (state: ExperimentState): TestResult | null => RESULT_BY_STATE[state] ?? null;
+
+/** Passed only when every test completed; any failure or test that didn't start fails the run. */
+export const runResult = (results: readonly RunResult[], notStarted: number): RunResult => {
+  if (results.includes('running')) {
+    return 'running';
+  }
+  if (notStarted > 0 || results.includes('failed')) {
+    return 'failed';
+  }
+  if (results.includes('unknown')) {
+    return 'unknown';
+  }
+  return results.includes('stopped') ? 'stopped' : 'passed';
+};
+
+export interface ExperimentReportDetails {
+  description: string | null;
+  steps: ExperimentStepState[];
+  targets: ExperimentTarget[];
+  stopAlarms: string[];
+  /** Resources the test picked, by provider ID. */
+  resourceIds: string[];
+}
+
+export interface RunItemReport {
+  id: string;
+  result: TestResult;
+  reason: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  steps: ExperimentStepState[];
+}
+
 export interface ExperimentRunItemState extends ExperimentRunItem {
   /** The live state in AWS, or null when it didn't start or AWS no longer has it. */
   state: ExperimentState | null;
+  /** The saved report once the test has ended. */
+  report: RunItemReport | null;
 }
 
 export interface ExperimentRunDetail extends Omit<ExperimentRunSummary, 'started' | 'failed'> {
+  accountName: string;
+  environmentName: string | null;
+  result: RunResult;
+  endedAt: string | null;
   items: ExperimentRunItemState[];
+  /** Every known resource the run's tests picked. */
+  resources: ExperimentResource[];
   access: ExperimentAccess;
   error: string | null;
+}
+
+export interface ExperimentReport {
+  id: string;
+  experimentId: string;
+  region: string;
+  templateId: string;
+  label: string;
+  description: string | null;
+  accountId: string;
+  accountName: string;
+  environmentName: string | null;
+  production: boolean;
+  startedBy: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  state: ExperimentState;
+  result: TestResult;
+  reason: string | null;
+  steps: ExperimentStepState[];
+  targets: ExperimentTarget[];
+  stopAlarms: string[];
+  resources: ExperimentResource[];
+  /** The group run or Run all this test was part of. */
+  run: { id: string; label: string } | null;
+}
+
+export interface RunCounts {
+  total: number;
+  passed: number;
+  stopped: number;
+  failed: number;
+  notStarted: number;
+}
+
+export interface TestHistoryEntry {
+  kind: 'run' | 'test';
+  /** The run's ID, or the report's ID for a single test. */
+  id: string;
+  label: string;
+  /** The cloud account the run or test belongs to. */
+  accountId: string;
+  accountName: string;
+  environmentName: string | null;
+  startedBy: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  result: RunResult;
+  counts: RunCounts | null;
+}
+
+export interface TestHistoryFilter {
+  environment?: string;
+  label?: string;
+  result?: RunResult;
+  from?: string;
+  to?: string;
+}
+
+export interface TestHistory {
+  entries: TestHistoryEntry[];
+  environments: string[];
+  labels: string[];
 }
 
 export interface StartedExperimentRun {

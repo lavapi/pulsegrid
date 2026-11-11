@@ -2,7 +2,9 @@ import type {
   ActionRunStatus,
   CloudAccountStatus,
   DomainKind,
+  ExperimentReportDetails,
   ExperimentRunItem,
+  ExperimentState,
   ExperimentTemplateRef,
   ResourceHealth,
   ResourceType,
@@ -132,6 +134,26 @@ export interface ExperimentRunsTable {
   started_at: CreatedAt;
 }
 
+export interface ExperimentReportsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  cloud_account_id: string;
+  region: string;
+  experiment_id: string;
+  template_id: string;
+  label: string;
+  account_name: string;
+  environment_name: string | null;
+  is_production: boolean;
+  started_by_email: string | null;
+  state: ExperimentState;
+  reason: string | null;
+  started_at: Date | null;
+  ended_at: Date | null;
+  details: ColumnType<ExperimentReportDetails, string, never>;
+  created_at: CreatedAt;
+}
+
 export interface EnvironmentsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -254,6 +276,7 @@ export interface Database {
   environment_domains: EnvironmentDomainsTable;
   experiment_groups: ExperimentGroupsTable;
   experiment_runs: ExperimentRunsTable;
+  experiment_reports: ExperimentReportsTable;
   roles: RolesTable;
   role_permissions: RolePermissionsTable;
   action_runs: ActionRunsTable;

@@ -58,4 +58,23 @@ export interface ResourceLoad {
 
 export const loadRange = (id: string): LoadRange | undefined => LOAD_RANGES.find((range) => range.id === id);
 
+/** A fixed stretch of time to show load for, such as a failover test and the minutes around it. */
+export interface LoadWindow {
+  from: string;
+  to: string;
+}
+
+export const LOAD_WINDOW_MAX_MINUTES = 10_080;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** CloudWatch keeps 1-minute data for 15 days and 5-minute data for 63, so older or longer windows use coarser points. */
+export const windowPeriodSeconds = (since: Date, until: Date, now = new Date()): number => {
+  const minutes = (until.getTime() - since.getTime()) / 60_000;
+  const ageDays = (now.getTime() - since.getTime()) / DAY_MS;
+  const byLength = minutes <= 360 ? 60 : minutes <= 1440 ? 300 : 3600;
+  const byAge = ageDays > 63 ? 3600 : ageDays > 15 ? 300 : 60;
+  return Math.max(byLength, byAge);
+};
+
 export const supportsLoad = (type: ResourceType): boolean => LOAD_RESOURCE_TYPES.includes(type);

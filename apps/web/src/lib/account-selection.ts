@@ -30,8 +30,8 @@ export const pathAfterSwitch = (pathname: string): string | null => {
   if (section === 'pipelines' && service === 'apps' && resource && segments.length > 4) {
     return `/pipelines/apps/${resource}`;
   }
-  if (section === 'experiments' && service) {
-    return '/experiments';
+  if (section === 'failover-tests' && service) {
+    return '/failover-tests';
   }
   return section === 'infrastructure' && service && resource ? `/infrastructure/${service}` : null;
 };

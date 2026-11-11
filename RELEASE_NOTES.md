@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-11
+
+- Fault experiments are now **Failover tests**. Old links and existing roles keep working.
+- Every failover test now gets a report when it ends, and a group run or Run all gets one report for the whole run, with every test, one timeline and the load on what they hit. **Test history** keeps them all, filterable and exportable to CSV. Run `pnpm db:migrate` after updating.
+
 ## [0.13.0] - 2026-11-10
 
 - Production is now controlled by roles instead of being read-only for everyone. Each action has a staging and a production permission under **Roles**. Nothing changes until you tick production permissions on a role; the super admin already has them.

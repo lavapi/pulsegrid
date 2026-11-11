@@ -38,6 +38,12 @@ const nextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
+  async redirects() {
+    return [
+      { source: '/experiments', destination: '/failover-tests', permanent: true },
+      { source: '/experiments/:path*', destination: '/failover-tests/:path*', permanent: true },
+    ];
+  },
   async rewrites() {
     return [
       {

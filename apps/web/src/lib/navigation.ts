@@ -33,7 +33,7 @@ export const MAIN_NAV: NavItem[] = [
   { href: '/infrastructure', label: 'Infrastructure', icon: Server },
   { href: '/pipelines', label: 'Pipelines', icon: GitBranch },
   { href: '/releases', label: 'Releases', icon: Rocket },
-  { href: '/experiments', label: 'Experiments', icon: FlaskConical },
+  { href: '/failover-tests', label: 'Failover tests', icon: FlaskConical },
   { href: '/costs', label: 'Costs', icon: CircleDollarSign, permission: 'costs.view' },
   { href: '/activity', label: 'Activity', icon: History, permission: 'activity.view' },
 ];

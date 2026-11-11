@@ -8,6 +8,7 @@ import {
 import { type Job, Worker } from 'bullmq';
 import { APP_CONFIG, type AppConfig } from '../../config/app-config';
 import { createQueueConnection, queuePrefix } from '../../redis/redis-connection';
+import { ExperimentReportCapture } from '../experiments/experiment-report-capture';
 import { type AccountRef, InventorySyncService } from './inventory-sync.service';
 import { SyncProgressStore } from './sync-progress.store';
 import {
@@ -31,6 +32,7 @@ export class SyncWorker implements OnApplicationBootstrap, OnApplicationShutdown
     private readonly sync: InventorySyncService,
     private readonly queue: SyncQueue,
     private readonly progress: SyncProgressStore,
+    private readonly reports: ExperimentReportCapture,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -59,6 +61,7 @@ export class SyncWorker implements OnApplicationBootstrap, OnApplicationShutdown
     if (job.name === SYNC_ACCOUNT_JOB) {
       const account = job.data as AccountRef;
       await this.tracked(account, (reporter) => this.sync.syncAccount(account, reporter));
+      await this.reports.captureAccount(account);
     }
   }
 
