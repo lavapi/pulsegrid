@@ -5,7 +5,7 @@ import {
 } from '@aws-sdk/client-cloudwatch-logs';
 import { DescribeTaskDefinitionCommand, ECSClient } from '@aws-sdk/client-ecs';
 import type { LogLine } from '@pulsegrid/shared';
-import type { LogQuery, LogResult, LogSource } from '../provider';
+import type { LogResult, LogSource } from '../provider';
 import type { AwsKey } from './aws-key';
 
 const LINE_LIMIT = 500;
@@ -15,9 +15,16 @@ const FIRST_WINDOW_MS = 5 * 60 * 1000;
 const AWS_LOGS_DRIVER = 'awslogs';
 const MISSING_LOG_GROUP = 'ResourceNotFoundException';
 
-interface LogTarget {
+export interface LogTarget {
   group: string;
   prefix: string | undefined;
+}
+
+export interface LogWindow {
+  since: Date;
+  until: Date;
+  /** A CloudWatch Logs filter pattern. */
+  pattern: string | undefined;
 }
 
 const toLine = ({ eventId, timestamp, logStreamName, message }: FilteredLogEvent): LogLine => ({
@@ -49,7 +56,7 @@ const logTarget = async (
 const readWindow = async (
   client: CloudWatchLogsClient,
   { group, prefix }: LogTarget,
-  { search }: LogQuery,
+  pattern: string | undefined,
   start: number,
   end: number,
 ): Promise<LogLine[]> => {
@@ -63,7 +70,7 @@ const readWindow = async (
         startTime: start,
         endTime: end,
         limit: PAGE_SIZE,
-        filterPattern: search ? JSON.stringify(search) : undefined,
+        filterPattern: pattern,
         nextToken: token,
       }),
     );
@@ -76,25 +83,28 @@ const readWindow = async (
   return lines;
 };
 
-const readNewestFirst = async (
+/** The newest lines first, reading ever larger windows back in time until there are enough. Up to 500 lines. */
+export const readNewestFirst = async (
   client: CloudWatchLogsClient,
   target: LogTarget,
-  query: LogQuery,
+  { since, until, pattern }: LogWindow,
 ): Promise<LogLine[]> => {
-  const earliest = query.since.getTime();
-  let end = query.until.getTime();
+  const earliest = since.getTime();
+  let end = until.getTime();
   let size = FIRST_WINDOW_MS;
   let lines: LogLine[] = [];
   while (end > earliest && lines.length < LINE_LIMIT) {
     const start = Math.max(earliest, end - size);
-    lines = [...(await readWindow(client, target, query, start, end - 1)), ...lines];
+    lines = [...(await readWindow(client, target, pattern, start, end - 1)), ...lines];
     end = start;
     size *= 2;
   }
   return lines.slice(-LINE_LIMIT);
 };
 
-const isMissingGroup = (error: unknown): boolean => (error as Error).name === MISSING_LOG_GROUP;
+export const LOG_LINE_LIMIT = LINE_LIMIT;
+
+export const isMissingGroup = (error: unknown): boolean => (error as Error).name === MISSING_LOG_GROUP;
 
 export const AWS_LOG_SOURCE: LogSource<AwsKey> = {
   resourceType: 'ecs-service',
@@ -109,7 +119,14 @@ export const AWS_LOG_SOURCE: LogSource<AwsKey> = {
     }
     const client = new CloudWatchLogsClient({ region, credentials });
     try {
-      return { available: true, lines: await readNewestFirst(client, target, query) };
+      return {
+        available: true,
+        lines: await readNewestFirst(client, target, {
+          since: query.since,
+          until: query.until,
+          pattern: query.search ? JSON.stringify(query.search) : undefined,
+        }),
+      };
     } catch (error) {
       if (isMissingGroup(error)) {
         return { available: false, lines: [] };

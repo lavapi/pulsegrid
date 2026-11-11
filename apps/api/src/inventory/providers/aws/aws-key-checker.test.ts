@@ -29,12 +29,14 @@ const clients: ReadStub[] = [
 const sts = mockClient(STSClient);
 const iam = mockClient(IAMClient);
 
-const decisions = (allowed: (action: string) => boolean) => ({
-  EvaluationResults: AWS_ACTIONS.map((action) => ({
-    EvalActionName: action,
-    EvalDecision: allowed(action) ? PolicyEvaluationDecisionType.ALLOWED : PolicyEvaluationDecisionType.IMPLICIT_DENY,
-  })),
-});
+const decisions =
+  (allowed: (action: string) => boolean) =>
+  ({ ActionNames = [] }: { ActionNames?: string[] }) => ({
+    EvaluationResults: ActionNames.map((action) => ({
+      EvalActionName: action,
+      EvalDecision: allowed(action) ? PolicyEvaluationDecisionType.ALLOWED : PolicyEvaluationDecisionType.IMPLICIT_DENY,
+    })),
+  });
 
 describe('checkAwsKey', () => {
   beforeEach(() => {
@@ -48,14 +50,24 @@ describe('checkAwsKey', () => {
   });
 
   it('lists the policy actions a key lacks', async () => {
-    iam.on(SimulatePrincipalPolicyCommand).resolves(decisions((action) => !action.startsWith('fis:Start')));
+    iam.on(SimulatePrincipalPolicyCommand).callsFake(decisions((action) => !action.startsWith('fis:Start')));
     const check = await checkAwsKey(KEY, 'eu-central-1');
     expect(check.missingActions).toEqual(['fis:StartExperiment']);
   });
 
   it('reports nothing missing for the full policy', async () => {
-    iam.on(SimulatePrincipalPolicyCommand).resolves(decisions(() => true));
+    iam.on(SimulatePrincipalPolicyCommand).callsFake(decisions(() => true));
     expect((await checkAwsKey(KEY, 'eu-central-1')).missingActions).toEqual([]);
+  });
+
+  it('checks the log bucket statement against a log bucket, not every bucket', async () => {
+    iam.on(SimulatePrincipalPolicyCommand).callsFake(decisions((action) => action !== 's3:GetObject'));
+    expect((await checkAwsKey(KEY, 'eu-central-1')).missingActions).toEqual(['s3:GetObject']);
+    const calls = iam.commandCalls(SimulatePrincipalPolicyCommand).map(({ args }) => args[0].input);
+    expect(calls.find(({ ActionNames }) => ActionNames?.includes('s3:GetObject'))?.ResourceArns).toEqual([
+      'arn:aws:s3:::example-alb-logs-000000000000/AWSLogs/example.log.gz',
+    ]);
+    expect(AWS_ACTIONS).not.toContain('s3:GetObject');
   });
 
   it("says it couldn't check when the simulator is refused", async () => {

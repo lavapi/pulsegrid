@@ -1,5 +1,10 @@
 import type {
   CloudActivityEvent,
+  ConnectionLogEntry,
+  DatabaseLogLevel,
+  InstanceTopSql,
+  LogProblem,
+  RequestLogEntry,
   CloudPermission,
   CapacityFact,
   CredentialCheck,
@@ -152,6 +157,89 @@ export interface LogSource<Credentials extends CloudCredentials = CloudCredentia
   read(context: LogContext<Credentials>, query: LogQuery): Promise<LogResult>;
 }
 
+/** Logs can't be read, for a reason the person can act on, such as a bucket that hasn't granted access yet. */
+export class LogsUnreadable extends Error {
+  constructor(readonly problem: LogProblem) {
+    super(problem.message);
+    this.name = 'LogsUnreadable';
+  }
+}
+
+export interface RequestLogContext<Credentials extends CloudCredentials = CloudCredentials> {
+  credentials: Credentials;
+  region: string;
+  accountId: string;
+  resource: { nativeId: string; name: string };
+}
+
+export interface RequestLogRange<Entry> {
+  from: Date;
+  to: Date;
+  matches: (entry: Entry) => boolean;
+}
+
+export interface RequestLogPageQuery<Entry> extends RequestLogRange<Entry> {
+  /** Only entries older than this cursor, from the previous page. */
+  before: string | undefined;
+  limit: number;
+}
+
+export interface RequestLogPageResult<Entry> {
+  entries: Entry[];
+  older: string | null;
+}
+
+/** Reads a load balancer's request and connection logs on demand. Nothing is stored. */
+export interface RequestLogSource<Credentials extends CloudCredentials = CloudCredentials> {
+  resourceType: ResourceType;
+  requests(
+    context: RequestLogContext<Credentials>,
+    query: RequestLogPageQuery<RequestLogEntry>,
+  ): Promise<RequestLogPageResult<RequestLogEntry>>;
+  /** Visits every matching request in the range, newest files first; says whether it stopped before the end. */
+  scanRequests(
+    context: RequestLogContext<Credentials>,
+    range: RequestLogRange<RequestLogEntry>,
+    visit: (entry: RequestLogEntry) => void,
+  ): Promise<{ partial: boolean }>;
+  connections(
+    context: RequestLogContext<Credentials>,
+    query: RequestLogPageQuery<ConnectionLogEntry>,
+  ): Promise<RequestLogPageResult<ConnectionLogEntry>>;
+}
+
+export interface DatabaseActivityContext<Credentials extends CloudCredentials = CloudCredentials> {
+  credentials: Credentials;
+  region: string;
+  /** A cluster, or a single instance. */
+  resource: { type: ResourceType; name: string; details: Record<string, unknown> };
+}
+
+export interface DatabaseLogQuery {
+  since: Date;
+  until: Date;
+  /** What to read; slow is the lines log_min_duration_statement writes. */
+  level: DatabaseLogLevel | 'slow';
+}
+
+export interface RawDatabaseLogLine {
+  id: string;
+  time: string;
+  /** The instance that wrote the line. */
+  instance: string;
+  message: string;
+}
+
+/** Reads a database's busiest statements and its log on demand. */
+export interface DatabaseActivitySource<Credentials extends CloudCredentials = CloudCredentials> {
+  resourceTypes: readonly ResourceType[];
+  topSql(context: DatabaseActivityContext<Credentials>, since: Date, until: Date): Promise<InstanceTopSql[]>;
+  log(
+    context: DatabaseActivityContext<Credentials>,
+    query: DatabaseLogQuery,
+  ): Promise<{ lines: RawDatabaseLogLine[]; partial: boolean }>;
+}
+
 export interface MetricQuery {
   since: Date;
   until: Date;
@@ -297,6 +385,8 @@ export interface CloudProvider<Credentials extends CloudCredentials = CloudCrede
   secretStore?: SecretStore<Credentials>;
   activitySource?: ActivitySource<Credentials>;
   logSource?: LogSource<Credentials>;
+  requestLogSource?: RequestLogSource<Credentials>;
+  databaseActivitySource?: DatabaseActivitySource<Credentials>;
   metricSource?: MetricSource<Credentials>;
   experimentSource?: ExperimentSource<Credentials>;
   costSource?: CostSource<Credentials>;

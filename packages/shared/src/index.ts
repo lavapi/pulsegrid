@@ -5,6 +5,8 @@ export * from './tag-filter';
 export * from './cloud-activity';
 export * from './costs';
 export * from './logs';
+export * from './query-activity';
+export * from './request-logs';
 export * from './experiments';
 export * from './load';
 export * from './api';
