@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-11
+
 ### Added
 
 - Failover tests keep a report when they end, including tests started outside PulseGrid. A group run or Run all has one report for the whole run, with the overall result, every test's result and reason, one shared timeline and the Load charts of every database and cache the tests hit. Reports can be saved as PDF.
