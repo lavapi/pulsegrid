@@ -1,6 +1,6 @@
 region                  = "eu-central-1"
 hostname                = "pulsegrid.example.com"
-app_version             = "0.16.0"
+app_version             = "0.16.1"
 load_balancer_name      = "my-load-balancer"
 database_cluster        = "my-aurora-cluster"
 cache_replication_group = "my-cache"

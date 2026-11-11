@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-11-11
+
 - Fixed Overview and resource lists failing to load with "This page didn't load" after a force deploy, reboot or other cloud action.
 - Test history follows the account selected in the top bar, so staging and production history no longer mix.
 
