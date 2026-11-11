@@ -1,12 +1,12 @@
 'use client';
 
-import type { ExperimentTemplate, StartedExperiment, StartedExperimentRun } from '@pulsegrid/shared';
+import type { ExperimentTemplate, StartedExperiment } from '@pulsegrid/shared';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
 import { ConfirmButton } from '@/components/ui/confirm-button';
 import { apiSend, apiSendForJson } from '@/lib/browser-api';
-import { experimentPath, experimentRunPath } from '@/lib/experiments';
+import { experimentPath } from '@/lib/experiments';
 
 export function StartExperimentButton({ accountId, template }: { accountId: string; template: ExperimentTemplate }) {
   const router = useRouter();
@@ -65,54 +65,6 @@ export function StopExperimentButton({ accountId, region, id }: { accountId: str
       triggerVariant="danger"
       disabled={pending}
       onConfirm={stop}
-    />
-  );
-}
-
-interface RunExperimentsButtonProps {
-  accountId: string;
-  /** The group to run, or none to run every template. */
-  groupId?: string;
-  label: string;
-  templateLabels: string[];
-  triggerLabel: string;
-}
-
-export function RunExperimentsButton({
-  accountId,
-  groupId,
-  label,
-  templateLabels,
-  triggerLabel,
-}: RunExperimentsButtonProps) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-
-  const run = () =>
-    startTransition(async () => {
-      const { data, error } = await apiSendForJson<StartedExperimentRun>(
-        `/cloud/accounts/${accountId}/experiment-runs`,
-        'POST',
-        groupId ? { groupId } : {},
-      );
-      if (!data) {
-        toast.error(error ?? 'The tests did not start. Please try again.');
-        return;
-      }
-      toast.success('Failover tests started');
-      router.push(experimentRunPath(data.id));
-    });
-
-  return (
-    <ConfirmButton
-      label={triggerLabel}
-      title={`Start ${templateLabels.length} failover tests?`}
-      description={`This starts ${templateLabels.join(', ')} at the same time. Each deliberately breaks or slows the resources it targets until it finishes, a stop alarm fires, or someone stops it.`}
-      confirmLabel="Start tests"
-      triggerVariant="danger"
-      typeToConfirm={label}
-      disabled={pending || templateLabels.length === 0}
-      onConfirm={run}
     />
   );
 }

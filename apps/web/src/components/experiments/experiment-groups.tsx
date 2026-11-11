@@ -6,7 +6,8 @@ import {
   templateKey,
 } from '@pulsegrid/shared';
 import Link from 'next/link';
-import { DeleteGroupButton, RunExperimentsButton } from '@/components/experiments/experiment-buttons';
+import { DeleteGroupButton } from '@/components/experiments/experiment-buttons';
+import { RunTestsButton } from '@/components/experiments/run-tests-dialog';
 import { ExperimentGroupDialog } from '@/components/experiments/experiment-group-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -19,7 +20,7 @@ const labelsOf = (group: ExperimentGroup, templates: readonly ExperimentTemplate
 };
 
 const runOutcome = ({ started, failed }: ExperimentRunSummary): string =>
-  failed === 0 ? `${started} started` : `${started} started · ${failed} didn't start`;
+  failed === 0 ? `${started} started so far` : `${started} started · ${failed} didn't start`;
 
 interface GroupsProps {
   accountId: string;
@@ -32,7 +33,7 @@ export function ExperimentGroups({ accountId, view }: GroupsProps) {
     <Card>
       <CardHeader
         title="Groups"
-        description="Start several templates at the same time, in one click."
+        description="Run several templates in one click, in waves that fit what AWS allows at once."
         action={
           access.canRun &&
           templates.length > 0 && (
@@ -65,11 +66,13 @@ export function ExperimentGroups({ accountId, view }: GroupsProps) {
                       group={group}
                       trigger={<Button size="sm">Edit</Button>}
                     />
-                    <RunExperimentsButton
+                    <RunTestsButton
                       accountId={accountId}
                       groupId={group.id}
                       label={group.name}
                       templateLabels={labels}
+                      regions={[...new Set(group.templates.map(({ region }) => region))]}
+                      rememberedWaveSize={group.waveSize}
                       triggerLabel="Run group"
                     />
                   </span>

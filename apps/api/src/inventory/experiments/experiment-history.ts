@@ -6,7 +6,7 @@ import {
   testResult,
 } from '@pulsegrid/shared';
 import { type ReportRow, reportKey } from './experiment-report.store';
-import { type OutcomeItem, runOutcome } from './run-outcome';
+import { didNotStart, type OutcomeItem, runOutcome } from './run-outcome';
 
 /** AWS stops every test within 12 hours, so a run older than that with a missing result has lost it. */
 const LONGEST_TEST_MS = 12 * 60 * 60 * 1000;
@@ -30,16 +30,20 @@ const countsOf = (items: readonly OutcomeItem[]): RunCounts => {
     passed: count('passed'),
     stopped: count('stopped'),
     failed: count('failed'),
-    notStarted: items.filter(({ experimentId }) => experimentId === null).length,
+    notStarted: items.filter(didNotStart).length,
+    waiting: items.filter(({ waiting }) => waiting).length,
+    cancelled: items.filter(({ cancelled }) => cancelled).length,
   };
 };
 
 const runEntry = (run: HistoryRun, reports: ReadonlyMap<string, ReportRow>, now: Date): TestHistoryEntry => {
   const recent = now.getTime() - run.started_at.getTime() < LONGEST_TEST_MS;
-  const items = run.items.map(({ region, experimentId }): OutcomeItem => {
+  const items = run.items.map(({ region, experimentId, waiting, cancelled }): OutcomeItem => {
     const report = experimentId ? reports.get(reportKey(region, experimentId)) : undefined;
     return {
       experimentId,
+      waiting,
+      cancelled,
       state: report?.state ?? (experimentId && recent ? 'running' : null),
       report: report
         ? { result: testResult(report.state) ?? 'failed', endedAt: report.ended_at?.toISOString() ?? null }
@@ -118,6 +122,7 @@ const CSV_HEADER = [
   'Stopped',
   'Failed',
   "Didn't start",
+  'Cancelled',
 ];
 
 const csvCell = (value: string | number | null): string => {
@@ -147,6 +152,7 @@ export const historyCsv = (entries: readonly TestHistoryEntry[]): string =>
       entry.counts?.stopped ?? null,
       entry.counts?.failed ?? null,
       entry.counts?.notStarted ?? null,
+      entry.counts?.cancelled ?? null,
     ]),
   ]
     .map((row) => row.map(csvCell).join(','))

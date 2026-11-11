@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { experimentPath, experimentRunPath, formatDuration, formatStepDuration, historyRunPath, reportWindow, stateLabel, stateTone } from './experiments';
+import { experimentPath, experimentRunPath, formatDuration, waveChoice, formatStepDuration, historyRunPath, reportWindow, stateLabel, stateTone } from './experiments';
 
 describe('experiment helpers', () => {
   it('colours states by what they mean', () => {
@@ -43,5 +43,26 @@ describe('reports', () => {
       to: '2026-11-11T10:25:00.000Z',
     });
     expect(reportWindow(null, null, now)).toBeNull();
+  });
+});
+
+describe('waveChoice', () => {
+  const capacity = [
+    { region: 'eu-central-1', quota: 5, quotaKnown: true, running: 1 },
+    { region: 'eu-west-1', quota: 10, quotaKnown: true, running: 0 },
+  ];
+
+  it('suggests the free slots in the run regions', () => {
+    expect(waveChoice(capacity, ['eu-central-1'], 11, null)).toEqual({ suggested: 4, max: 5, free: 4 });
+  });
+
+  it('prefers the group last choice, within the limits', () => {
+    expect(waveChoice(capacity, ['eu-central-1'], 11, 2).suggested).toBe(2);
+    expect(waveChoice(capacity, ['eu-central-1'], 3, 9)).toMatchObject({ suggested: 3, max: 3 });
+  });
+
+  it('never suggests less than one, even when the account is full', () => {
+    const full = [{ region: 'eu-central-1', quota: 5, quotaKnown: false, running: 5 }];
+    expect(waveChoice(full, ['eu-central-1'], 4, null)).toEqual({ suggested: 1, max: 4, free: 0 });
   });
 });

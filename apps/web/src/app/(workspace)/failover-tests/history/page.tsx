@@ -1,5 +1,5 @@
 import type { TestHistory, TestHistoryEntry } from '@pulsegrid/shared';
-import { History } from 'lucide-react';
+import { ArrowLeft, History } from 'lucide-react';
 import Link from 'next/link';
 import { ResultBadge } from '@/components/experiments/experiment-parts';
 import { HistoryFilters } from '@/components/experiments/history-filters';
@@ -26,6 +26,8 @@ const countsOf = ({ counts }: TestHistoryEntry): string | null => {
     counts.stopped && `${counts.stopped} stopped`,
     counts.failed && `${counts.failed} failed`,
     counts.notStarted && `${counts.notStarted} didn't start`,
+    counts.cancelled && `${counts.cancelled} cancelled`,
+    counts.waiting && `${counts.waiting} waiting`,
   ];
   return parts.filter(Boolean).join(' · ');
 };
@@ -44,6 +46,13 @@ export default async function TestHistoryPage({
 
   return (
     <>
+      <Link
+        href="/failover-tests"
+        className="inline-flex w-fit items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground print:hidden"
+      >
+        <ArrowLeft className="size-3.5" aria-hidden="true" />
+        Failover tests
+      </Link>
       <PageHeader
         title="Test history"
         description="Every failover test that has ended, in every account. Group runs and Run all show as one entry."

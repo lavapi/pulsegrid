@@ -1,4 +1,4 @@
-import type { ExperimentRunDetail, StartedExperimentRun } from '@pulsegrid/shared';
+import type { ExperimentCapacity, ExperimentRunDetail, StartedExperimentRun } from '@pulsegrid/shared';
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
@@ -25,7 +25,13 @@ export class ExperimentRunsController {
     @Body(new ZodPipe(runSchema, INVALID_REQUEST)) body: z.infer<typeof runSchema>,
     @Req() request: Request,
   ): Promise<StartedExperimentRun> {
-    return this.runs.start(auth, id, body.groupId, request.ip);
+    return this.runs.start(auth, id, body, request.ip);
+  }
+
+  @Get('capacity')
+  @Throttle(READ_LIMIT)
+  capacity(@CurrentAuth() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string): Promise<ExperimentCapacity[]> {
+    return this.runs.capacity(auth, id);
   }
 
   @Get(':runId')

@@ -8,12 +8,13 @@ import { type ExperimentTarget, ExperimentGateway } from './experiment-gateway';
 
 const GROUP_MISSING = 'That test group no longer exists.';
 const NAME_TAKEN = 'A group with that name already exists.';
+const GROUP_COLUMNS = ['id', 'name', 'templates', 'wave_size as waveSize'] as const;
 const REGION_NOT_SYNCED = "A template is in a region this account doesn't sync.";
 
 export const listGroups = (trx: TenantTransaction, accountId: string): Promise<ExperimentGroup[]> =>
   trx
     .selectFrom('experiment_groups')
-    .select(['id', 'name', 'templates'])
+    .select(GROUP_COLUMNS)
     .where('cloud_account_id', '=', accountId)
     .orderBy('name')
     .execute();
@@ -25,7 +26,7 @@ export const findGroup = async (
 ): Promise<ExperimentGroup> => {
   const row = await trx
     .selectFrom('experiment_groups')
-    .select(['id', 'name', 'templates'])
+    .select(GROUP_COLUMNS)
     .where('cloud_account_id', '=', accountId)
     .where('id', '=', groupId)
     .executeTakeFirst();
@@ -59,7 +60,7 @@ export class ExperimentGroupsService {
             name: input.name,
             templates: JSON.stringify(input.templates),
           })
-          .returning(['id', 'name', 'templates'])
+          .returning(GROUP_COLUMNS)
           .executeTakeFirstOrThrow(),
       ),
     );
@@ -82,7 +83,7 @@ export class ExperimentGroupsService {
           .updateTable('experiment_groups')
           .set({ name: input.name, templates: JSON.stringify(input.templates) })
           .where('id', '=', groupId)
-          .returning(['id', 'name', 'templates'])
+          .returning(GROUP_COLUMNS)
           .executeTakeFirstOrThrow();
       }),
     );

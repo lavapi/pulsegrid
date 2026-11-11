@@ -18,7 +18,7 @@ import { apiGet, getCurrentUser } from '@/lib/server-api';
 const RESULT_NOTES = {
   passed: 'Every test completed.',
   failed: "At least one test failed or didn't start.",
-  stopped: 'At least one test was stopped before it finished.',
+  stopped: 'At least one test was stopped before it finished, or cancelled before it started.',
   unknown: 'AWS no longer has the result of at least one test.',
   running: 'Tests are still running.',
 } as const;
@@ -33,6 +33,12 @@ const timelineRow = (item: ExperimentRunItemState): TimelineRow => ({
 });
 
 function ItemStatus({ item }: { item: ExperimentRunItemState }) {
+  if (item.waiting) {
+    return <Badge tone="neutral">Waiting</Badge>;
+  }
+  if (item.cancelled) {
+    return <Badge tone="neutral">Cancelled</Badge>;
+  }
   if (item.error) {
     return (
       <Badge tone="danger" dot>
@@ -55,7 +61,10 @@ const itemLink = (item: ExperimentRunItemState): string | null => {
 
 function ItemRow({ item }: { item: ExperimentRunItemState }) {
   const link = itemLink(item);
-  const reason = item.error ?? item.report?.reason;
+  const reason =
+    item.error ??
+    item.report?.reason ??
+    (item.waiting ? 'Starts when a slot frees up.' : item.cancelled ? 'Stop all cancelled it before it started.' : null);
   const startedAt = item.report?.startedAt ?? null;
   const endedAt = item.report?.endedAt ?? null;
   return (
@@ -106,6 +115,7 @@ export default async function ExperimentRunPage({
   ]);
   const running = run.result === 'running';
   const ended = run.items.filter(({ report }) => report);
+  const waiting = run.items.filter((item) => item.waiting).length;
 
   return (
     <>
@@ -133,7 +143,7 @@ export default async function ExperimentRunPage({
       />
       {run.error && <p className="text-sm text-danger">{run.error}</p>}
       <Card>
-        <dl className="grid gap-4 p-5 text-[13px] sm:grid-cols-3 lg:grid-cols-6">
+        <dl className="grid gap-4 p-5 text-[13px] sm:grid-cols-2 lg:grid-cols-4 [&_dd]:break-words">
           <Fact label="Environment">{run.environmentName ?? 'None'}</Fact>
           <Fact label="Account">{run.accountName}</Fact>
           <Fact label="Started by">{run.startedBy ?? '—'}</Fact>
@@ -142,9 +152,11 @@ export default async function ExperimentRunPage({
           </Fact>
           <Fact label="Ended">{run.endedAt ? <Time value={run.endedAt} withZone /> : '—'}</Fact>
           <Fact label="Duration">{formatDuration(run.startedAt, run.endedAt) ?? '—'}</Fact>
+          <Fact label="Tests at a time">{run.waveSize ?? 'All at once'}</Fact>
         </dl>
         <p className="border-t px-5 py-3 text-[13px] text-muted-foreground">
-          {ended.length} of {run.items.length} tests have ended. {RESULT_NOTES[run.result]}
+          {ended.length} of {run.items.length} tests have ended
+          {waiting > 0 && `, ${waiting} waiting for a slot`}. {RESULT_NOTES[run.result]}
         </p>
       </Card>
       <Card className="overflow-x-auto">

@@ -1,7 +1,8 @@
 import { type ExperimentsView, type ExperimentTemplate, RUN_ALL_LABEL } from '@pulsegrid/shared';
 import { FlaskConical, History } from 'lucide-react';
 import Link from 'next/link';
-import { RunExperimentsButton, StartExperimentButton } from '@/components/experiments/experiment-buttons';
+import { StartExperimentButton } from '@/components/experiments/experiment-buttons';
+import { RunTestsButton } from '@/components/experiments/run-tests-dialog';
 import { ExperimentGroups, RecentRuns } from '@/components/experiments/experiment-groups';
 import { StateBadge, StepSummary, StopAlarms, TargetList } from '@/components/experiments/experiment-parts';
 import { Button } from '@/components/ui/button';
@@ -83,10 +84,11 @@ export default async function ExperimentsPage() {
               </Link>
             </Button>
             {view.access.canRun && view.templates.length > 0 && (
-              <RunExperimentsButton
+              <RunTestsButton
                 accountId={selected.id}
                 label={RUN_ALL_LABEL}
                 templateLabels={view.templates.map(({ label }) => label)}
+                regions={[...new Set(view.templates.map(({ region }) => region))]}
                 triggerLabel="Run all"
               />
             )}
