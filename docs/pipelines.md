@@ -62,7 +62,7 @@ Services that use ECS's own blue/green, canary or linear deployments show the tr
 |---|---|
 | **ECS Fargate blue/green** (or canary, linear) | Green scales up; the line shows the stage ECS reports |
 | **Ready** | Green serves test traffic, so you can test it before production moves |
-| **Live** | Production traffic is on green and the bake time is over |
+| **Live** | Live traffic is on green and the bake time is over |
 
 A rollback shows as failed with ECS's reason, for example **Rolled back: alarm fired**. Matching a deployment to a run uses the green revision's image tag, as above. Reading these needs `ecs:ListServiceDeployments`, `ecs:DescribeServiceDeployments` and `ecs:DescribeServiceRevisions`, which are in the PulseGrid policy; without them, the line falls back to the rolling view. Deployments managed by CodeDeploy aren't covered.
 

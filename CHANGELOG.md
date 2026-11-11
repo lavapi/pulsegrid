@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Changed
+
+- Blue/green cards and Releases say live traffic where ECS says production traffic, so it isn't mistaken for the production environment, and "1 of 1 task running" reads correctly.
+
 ## [0.16.1] - 2026-11-11
 
 ### Fixed
