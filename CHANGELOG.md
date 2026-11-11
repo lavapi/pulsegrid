@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-11
+
 ### Added
 
 - Load balancer pages have a Request log tab: every HTTP request from the load balancer's access logs in S3, with filters by time, host, path, status, service, response time and user agent, newest first. A summary shows requests, 5xx rate, p50/p95/p99 response time, the busiest paths and hosts, and requests with no target. A TLS connections view reads the connection logs. Only the files overlapping the range are read, streamed and never stored. When a log bucket in another account hasn't granted access, the tab shows the exact ARN to grant.
