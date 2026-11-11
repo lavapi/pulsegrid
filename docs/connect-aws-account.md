@@ -7,10 +7,100 @@ Everyone in the project sees its connected accounts. Dashboard roles control wha
 ## Create a key
 
 1. In the AWS account, create a dedicated IAM user for the dashboard. Don't use a personal user or an admin user.
-2. Attach the PulseGrid policy shown on the **AWS** integration page. Every account uses the same policy, production included. It allows the list and describe actions, logs and costs PulseGrid reads, and the actions it can take: force deploys, reboots, failover tests and app secret values. It can't read S3 files or create or delete resources. Who can take which action, in staging and in production, is set by roles in PulseGrid.
+2. Attach the [PulseGrid policy](#the-pulsegrid-policy), which is also shown on the **AWS** integration page. Every account uses the same policy, production included. It allows the list and describe actions, logs and costs PulseGrid reads, and the actions it can take: force deploys, reboots, failover tests and app secret values. It can't read S3 files or create or delete resources. Who can take which action, in staging and in production, is set by roles in PulseGrid.
 3. Create an access key for that user.
 
 Root account keys and temporary keys are refused.
+
+## The PulseGrid policy
+
+Every account uses this one policy, production included. Roles in PulseGrid decide who may take which action, in staging and in production.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecs:ListClusters",
+        "ecs:DescribeClusters",
+        "ecs:ListServices",
+        "ecs:DescribeServices",
+        "ecs:ListTagsForResource",
+        "ecs:DescribeTaskDefinition",
+        "logs:FilterLogEvents",
+        "cloudwatch:GetMetricData",
+        "fis:ListExperimentTemplates",
+        "fis:GetExperimentTemplate",
+        "fis:ListExperiments",
+        "fis:GetExperiment",
+        "fis:ListExperimentResolvedTargets",
+        "rds:DescribeDBInstances",
+        "rds:DescribeDBClusters",
+        "elasticache:DescribeReplicationGroups",
+        "elasticache:DescribeCacheClusters",
+        "elasticache:DescribeCacheSubnetGroups",
+        "elasticache:ListTagsForResource",
+        "cloudtrail:LookupEvents",
+        "ce:GetCostAndUsage",
+        "s3:ListAllMyBuckets",
+        "s3:GetBucketLocation",
+        "s3:GetBucketTagging",
+        "secretsmanager:ListSecrets",
+        "ec2:DescribeInstances",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeRouteTables",
+        "elasticloadbalancing:DescribeLoadBalancers",
+        "elasticloadbalancing:DescribeTags",
+        "elasticloadbalancing:DescribeTargetGroups",
+        "elasticloadbalancing:DescribeTargetHealth",
+        "iam:SimulatePrincipalPolicy",
+        "ecs:UpdateService",
+        "rds:RebootDBInstance",
+        "elasticache:RebootCacheCluster",
+        "ec2:RebootInstances",
+        "ec2:DescribeInstanceStatus",
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:PutSecretValue",
+        "fis:StartExperiment",
+        "fis:StopExperiment"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+| Actions | Used for |
+|---|---|
+| `ecs:` list and describe, `ecs:ListTagsForResource`, `ecs:DescribeTaskDefinition` | Inventory, the map, Releases, and log settings |
+| `rds:DescribeDBInstances`, `rds:DescribeDBClusters` | Inventory and capacity |
+| `elasticache:` describe and `ListTagsForResource` | Inventory, capacity and tag filters |
+| `ec2:` describe actions | Servers, VPCs, subnets, security groups and the map |
+| `s3:ListAllMyBuckets`, `s3:GetBucketLocation`, `s3:GetBucketTagging` | Buckets and tag filters. Files in buckets are never read. |
+| `elasticloadbalancing:` describe actions | Load balancers, target health and tag filters |
+| `secretsmanager:ListSecrets` | Secret names and details |
+| `logs:FilterLogEvents` | [Service logs](#service-logs) |
+| `cloudwatch:GetMetricData` | [Load](#load) charts, including those in failover test reports |
+| `cloudtrail:LookupEvents` | [AWS activity](#aws-activity) and changes made outside PulseGrid |
+| `ce:GetCostAndUsage` | [Costs](#costs) |
+| `fis:` list and get actions | [Failover tests](#failover-tests), reports and history |
+| `fis:StartExperiment`, `fis:StopExperiment` | Starting and stopping tests, groups, Run all and Stop all |
+| `ecs:UpdateService` | Force deploy |
+| `rds:RebootDBInstance`, `elasticache:RebootCacheCluster`, `ec2:RebootInstances` | Reboots |
+| `ec2:DescribeInstanceStatus` | Checking that a rebooted server came back |
+| `secretsmanager:GetSecretValue`, `secretsmanager:PutSecretValue` | Showing and changing [app secret](#app-secrets) values |
+| `iam:SimulatePrincipalPolicy` | Testing a key for missing or extra permissions |
+
+Two things sit outside this policy:
+
+- A secret encrypted with its own KMS key needs that key's policy to allow the IAM user.
+- Each FIS experiment template has its own role, which FIS uses to inject the faults. The key never gets those permissions.
+
+Pipelines use a GitHub token rather than AWS. It needs **Actions: Read and write**, **Contents: Read-only** and **Metadata: Read-only**. See [pipelines.md](pipelines.md). PulseGrid's own hosting needs nothing extra: Terraform creates the role it runs with. See [install-aws.md](install-aws.md).
 
 ## Add the account
 

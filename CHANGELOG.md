@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- `docs/connect-aws-account.md` lists the full PulseGrid IAM policy and what each action is for, and a test keeps it matching the policy the app shows.
+
 ## [0.14.0] - 2026-11-11
 
 ### Added
