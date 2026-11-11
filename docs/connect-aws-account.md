@@ -246,7 +246,7 @@ While tests are running, the page refreshes every 5 seconds and **Stop all** sto
 
 A single test's report has the same parts for that one test. **Save as PDF** on either page opens the print dialog with the report laid out for printing; choose **Save as PDF** there.
 
-**Test history**, linked from the Failover tests page, lists every report in the project, newest first. A group run or Run all is one entry, with a count such as "4 tests · 3 passed · 1 stopped"; tests started on their own are their own entries. Filter by environment, test or group, result and dates, so you can compare the same group over time, and **Export CSV** downloads what's shown.
+**Test history**, linked from the Failover tests page, lists the reports of the account selected in the top bar, newest first, so staging and production history stay apart. A group run or Run all is one entry, with a count such as "4 tests · 3 passed · 1 stopped"; tests started on their own are their own entries. Filter by test or group, result and dates, so you can compare the same group over time, and **Export CSV** downloads what's shown.
 
 Reports are kept in PulseGrid until someone with **Manage environments** deletes them, so history outlives AWS, which drops experiments after about 120 days. Deleting a run deletes the reports of its tests too. Everyone can see reports. Load charts are read from CloudWatch when a report is opened. CloudWatch keeps 1-minute points for 15 days, then 5-minute points until 63 days and hourly points after that, so older reports show coarser charts.
 

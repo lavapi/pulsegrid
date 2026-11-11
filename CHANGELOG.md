@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-11-11
+
+### Fixed
+
+- Overview and resource lists no longer fail to load while a cloud action is in progress or recently finished. A test now catches server pages that call code meant only for the browser.
+- Test history and its CSV export show only the account selected in the top bar, so staging and production history no longer mix.
+
 ## [0.16.0] - 2026-11-11
 
 ### Added

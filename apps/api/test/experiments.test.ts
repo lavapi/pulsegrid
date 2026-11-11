@@ -352,7 +352,8 @@ describe('failover tests', () => {
   });
   describe('reports', () => {
     const runs = (accountId: string) => `/api/cloud/accounts/${accountId}/experiment-runs`;
-    const history = (query = '', cookie = viewer) => http().get(`/api/experiment-reports${query}`).set('Cookie', cookie);
+    const history = (accountId: string, query = '', cookie = viewer) =>
+      http().get(`/api/experiment-reports?account=${accountId}${query}`).set('Cookie', cookie);
     const capture = (accountId: string) =>
       context.app.get(ExperimentReportCapture).captureAccount({ tenantId: context.acme.tenant.id, accountId });
     const reportCount = async (accountId: string) =>
@@ -378,7 +379,7 @@ describe('failover tests', () => {
         .select('id')
         .where('experiment_id', '=', 'OUT1')
         .executeTakeFirstOrThrow();
-      const { body } = await history();
+      const { body } = await history(id);
       const entry = body.entries.find(({ id: entryId }: { id: string }) => entryId === saved.id);
       expect(entry).toMatchObject({ kind: 'test', label: 'Database failover', result: 'passed', startedBy: null });
       const { body: report } = await http().get(`/api/experiment-reports/${saved.id}`).set('Cookie', viewer).expect(200);
@@ -400,7 +401,7 @@ describe('failover tests', () => {
       expect(done.items[1].report).toMatchObject({ reason: 'Experiment stopped by stop condition.' });
       expect(await reportCount(id)).toBe(2);
 
-      const { body } = await history('?label=All%20tests');
+      const { body } = await history(id, '&label=All%20tests');
       expect(body.entries[0]).toMatchObject({
         kind: 'run',
         id: started.id,
@@ -414,16 +415,41 @@ describe('failover tests', () => {
       expect(report.run).toEqual({ id: started.id, label: 'All tests' });
     });
 
+    it('shows only the selected account, so staging and production history stay apart', async () => {
+      const staging = await addAccount('Staging');
+      const production = await addAccount('Production');
+      source.listExperiments.mockResolvedValue([summary('STG1', 'EXT1', 'completed')]);
+      await capture(staging.id);
+      source.listExperiments.mockResolvedValue([summary('PRD1', 'EXT1', 'completed')]);
+      await capture(production.id);
+      const ids = async (accountId: string) => {
+        const rows = await context.owner.selectFrom('experiment_reports').select('id').where('cloud_account_id', '=', accountId).execute();
+        return rows.map(({ id }) => id);
+      };
+      const entriesOf = async (accountId: string) =>
+        (await history(accountId).expect(200)).body.entries.map(({ id }: { id: string }) => id);
+      expect(await entriesOf(staging.id)).toEqual(await ids(staging.id));
+      expect(await entriesOf(production.id)).toEqual(await ids(production.id));
+      const exported = await http().get(`/api/experiment-reports/export?account=${staging.id}`).set('Cookie', viewer);
+      expect(exported.text.split('\n')).toHaveLength(2);
+      expect(exported.text).toContain('Staging');
+      expect(exported.text).not.toContain('Production');
+    });
+
     it('exports the history as CSV and refuses bad filters', async () => {
       const { id } = await addAccount('Staging');
       source.listExperiments.mockResolvedValue([summary('CSV1', 'EXT1', 'completed')]);
       await capture(id);
-      const response = await history('/export?result=passed').expect(200);
+      const response = await http()
+        .get(`/api/experiment-reports/export?account=${id}&result=passed`)
+        .set('Cookie', viewer)
+        .expect(200);
       expect(response.headers['content-type']).toContain('text/csv');
       expect(response.text.split('\n')[0]).toContain('Type,Name,Account');
       expect(response.text).toContain('Test,Database failover');
-      await history('?result=great').expect(400);
-      await history('?from=yesterday').expect(400);
+      await history(id, '&result=great').expect(400);
+      await history(id, '&from=yesterday').expect(400);
+      await http().get('/api/experiment-reports').set('Cookie', viewer).expect(400);
     });
 
     it('lets only people who manage environments delete reports and runs', async () => {
@@ -436,7 +462,7 @@ describe('failover tests', () => {
       expect(await reportCount(id)).toBe(0);
       await http().get(`${runs(id)}/${started.id}`).set('Cookie', viewer).expect(404);
       expect((await actions(started.id)).map(({ action }) => action)).toContain('cloud.experiment-run.deleted');
-      await http().get('/api/experiment-reports').set('Cookie', otherOwner).expect(200, { entries: [], environments: [], labels: [] });
+      await history(id, '', otherOwner).expect(200, { entries: [], labels: [] });
     });
   });
   describe('waves', () => {
@@ -521,7 +547,7 @@ describe('failover tests', () => {
       const body = await detail(id, run.id);
       expect(stages(body)).toEqual(['RUNEXT1', 'cancelled', 'cancelled']);
       expect(body.result).toBe('stopped');
-      const { body: history } = await http().get('/api/experiment-reports').set('Cookie', viewer).expect(200);
+      const { body: history } = await http().get(`/api/experiment-reports?account=${id}`).set('Cookie', viewer).expect(200);
       expect(history.entries.find(({ id: entryId }: { id: string }) => entryId === run.id)?.counts).toMatchObject({
         total: 3,
         stopped: 1,

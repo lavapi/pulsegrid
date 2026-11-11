@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { cardFacts } from '@/lib/resource-cards';
 import { cn } from '@/lib/utils';
-import { ActionStatusLine, startedByLabel, STATUS_VIEWS } from './action-status';
+import { startedByLabel, STATUS_VIEWS } from '@/lib/action-status';
+import { ActionStatusLine } from './action-status';
 
 function ActivityStrip({ run }: { run: ActionRun }) {
   const { label, tone } = STATUS_VIEWS[run.status];

@@ -8,7 +8,7 @@ import { useUrlFilters } from '@/lib/use-url-filters';
 
 const optionsOf = (values: readonly string[]) => values.map((value) => ({ value, label: value }));
 
-export function HistoryFilters({ environments, labels }: { environments: string[]; labels: string[] }) {
+export function HistoryFilters({ labels }: { labels: string[] }) {
   const { value, change } = useUrlFilters();
 
   const date = (name: string, label: string) => (
@@ -18,8 +18,7 @@ export function HistoryFilters({ environments, labels }: { environments: string[
   );
 
   return (
-    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-label="Filters">
-      <FilterDropdown name="environment" label="Environment" options={optionsOf(environments)} />
+    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Filters">
       <FilterDropdown name="label" label="Test or group" options={optionsOf(labels)} />
       <FilterDropdown
         name="result"

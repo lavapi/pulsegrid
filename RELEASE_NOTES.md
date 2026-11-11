@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-11-11
+
+- Fixed Overview and resource lists failing to load with "This page didn't load" after a force deploy, reboot or other cloud action.
+- Test history follows the account selected in the top bar, so staging and production history no longer mix.
+
 ## [0.16.0] - 2026-11-11
 
 - See ECS blue/green deployments: each stage, blue and green side by side, and rollbacks with the reason. Releases is ready for testing as soon as green has test traffic. Add `ecs:ListServiceDeployments`, `ecs:DescribeServiceDeployments` and `ecs:DescribeServiceRevisions` to every key's IAM policy.

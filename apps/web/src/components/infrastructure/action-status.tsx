@@ -1,26 +1,12 @@
 'use client';
 
-import type { ActionRun, ActionRunStatus } from '@pulsegrid/shared';
-import { CircleAlert, CircleCheck, CircleX, LoaderCircle, type LucideIcon } from 'lucide-react';
+import type { ActionRun } from '@pulsegrid/shared';
 import { useEffect, useState } from 'react';
+import { STATUS_VIEWS } from '@/lib/action-status';
 import { formatDuration } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 const TICK_MS = 1000;
-
-export const STATUS_VIEWS: Record<
-  ActionRunStatus,
-  { label: string; tone: 'primary' | 'success' | 'danger' | 'warning'; icon: LucideIcon; color: string }
-> = {
-  running: { label: 'In progress', tone: 'primary', icon: LoaderCircle, color: 'animate-spin text-primary' },
-  succeeded: { label: 'Finished', tone: 'success', icon: CircleCheck, color: 'text-success' },
-  failed: { label: 'Failed', tone: 'danger', icon: CircleX, color: 'text-danger' },
-  timed_out: { label: 'Timed out', tone: 'warning', icon: CircleAlert, color: 'text-warning' },
-  unconfirmed: { label: 'Not confirmed', tone: 'warning', icon: CircleAlert, color: 'text-warning' },
-};
-
-export const startedByLabel = ({ startedBy }: ActionRun): string =>
-  startedBy ? `Started by ${startedBy}` : 'Started outside the dashboard';
 
 const secondsBetween = (start: string, end: number): number =>
   Math.max(0, Math.round((end - new Date(start).getTime()) / TICK_MS));
