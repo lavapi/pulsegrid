@@ -164,7 +164,7 @@ export interface MetricResult {
 export interface MetricContext<Credentials extends CloudCredentials = CloudCredentials> {
   credentials: Credentials;
   region: string;
-  resource: { type: ResourceType; name: string; details: Record<string, unknown> };
+  resource: { type: ResourceType; name: string; nativeId: string; details: Record<string, unknown> };
 }
 
 export interface MetricSource<Credentials extends CloudCredentials = CloudCredentials> {

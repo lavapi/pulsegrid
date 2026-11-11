@@ -1,20 +1,4 @@
-import type { LoadChart, LoadSeries, LoadUnit } from '@pulsegrid/shared';
-
-const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'];
-const BYTE_STEP = 1024;
-
-const trimmed = (value: number, digits: number): string =>
-  new Intl.NumberFormat('en-GB', { maximumFractionDigits: digits }).format(value);
-
-const formatBytes = (value: number): string => {
-  let size = value;
-  let index = 0;
-  while (Math.abs(size) >= BYTE_STEP && index < BYTE_UNITS.length - 1) {
-    size /= BYTE_STEP;
-    index += 1;
-  }
-  return `${trimmed(size, size < 10 ? 1 : 0)} ${BYTE_UNITS[index]}`;
-};
+import { formatBytes, type LoadChart, type LoadSeries, type LoadUnit, trimmedNumber as trimmed } from '@pulsegrid/shared';
 
 export const formatLoadValue = (value: number, unit: LoadUnit): string => {
   switch (unit) {
@@ -28,6 +12,10 @@ export const formatLoadValue = (value: number, unit: LoadUnit): string => {
       return trimmed(value, value < 10 ? 1 : 0);
   }
 };
+
+/** A reading as people expect it: 2.5 GB / 24 GB when the chart has a total, otherwise just the value. */
+export const formatReading = (value: number, { unit, total }: Pick<LoadChart, 'unit' | 'total'>): string =>
+  total === null ? formatLoadValue(value, unit) : `${formatLoadValue(value, unit)} / ${formatLoadValue(total, unit)}`;
 
 export const latestValue = ({ points }: LoadSeries): number | null => points.at(-1)?.value ?? null;
 

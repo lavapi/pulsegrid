@@ -6,6 +6,9 @@ All notable changes to this project are documented in this file. The format is b
 
 ### Added
 
+- Load shows memory and storage as used out of total, such as 2.5 GB / 24 GB, and CPU against the number of vCPUs, for RDS instances and ElastiCache caches.
+- ECS services and EC2 servers have a Load section. ECS shows CPU and memory against what its tasks reserve. EC2 shows CPU, its vCPUs, memory and disks, and memory and root disk use when the CloudWatch agent sends them.
+- The PulseGrid policy includes `ec2:DescribeInstanceTypes` and `ec2:DescribeVolumes`, for those totals.
 - `docs/connect-aws-account.md` lists the full PulseGrid IAM policy and what each action is for, and a test keeps it matching the policy the app shows.
 
 ## [0.14.0] - 2026-11-11

@@ -11,6 +11,8 @@ export type LoadRange = (typeof LOAD_RANGES)[number];
 export type LoadRangeId = LoadRange['id'];
 
 export const LOAD_RESOURCE_TYPES: readonly ResourceType[] = [
+  'ecs-service',
+  'ec2-instance',
   'rds-instance',
   'rds-cluster',
   'elasticache-cluster',
@@ -39,6 +41,10 @@ export interface LoadChart {
   limit: number | null;
   /** Values above this are close to the limit. */
   warnAbove: number | null;
+  /** What the values are out of, such as a database's total memory, shown as used / total. */
+  total: number | null;
+  /** A short explanation, such as "of 2 vCPUs". */
+  note: string | null;
   series: LoadSeries[];
 }
 
@@ -78,3 +84,20 @@ export const windowPeriodSeconds = (since: Date, until: Date, now = new Date()):
 };
 
 export const supportsLoad = (type: ResourceType): boolean => LOAD_RESOURCE_TYPES.includes(type);
+
+const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'];
+const BYTE_STEP = 1024;
+
+export const trimmedNumber = (value: number, digits: number): string =>
+  new Intl.NumberFormat('en-GB', { maximumFractionDigits: digits }).format(value);
+
+/** Sizes in 1024 steps, such as 2.5 GB, matching how AWS sizes memory and disks. */
+export const formatBytes = (value: number): string => {
+  let size = value;
+  let index = 0;
+  while (Math.abs(size) >= BYTE_STEP && index < BYTE_UNITS.length - 1) {
+    size /= BYTE_STEP;
+    index += 1;
+  }
+  return `${trimmedNumber(size, size < 10 ? 1 : 0)} ${BYTE_UNITS[index]}`;
+};
