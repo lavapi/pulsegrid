@@ -64,9 +64,9 @@ describe('followsAccountSwitcher', () => {
 
 describe('pathAfterSwitch', () => {
   it('leaves an experiment from the previous account', () => {
-    expect(pathAfterSwitch('/experiments/eu-central-1/EXP1')).toBe('/experiments');
-    expect(pathAfterSwitch('/experiments/runs/3f8a')).toBe('/experiments');
-    expect(pathAfterSwitch('/experiments')).toBeNull();
+    expect(pathAfterSwitch('/failover-tests/eu-central-1/EXP1')).toBe('/failover-tests');
+    expect(pathAfterSwitch('/failover-tests/runs/3f8a')).toBe('/failover-tests');
+    expect(pathAfterSwitch('/failover-tests')).toBeNull();
   });
 
   it('leaves a resource from the previous account', () => {

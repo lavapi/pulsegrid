@@ -28,7 +28,7 @@ export default async function ExperimentPage({ params }: { params: Promise<{ reg
   const { region, id } = await params;
   const { selected } = await getAccountContext();
   if (!selected) {
-    redirect('/experiments');
+    redirect('/failover-tests');
   }
   const experiment = await apiGet<ExperimentDetail>(
     `/cloud/accounts/${selected.id}/experiments/${encodeURIComponent(region)}/${encodeURIComponent(id)}`,
@@ -40,11 +40,11 @@ export default async function ExperimentPage({ params }: { params: Promise<{ reg
     <>
       <LiveRefresh active={active} />
       <Link
-        href="/experiments"
+        href="/failover-tests"
         className="inline-flex w-fit items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" aria-hidden="true" />
-        Fault experiments
+        Failover tests
       </Link>
       <PageHeader
         title={experiment.label}
@@ -103,7 +103,7 @@ export default async function ExperimentPage({ params }: { params: Promise<{ reg
       </Card>
       {experiment.resources.length > 0 && (
         <Card>
-          <CardHeader title="Affected resources" description="Resources this experiment picked that PulseGrid knows." />
+          <CardHeader title="Affected resources" description="Resources this test picked that PulseGrid knows." />
           <ul className="divide-y">
             {experiment.resources.map((resource) => (
               <li key={resource.id}>

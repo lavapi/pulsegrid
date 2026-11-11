@@ -57,11 +57,11 @@ export default async function ExperimentsPage() {
   if (!selected) {
     return (
       <>
-        <PageHeader title="Fault experiments" />
+        <PageHeader title="Failover tests" />
         <EmptyState
           icon={FlaskConical}
           title="No cloud account yet"
-          description="Connect an AWS account under Integrations to run its fault experiments here."
+          description="Connect an AWS account under Integrations to run its failover tests here."
         />
       </>
     );
@@ -71,8 +71,8 @@ export default async function ExperimentsPage() {
   return (
     <>
       <PageHeader
-        title="Fault experiments"
-        description={`AWS FIS experiment templates in ${selected.name}. Templates are made in AWS; run and watch them here.`}
+        title="Failover tests"
+        description={`Failover test templates in ${selected.name}, from AWS FIS. Templates are made in AWS; run and watch them here.`}
         action={
           view.access.canRun &&
           view.templates.length > 0 && (
@@ -94,7 +94,7 @@ export default async function ExperimentsPage() {
       {!view.error && view.templates.length === 0 && (
         <EmptyState
           icon={FlaskConical}
-          title="No experiment templates"
+          title="No failover test templates"
           description="Create a template in the AWS FIS console or with Terraform, then it shows up here."
         />
       )}
@@ -114,7 +114,7 @@ export default async function ExperimentsPage() {
       </div>
       {view.experiments.length > 0 && (
         <Card>
-          <CardHeader title="Recent experiments" description="Started here or anywhere else in AWS." />
+          <CardHeader title="Recent tests" description="Started here or anywhere else in AWS." />
           <ul className="divide-y">
             {view.experiments.map((experiment) => (
               <li key={`${experiment.region}/${experiment.id}`}>

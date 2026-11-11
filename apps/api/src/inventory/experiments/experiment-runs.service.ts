@@ -19,13 +19,13 @@ import { experimentAccess } from './experiment-access';
 import { type ExperimentTarget, ExperimentGateway } from './experiment-gateway';
 import { findGroup } from './experiment-groups.service';
 
-const RUN_MISSING = 'That experiment run no longer exists.';
-const NOTHING_TO_RUN = 'There are no experiment templates to run.';
+const RUN_MISSING = 'That test run no longer exists.';
+const NOTHING_TO_RUN = 'There are no failover test templates to run.';
 const TOO_MANY = `A run can start at most ${EXPERIMENT_RUN_LIMIT} templates.`;
 const TEMPLATE_MISSING = 'This template no longer exists in AWS.';
-const START_FAILED = "This experiment didn't start. Please try again.";
+const START_FAILED = "This test didn't start. Please try again.";
 const READ_FAILED = "AWS couldn't be reached. Please try again.";
-const SOME_NOT_STOPPED = "Some experiments didn't stop. Please try again.";
+const SOME_NOT_STOPPED = "Some tests didn't stop. Please try again.";
 const RECENT_RUNS = 10;
 
 interface RunRow {

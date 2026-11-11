@@ -86,7 +86,7 @@ export interface ExperimentDetail extends ExperimentSummary {
 /** The most templates one group or one run can hold, to stay under AWS's limit on experiments running at once. */
 export const EXPERIMENT_RUN_LIMIT = 25;
 export const EXPERIMENT_GROUP_NAME_LIMIT = 60;
-export const RUN_ALL_LABEL = 'All experiments';
+export const RUN_ALL_LABEL = 'All tests';
 
 export interface ExperimentTemplateRef {
   region: string;

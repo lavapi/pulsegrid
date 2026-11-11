@@ -52,7 +52,7 @@ export default async function ExperimentRunPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const { selected } = await getAccountContext();
   if (!selected) {
-    redirect('/experiments');
+    redirect('/failover-tests');
   }
   const run = await apiGet<ExperimentRunDetail>(
     `/cloud/accounts/${selected.id}/experiment-runs/${encodeURIComponent(id)}`,
@@ -63,11 +63,11 @@ export default async function ExperimentRunPage({ params }: { params: Promise<{ 
     <>
       <LiveRefresh active={active} />
       <Link
-        href="/experiments"
+        href="/failover-tests"
         className="inline-flex w-fit items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" aria-hidden="true" />
-        Fault experiments
+        Failover tests
       </Link>
       <PageHeader
         title={run.label}

@@ -41,7 +41,7 @@ const source = {
 };
 const provider: CloudProvider = { ...awsProvider, actions: [], experimentSource: source };
 
-describe('fault experiments', () => {
+describe('failover tests', () => {
   let context: TestContext;
   let developer: string;
   let viewer: string;
@@ -120,7 +120,7 @@ describe('fault experiments', () => {
     expect(body.experiments[0]).toMatchObject({ id: 'EXP1', label: 'Database failover' });
     expect(body.access).toEqual({
       canRun: false,
-      blockedReason: 'Ask your super admin for the Run staging fault experiments permission.',
+      blockedReason: 'Ask your super admin for the Run staging failover tests permission.',
     });
   });
 
@@ -142,7 +142,7 @@ describe('fault experiments', () => {
     const { id } = await addAccount('Production');
     const refused = await start(id);
     expect(refused.status).toBe(403);
-    expect(refused.body.message).toBe('Ask your super admin for the Run production fault experiments permission.');
+    expect(refused.body.message).toBe('Ask your super admin for the Run production failover tests permission.');
     await http().post(`/api/cloud/accounts/${id}/experiments/${REGION}/EXP1/stop`).set('Cookie', developer).expect(403);
     expect(source.start).not.toHaveBeenCalled();
     expect(source.stop).not.toHaveBeenCalled();
@@ -153,7 +153,7 @@ describe('fault experiments', () => {
     await http().post(`/api/cloud/accounts/${id}/experiments/${REGION}/EXP1/stop`).set('Cookie', developer).expect(204);
     const staging = await addAccount('Staging');
     expect((await start(staging.id)).body.message).toBe(
-      'Ask your super admin for the Run staging fault experiments permission.',
+      'Ask your super admin for the Run staging failover tests permission.',
     );
   });
 
@@ -250,7 +250,7 @@ describe('fault experiments', () => {
       await createGroup(id, both, viewer).expect(403);
       const production = await addAccount('Production');
       expect((await createGroup(production.id)).body.message).toBe(
-        'Ask your super admin for the Run production fault experiments permission.',
+        'Ask your super admin for the Run production failover tests permission.',
       );
     });
 
@@ -289,12 +289,12 @@ describe('fault experiments', () => {
       source.listExperiments.mockResolvedValue([]);
       source.getExperiment.mockResolvedValue(null);
       const { body: detail } = await http().get(`${runs(id)}/${run.id}`).set('Cookie', viewer).expect(200);
-      expect(detail.label).toBe('All experiments');
+      expect(detail.label).toBe('All tests');
       expect(detail.items.map(({ experimentId }: { experimentId: string }) => experimentId)).toEqual(['RUNEXT1', 'RUNEXT2']);
       source.listTemplates.mockResolvedValue([]);
       const empty = await http().post(runs(id)).set('Cookie', developer).send({});
       expect(empty.status).toBe(409);
-      expect(empty.body.message).toBe('There are no experiment templates to run.');
+      expect(empty.body.message).toBe('There are no failover test templates to run.');
     });
 
     it('stops every experiment of a run that is still active', async () => {

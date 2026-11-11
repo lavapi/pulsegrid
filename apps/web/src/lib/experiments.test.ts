@@ -20,7 +20,7 @@ describe('experiment helpers', () => {
 
   it('labels states and builds paths', () => {
     expect(stateLabel('running')).toBe('Running');
-    expect(experimentPath('eu-central-1', 'EXP1')).toBe('/experiments/eu-central-1/EXP1');
-    expect(experimentRunPath('3f8a')).toBe('/experiments/runs/3f8a');
+    expect(experimentPath('eu-central-1', 'EXP1')).toBe('/failover-tests/eu-central-1/EXP1');
+    expect(experimentRunPath('3f8a')).toBe('/failover-tests/runs/3f8a');
   });
 });

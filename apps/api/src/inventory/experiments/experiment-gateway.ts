@@ -11,7 +11,7 @@ import { ProviderRegistry } from '../providers/provider-registry';
 import { type ExperimentAccount, experimentAccess, NO_CREDENTIALS } from './experiment-access';
 
 const ACCOUNT_MISSING = 'That cloud account is no longer connected.';
-const NOT_SUPPORTED = "This provider can't run experiments yet.";
+const NOT_SUPPORTED = "This provider can't run failover tests yet.";
 const REGION_MISSING = "That region isn't synced for this account.";
 
 export const STARTED_ACTION = 'cloud.experiment.started';

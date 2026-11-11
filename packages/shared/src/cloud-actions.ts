@@ -28,11 +28,11 @@ export const CLOUD_ACTIONS = {
     success: 'Server reboot started',
   },
   'experiment.run': {
-    label: 'Run staging fault experiments',
-    production: 'Run production fault experiments',
-    buttonLabel: 'Start experiment',
-    description: 'Runs an AWS FIS experiment, which deliberately breaks or slows the resources it targets until it ends or is stopped.',
-    success: 'Experiment started',
+    label: 'Run staging failover tests',
+    production: 'Run production failover tests',
+    buttonLabel: 'Start test',
+    description: 'Runs a failover test with AWS FIS, which deliberately breaks or slows the resources it targets until it ends or is stopped.',
+    success: 'Failover test started',
   },
 } as const;
 

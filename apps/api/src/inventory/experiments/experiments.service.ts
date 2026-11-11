@@ -16,7 +16,7 @@ import { type ExperimentTarget, ExperimentGateway, STARTED_ACTION } from './expe
 import { listGroups } from './experiment-groups.service';
 import { recentRuns } from './experiment-runs.service';
 
-const EXPERIMENT_MISSING = 'That experiment no longer exists in AWS.';
+const EXPERIMENT_MISSING = 'That failover test no longer exists in AWS.';
 
 const byNewest = (first: ExperimentSummary, second: ExperimentSummary): number =>
   (second.startedAt ?? '').localeCompare(first.startedAt ?? '');

@@ -6,7 +6,7 @@ import type { TenantTransaction } from '../../database/tenant-context';
 import { TenantDatabase } from '../../database/tenant-database';
 import { type ExperimentTarget, ExperimentGateway } from './experiment-gateway';
 
-const GROUP_MISSING = 'That experiment group no longer exists.';
+const GROUP_MISSING = 'That test group no longer exists.';
 const NAME_TAKEN = 'A group with that name already exists.';
 const REGION_NOT_SYNCED = "A template is in a region this account doesn't sync.";
 
