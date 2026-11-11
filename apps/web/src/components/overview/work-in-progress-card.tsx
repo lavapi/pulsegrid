@@ -1,6 +1,6 @@
 import { type ActionRun, type Resource, resourcePath } from '@pulsegrid/shared';
 import Link from 'next/link';
-import { startedByLabel, STATUS_VIEWS } from '@/components/infrastructure/action-status';
+import { startedByLabel, STATUS_VIEWS } from '@/lib/action-status';
 import { RelativeTime } from '@/components/pipelines/relative-time';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader } from '@/components/ui/card';
