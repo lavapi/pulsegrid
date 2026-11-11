@@ -22,6 +22,8 @@ const RESULT: MetricResult = {
       unit: 'percent',
       limit: 100,
       warnAbove: 80,
+      total: null,
+      note: null,
       series: [{ label: 'db', points: [{ timestamp: '2026-11-10T12:00:00.000Z', value: 42 }] }],
     },
   ],

@@ -3,6 +3,11 @@ import type { CollectedResource, ResourceCollector } from '../../provider';
 import type { AwsKey } from '../aws-key';
 import { collectPages, healthFrom, tagMap } from './helpers';
 
+const volumesOf = ({ BlockDeviceMappings = [], RootDeviceName }: Instance) => ({
+  volumeIds: BlockDeviceMappings.flatMap(({ Ebs }) => (Ebs?.VolumeId ? [Ebs.VolumeId] : [])),
+  rootVolumeId: BlockDeviceMappings.find(({ DeviceName }) => DeviceName === RootDeviceName)?.Ebs?.VolumeId,
+});
+
 const toInstanceResource = (instance: Instance, region: string): CollectedResource => {
   const status = instance.State?.Name ?? 'unknown';
   const tags = tagMap(instance.Tags);
@@ -27,6 +32,7 @@ const toInstanceResource = (instance: Instance, region: string): CollectedResour
       privateIp: instance.PrivateIpAddress,
       publicIp: instance.PublicIpAddress,
       launchedAt: instance.LaunchTime?.toISOString(),
+      ...volumesOf(instance),
     },
   };
 };

@@ -5,7 +5,7 @@ import { TriangleAlert } from 'lucide-react';
 import { type KeyboardEvent, type PointerEvent, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Time } from '@/components/ui/time';
-import { chartCeiling, chartTimestamps, formatLoadValue, isNearLimit, latestValue, valueAt } from '@/lib/load';
+import { chartCeiling, chartTimestamps, formatLoadValue, formatReading, isNearLimit, latestValue, valueAt } from '@/lib/load';
 
 const WIDTH = 400;
 const HEIGHT = 120;
@@ -54,7 +54,7 @@ function Legend({ chart }: { chart: LoadChartData }) {
             <Swatch index={index} />
             <span>{series.label}</span>
             <span className="font-medium text-foreground">
-              {latest === null ? '—' : formatLoadValue(latest, chart.unit)}
+              {latest === null ? '—' : formatReading(latest, chart)}
             </span>
           </li>
         );
@@ -79,7 +79,7 @@ function Tooltip({ chart, timestamp, x }: { chart: LoadChartData; timestamp: str
             <li className="flex items-center gap-1.5" key={series.label}>
               <Swatch index={index} />
               {chart.series.length > 1 && <span className="text-muted-foreground">{series.label}</span>}
-              <span className="ml-auto font-medium">{value === null ? '—' : formatLoadValue(value, chart.unit)}</span>
+              <span className="ml-auto font-medium">{value === null ? '—' : formatReading(value, chart)}</span>
             </li>
           );
         })}
@@ -92,7 +92,7 @@ const summaryOf = (chart: LoadChartData): string =>
   `${chart.label}: ${chart.series
     .map((series) => {
       const latest = latestValue(series);
-      return `${series.label} ${latest === null ? 'no data' : formatLoadValue(latest, chart.unit)}`;
+      return `${series.label} ${latest === null ? 'no data' : formatReading(latest, chart)}`;
     })
     .join(', ')}`;
 
@@ -130,10 +130,13 @@ export function LoadChart({ chart }: { chart: LoadChartData }) {
     <figure className="flex flex-col gap-3 rounded-xl border p-4">
       <figcaption className="flex flex-wrap items-start justify-between gap-2">
         <span className="flex flex-col">
-          <span className="text-[13px] text-muted-foreground">{chart.label}</span>
+          <span className="text-[13px] text-muted-foreground">
+            {chart.label}
+            {chart.note && <span className="text-faint"> · {chart.note}</span>}
+          </span>
           {single && (
             <span className="text-xl font-semibold">
-              {singleLatest === null ? '—' : formatLoadValue(singleLatest, chart.unit)}
+              {singleLatest === null ? '—' : formatReading(singleLatest, chart)}
             </span>
           )}
         </span>

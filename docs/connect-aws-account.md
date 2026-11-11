@@ -7,10 +7,105 @@ Everyone in the project sees its connected accounts. Dashboard roles control wha
 ## Create a key
 
 1. In the AWS account, create a dedicated IAM user for the dashboard. Don't use a personal user or an admin user.
-2. Attach the PulseGrid policy shown on the **AWS** integration page. Every account uses the same policy, production included. It allows the list and describe actions, logs and costs PulseGrid reads, and the actions it can take: force deploys, reboots, failover tests and app secret values. It can't read S3 files or create or delete resources. Who can take which action, in staging and in production, is set by roles in PulseGrid.
+2. Attach the [PulseGrid policy](#the-pulsegrid-policy), which is also shown on the **AWS** integration page. Every account uses the same policy, production included. It allows the list and describe actions, logs and costs PulseGrid reads, and the actions it can take: force deploys, reboots, failover tests and app secret values. It can't read S3 files or create or delete resources. Who can take which action, in staging and in production, is set by roles in PulseGrid.
 3. Create an access key for that user.
 
 Root account keys and temporary keys are refused.
+
+## The PulseGrid policy
+
+Every account uses this one policy, production included. Roles in PulseGrid decide who may take which action, in staging and in production.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecs:ListClusters",
+        "ecs:DescribeClusters",
+        "ecs:ListServices",
+        "ecs:DescribeServices",
+        "ecs:ListTagsForResource",
+        "ecs:DescribeTaskDefinition",
+        "logs:FilterLogEvents",
+        "cloudwatch:GetMetricData",
+        "fis:ListExperimentTemplates",
+        "fis:GetExperimentTemplate",
+        "fis:ListExperiments",
+        "fis:GetExperiment",
+        "fis:ListExperimentResolvedTargets",
+        "rds:DescribeDBInstances",
+        "rds:DescribeDBClusters",
+        "rds:DescribeDBParameters",
+        "elasticache:DescribeReplicationGroups",
+        "elasticache:DescribeCacheClusters",
+        "elasticache:DescribeCacheSubnetGroups",
+        "elasticache:ListTagsForResource",
+        "cloudtrail:LookupEvents",
+        "ce:GetCostAndUsage",
+        "s3:ListAllMyBuckets",
+        "s3:GetBucketLocation",
+        "s3:GetBucketTagging",
+        "secretsmanager:ListSecrets",
+        "ec2:DescribeInstances",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeRouteTables",
+        "ec2:DescribeInstanceTypes",
+        "ec2:DescribeVolumes",
+        "elasticloadbalancing:DescribeLoadBalancers",
+        "elasticloadbalancing:DescribeTags",
+        "elasticloadbalancing:DescribeTargetGroups",
+        "elasticloadbalancing:DescribeTargetHealth",
+        "iam:SimulatePrincipalPolicy",
+        "ecs:UpdateService",
+        "rds:RebootDBInstance",
+        "elasticache:RebootCacheCluster",
+        "ec2:RebootInstances",
+        "ec2:DescribeInstanceStatus",
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:PutSecretValue",
+        "fis:StartExperiment",
+        "fis:StopExperiment"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+| Actions | Used for |
+|---|---|
+| `ecs:` list and describe, `ecs:ListTagsForResource`, `ecs:DescribeTaskDefinition` | Inventory, the map, Releases, and log settings |
+| `rds:DescribeDBInstances`, `rds:DescribeDBClusters` | Inventory and capacity |
+| `rds:DescribeDBParameters` | The connection limit on [Load](#load), from each database's parameter group |
+| `elasticache:` describe and `ListTagsForResource` | Inventory, capacity and tag filters |
+| `ec2:` describe actions | Servers, VPCs, subnets, security groups and the map |
+| `ec2:DescribeInstanceTypes`, `ec2:DescribeVolumes` | Total memory, vCPUs and disk sizes on [Load](#load) |
+| `s3:ListAllMyBuckets`, `s3:GetBucketLocation`, `s3:GetBucketTagging` | Buckets and tag filters. Files in buckets are never read. |
+| `elasticloadbalancing:` describe actions | Load balancers, target health and tag filters |
+| `secretsmanager:ListSecrets` | Secret names and details |
+| `logs:FilterLogEvents` | [Service logs](#service-logs) |
+| `cloudwatch:GetMetricData` | [Load](#load) charts, including those in failover test reports |
+| `cloudtrail:LookupEvents` | [AWS activity](#aws-activity) and changes made outside PulseGrid |
+| `ce:GetCostAndUsage` | [Costs](#costs) |
+| `fis:` list and get actions | [Failover tests](#failover-tests), reports and history |
+| `fis:StartExperiment`, `fis:StopExperiment` | Starting and stopping tests, groups, Run all and Stop all |
+| `ecs:UpdateService` | Force deploy |
+| `rds:RebootDBInstance`, `elasticache:RebootCacheCluster`, `ec2:RebootInstances` | Reboots |
+| `ec2:DescribeInstanceStatus` | Checking that a rebooted server came back |
+| `secretsmanager:GetSecretValue`, `secretsmanager:PutSecretValue` | Showing and changing [app secret](#app-secrets) values |
+| `iam:SimulatePrincipalPolicy` | Testing a key for missing or extra permissions |
+
+Two things sit outside this policy:
+
+- A secret encrypted with its own KMS key needs that key's policy to allow the IAM user.
+- Each FIS experiment template has its own role, which FIS uses to inject the faults. The key never gets those permissions.
+
+Pipelines use a GitHub token rather than AWS. It needs **Actions: Read and write**, **Contents: Read-only** and **Metadata: Read-only**. See [pipelines.md](pipelines.md). PulseGrid's own hosting needs nothing extra: Terraform creates the role it runs with. See [install-aws.md](install-aws.md).
 
 ## Add the account
 
@@ -71,17 +166,27 @@ The PulseGrid policy includes `logs:FilterLogEvents` and `ecs:DescribeTaskDefini
 
 ## Load
 
-RDS databases, Aurora clusters and ElastiCache caches show a **Load** section with charts for the last 1 hour, 6 hours, 24 hours or 7 days. Values come from CloudWatch when you open the page and are never stored. Everyone can see load, in every environment, because reading it changes nothing.
+ECS services, EC2 servers, RDS databases, Aurora clusters and ElastiCache caches show a **Load** section with charts for the last 1 hour, 6 hours, 24 hours or 7 days. Values come from CloudWatch when you open the page and are never stored. Everyone can see load, in every environment, because reading it changes nothing.
 
-| Resource | Charts |
-|---|---|
-| RDS instance | CPU, free memory, storage used, connections, read and write latency, and serverless capacity used for `db.serverless` |
-| Aurora cluster | CPU, free memory, connections, storage used, and serverless capacity used when the cluster scales |
-| ElastiCache cache | CPU, engine CPU, memory used, connections and evictions, one line per node |
+Memory, storage and connections are shown as **used out of total**, such as **2.5 GB / 24 GB** or **40 / 410**, and CPU says how many vCPUs it's measured against, such as **38% · of 2 vCPUs**.
 
-Above the charts, the section lists the capacity the resource has, such as the instance class, node type, allocated storage or serverless range. A chart is marked **Near limit** when the latest value is high: CPU above 80%, engine CPU or cache memory above 90%, storage above 85% or serverless capacity above 80%. Charts with no data from AWS are left out, and a cache with more than three nodes shows the first three.
+| Resource | Charts | Where the totals come from |
+|---|---|---|
+| RDS instance | CPU, memory used, storage used, connections, read and write latency, and serverless capacity used for `db.serverless` | Memory and vCPUs from the instance class, storage from what's allocated, connections from `max_connections` |
+| Aurora cluster | CPU, free memory, connections, storage used, and serverless capacity used when the cluster scales | Aurora storage grows by itself up to 128 TB, so it has no fixed total. Each instance's own page shows its memory out of total. |
+| ElastiCache cache | CPU, engine CPU, memory used, connections and evictions, one line per node | Memory out of the node's limit, worked out from the share AWS reports as used. vCPUs from the node type. Connections out of 65,000 per node, the fixed Redis and Valkey limit. |
+| ECS service | CPU and memory used | What the tasks reserve: running tasks × the CPU and memory in the task definition |
+| EC2 server | CPU, memory used and root disk used | Memory and vCPUs from the instance type, disk from the attached EBS volumes |
 
-Load needs `cloudwatch:GetMetricData`, which is in the PulseGrid policy. **Keys connected before load was added don't have it.** Add it to their IAM policy, or the Load section says the key can't read load.
+An RDS instance's connection limit is `max_connections` in its parameter group. When the group sets a number, that's the limit. When it keeps the AWS default, which is a formula based on the instance's memory, PulseGrid works it out from the instance class memory and shows it as **about**, because AWS keeps some memory back for itself. Formulas PulseGrid can't read, and `db.serverless` instances, show connections without a limit. The setting is read again every 10 minutes.
+
+ECS measures CPU and memory against what the tasks reserve, and totals use the number of tasks running now. If the service scaled during the chosen range, earlier points are measured against the current total.
+
+**EC2 memory and disk use need the CloudWatch agent on the server**, because EC2 doesn't measure them itself. The agent's default `mem_used_percent` and `disk_used_percent` metrics are used, for the root disk. Without the agent, the Load section shows CPU, the server's totals, and a note that memory and disk use need the agent.
+
+Above the charts, the section lists the capacity the resource has, such as the instance class, vCPUs, memory, disks, tasks, node type, allocated storage or serverless range. A chart is marked **Near limit** when the latest value is high: CPU or connections above 80%, engine CPU or memory above 90%, and storage or disk above 85%. Charts with no data from AWS are left out, and a cache with more than three nodes shows the first three.
+
+Load needs `cloudwatch:GetMetricData`. Totals need `ec2:DescribeInstanceTypes`, EC2 disk sizes need `ec2:DescribeVolumes`, and RDS connection limits need `rds:DescribeDBParameters`. All four are in the PulseGrid policy. **Keys connected before these were added don't have them.** Without the first, the Load section says the key can't read load; without the others, charts still show, just without totals.
 
 ## Failover tests
 

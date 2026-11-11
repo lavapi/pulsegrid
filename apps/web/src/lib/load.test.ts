@@ -1,6 +1,6 @@
 import type { LoadChart } from '@pulsegrid/shared';
 import { describe, expect, it } from 'vitest';
-import { chartCeiling, chartTimestamps, formatLoadValue, isNearLimit, valueAt } from './load';
+import { chartCeiling, chartTimestamps, formatLoadValue, formatReading, isNearLimit, valueAt } from './load';
 
 const chart = (overrides: Partial<LoadChart> = {}): LoadChart => ({
   id: 'cpu',
@@ -8,6 +8,8 @@ const chart = (overrides: Partial<LoadChart> = {}): LoadChart => ({
   unit: 'percent',
   limit: 100,
   warnAbove: 80,
+  total: null,
+  note: null,
   series: [
     {
       label: 'db',
@@ -63,5 +65,13 @@ describe('chart points', () => {
     });
     expect(chartTimestamps(merged)).toEqual(['2026-11-10T10:00:00.000Z', '2026-11-10T10:01:00.000Z']);
     expect(valueAt(merged.series[0]!, '2026-11-10T10:00:00.000Z')).toBeNull();
+  });
+});
+
+describe('formatReading', () => {
+  it('shows used / total when the chart has a total', () => {
+    const memory = chart({ unit: 'bytes', total: 24 * 1024 ** 3 });
+    expect(formatReading(2.5 * 1024 ** 3, memory)).toBe('2.5 GB / 24 GB');
+    expect(formatReading(38, chart())).toBe('38%');
   });
 });
