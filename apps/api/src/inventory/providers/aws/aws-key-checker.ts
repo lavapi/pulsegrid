@@ -13,7 +13,7 @@ import { DescribeDBInstancesCommand, RDSClient } from '@aws-sdk/client-rds';
 import { ListBucketsCommand, S3Client } from '@aws-sdk/client-s3';
 import { ListSecretsCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
-import { AWS_ACTIONS, AWS_SERVICES, type CredentialCheck } from '@pulsegrid/shared';
+import { AWS_ACTIONS, AWS_LOG_BUCKET_ACTIONS, AWS_SERVICES, type CredentialCheck } from '@pulsegrid/shared';
 import { CredentialsRejected } from '../provider';
 import { isAccessDenied, keyErrorMessage } from './aws-error-messages';
 import { type AwsKey, isRootArn } from './aws-key';
@@ -58,11 +58,16 @@ const canRead = async (service: AwsServiceId, target: ProbeTarget): Promise<bool
 };
 
 /** The actions the simulator allows, or null when the credentials can't run the simulator. */
-const allowedActions = async (credentials: AwsKey, arn: string, actions: readonly string[]) => {
+const allowedActions = async (
+  credentials: AwsKey,
+  arn: string,
+  actions: readonly string[],
+  resourceArns?: string[],
+) => {
   const client = new IAMClient({ region: IAM_REGION, credentials });
   try {
     const { EvaluationResults: results } = await client.send(
-      new SimulatePrincipalPolicyCommand({ PolicySourceArn: arn, ActionNames: [...actions] }),
+      new SimulatePrincipalPolicyCommand({ PolicySourceArn: arn, ActionNames: [...actions], ResourceArns: resourceArns }),
     );
     return new Set(
       (results ?? [])
@@ -83,9 +88,23 @@ const canWrite = async (credentials: AwsKey, arn: string): Promise<boolean | nul
   return allowed && allowed.size > 0;
 };
 
+/** A bucket and file named like load balancer logs, to test the policy's statement that is limited to them. */
+const SAMPLE_LOG_BUCKET = 'arn:aws:s3:::example-alb-logs-000000000000';
+
 const missingActions = async (credentials: AwsKey, arn: string): Promise<string[] | null> => {
-  const allowed = await allowedActions(credentials, arn, AWS_ACTIONS);
-  return allowed && AWS_ACTIONS.filter((action) => !allowed.has(action));
+  const [allowed, bucket, file] = await Promise.all([
+    allowedActions(credentials, arn, AWS_ACTIONS),
+    allowedActions(credentials, arn, ['s3:ListBucket'], [SAMPLE_LOG_BUCKET]),
+    allowedActions(credentials, arn, ['s3:GetObject'], [`${SAMPLE_LOG_BUCKET}/AWSLogs/example.log.gz`]),
+  ]);
+  if (!allowed || !bucket || !file) {
+    return null;
+  }
+  const logBucket = new Set([...bucket, ...file]);
+  return [
+    ...AWS_ACTIONS.filter((action) => !allowed.has(action)),
+    ...AWS_LOG_BUCKET_ACTIONS.filter((action) => !logBucket.has(action)),
+  ];
 };
 
 const identityOf = async (credentials: AwsKey) => {

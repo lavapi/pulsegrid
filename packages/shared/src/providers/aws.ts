@@ -83,6 +83,9 @@ export const AWS_READ_ONLY_ACTIONS = [
   'elasticloadbalancing:DescribeTags',
   'elasticloadbalancing:DescribeTargetGroups',
   'elasticloadbalancing:DescribeTargetHealth',
+  'elasticloadbalancing:DescribeLoadBalancerAttributes',
+  'pi:DescribeDimensionKeys',
+  'pi:GetResourceMetrics',
   'iam:SimulatePrincipalPolicy',
 ] as const;
 
@@ -102,10 +105,17 @@ export const AWS_CHANGE_ACTIONS = [
 /** Everything PulseGrid can do. Every account uses this one policy; roles in PulseGrid decide who may do what. */
 export const AWS_ACTIONS = [...AWS_READ_ONLY_ACTIONS, ...AWS_CHANGE_ACTIONS] as const;
 
+/** Reading load balancer log files, limited to buckets named like ALB log buckets. */
+export const AWS_LOG_BUCKET_ACTIONS = ['s3:ListBucket', 's3:GetObject'] as const;
+export const AWS_LOG_BUCKET_RESOURCES = ['arn:aws:s3:::*-alb-logs-*', 'arn:aws:s3:::*-alb-logs-*/*'] as const;
+
 export const AWS_POLICY = JSON.stringify(
   {
     Version: '2012-10-17',
-    Statement: [{ Effect: 'Allow', Action: AWS_ACTIONS, Resource: '*' }],
+    Statement: [
+      { Effect: 'Allow', Action: AWS_ACTIONS, Resource: '*' },
+      { Effect: 'Allow', Action: AWS_LOG_BUCKET_ACTIONS, Resource: AWS_LOG_BUCKET_RESOURCES },
+    ],
   },
   null,
   2,

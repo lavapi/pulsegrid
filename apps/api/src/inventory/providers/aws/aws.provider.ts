@@ -10,7 +10,9 @@ import { AWS_ACTIVITY_SOURCE } from './aws-cloudtrail';
 import { AWS_COST_SOURCE } from './aws-costs';
 import { AWS_DEPLOYMENT_SOURCE } from './aws-deployments';
 import { AWS_EXPERIMENT_SOURCE } from './aws-fis';
+import { ALB_REQUEST_LOG_SOURCE } from './alb-logs/alb-log-reader';
 import { AWS_LOG_SOURCE } from './aws-logs';
+import { RDS_ACTIVITY_SOURCE } from './database-activity';
 import { AWS_METRIC_SOURCE } from './aws-metrics';
 import { AWS_SECRET_STORE } from './aws-secrets';
 import { AWS_COLLECTORS } from './collectors';
@@ -24,6 +26,8 @@ const awsProviderOf: CloudProvider<AwsKey> = {
   secretStore: AWS_SECRET_STORE,
   activitySource: AWS_ACTIVITY_SOURCE,
   logSource: AWS_LOG_SOURCE,
+  requestLogSource: ALB_REQUEST_LOG_SOURCE,
+  databaseActivitySource: RDS_ACTIVITY_SOURCE,
   metricSource: AWS_METRIC_SOURCE,
   experimentSource: AWS_EXPERIMENT_SOURCE,
   costSource: AWS_COST_SOURCE,

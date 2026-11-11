@@ -27,6 +27,10 @@ import { EnvironmentsService } from './environments/environments.service';
 import { InventoryCoreModule } from './inventory-core.module';
 import { ResourceLoadController } from './load/resource-load.controller';
 import { ResourceLoadService } from './load/resource-load.service';
+import { DatabaseActivityService } from './logs/database-activity.service';
+import { LogReads } from './logs/log-reads';
+import { RequestLogsService } from './logs/request-logs.service';
+import { ResourceInsightsController } from './logs/resource-insights.controller';
 import { ResourceLogsController } from './logs/resource-logs.controller';
 import { ResourceLogsService } from './logs/resource-logs.service';
 import { ResourceAccess } from './resources/resource-access';
@@ -53,6 +57,7 @@ import { SyncProgressController } from './sync/sync-progress.controller';
     ResourceActivityController,
     ResourceLoadController,
     ResourceLogsController,
+    ResourceInsightsController,
     ResourcesController,
     SecretsController,
     SyncProgressController,
@@ -73,6 +78,9 @@ import { SyncProgressController } from './sync/sync-progress.controller';
     ResourceActionsService,
     ResourceLoadService,
     ResourceLogsService,
+    LogReads,
+    RequestLogsService,
+    DatabaseActivityService,
     ResourcesService,
     SecretsService,
   ],

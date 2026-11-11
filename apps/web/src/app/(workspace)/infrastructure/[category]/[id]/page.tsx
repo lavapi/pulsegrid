@@ -21,6 +21,10 @@ import { ResourceActionPanel } from '@/components/infrastructure/resource-action
 import { SecretPanel } from '@/components/infrastructure/secret-panel';
 import { ServiceDeployments } from '@/components/infrastructure/deployments/service-deployments';
 import { ResourceLoad } from '@/components/infrastructure/load/resource-load';
+import { DatabaseLog } from '@/components/infrastructure/insights/database-log';
+import { RequestLog } from '@/components/infrastructure/insights/request-log';
+import { ResourceTabs } from '@/components/infrastructure/insights/resource-tabs';
+import { TopSql } from '@/components/infrastructure/insights/top-sql';
 import { ServiceLogs } from '@/components/infrastructure/service-logs';
 import { ServiceIcon } from '@/components/service-icon';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -28,6 +32,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { PageHeader } from '@/components/ui/page-header';
 import { Time } from '@/components/ui/time';
 import { formatValue, humanizeKey } from '@/lib/format';
+import { activeTab, resourceTabs } from '@/lib/resource-logs';
 import { apiGet, apiGetOptional, getCurrentUser } from '@/lib/server-api';
 import { formatDeployment, formatLaunchType } from '@/lib/service-views';
 
@@ -81,10 +86,12 @@ async function RecentAwsActivity({ accountId, nativeId }: { accountId: string; n
 
 export default async function ResourceDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ category: string; id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
-  const { id } = await params;
+  const [{ id }, { tab }] = await Promise.all([params, searchParams]);
   const path = `/resources/${encodeURIComponent(id)}`;
   const [resource, actions, run, user] = await Promise.all([
     apiGet<Resource>(path),
@@ -118,6 +125,8 @@ export default async function ResourceDetailPage({
     )
     .map(([key, value]): [string, ReactNode] => [humanizeKey(key), detailValue(key, value)]);
   const tags = Object.entries(resource.tags);
+  const tabs = resourceTabs(resource.type);
+  const active = activeTab(resource.type, tab);
 
   return (
     <>
@@ -133,43 +142,57 @@ export default async function ResourceDetailPage({
         title={resource.name}
         action={<HealthBadge health={resource.health} status={resource.status} />}
       />
-      <ResourceActionPanel
-        key={resource.id}
-        resourceId={resource.id}
-        resourceName={resource.name}
-        actions={actions}
-        initialRun={run}
-      />
-      {secret && <SecretPanel resourceId={resource.id} resourceName={resource.name} view={secret} />}
-      {resource.type === 'ecs-service' && <ServiceDeployments resourceId={resource.id} />}
-      {resource.type === 'ecs-service' && <ServiceLogs resourceId={resource.id} />}
-      {supportsLoad(resource.type) && <ResourceLoad resourceId={resource.id} />}
-      <Card>
-        <CardHeader title="Summary" />
-        <Fields entries={summary} />
-      </Card>
-      {details.length > 0 && (
-        <Card>
-          <CardHeader title="Details" />
-          <Fields entries={details} />
-        </Card>
+      {tabs.length > 0 && (
+        <ResourceTabs tabs={tabs} active={active} path={`/infrastructure/${category}/${resource.id}`} />
       )}
-      {tags.length > 0 && (
-        <Card>
-          <CardHeader title="Tags" />
-          <Fields entries={tags} />
-        </Card>
+      {active === 'requests' && <RequestLog resourceId={resource.id} />}
+      {active === 'queries' && (
+        <>
+          <TopSql resourceId={resource.id} />
+          <DatabaseLog resourceId={resource.id} />
+        </>
       )}
-      {activity && (
-        <Suspense fallback={null}>
-          <RecentAwsActivity accountId={resource.cloudAccount.id} nativeId={resource.nativeId} />
-        </Suspense>
-      )}
-      {activity && activity.events.length > 0 && (
-        <section className="flex flex-col gap-2" aria-label="Recent activity">
-          <h2 className="text-sm font-semibold">Recent activity</h2>
-          <ActivityTable events={activity.events} />
-        </section>
+      {active === 'overview' && (
+        <>
+          <ResourceActionPanel
+            key={resource.id}
+            resourceId={resource.id}
+            resourceName={resource.name}
+            actions={actions}
+            initialRun={run}
+          />
+          {secret && <SecretPanel resourceId={resource.id} resourceName={resource.name} view={secret} />}
+          {resource.type === 'ecs-service' && <ServiceDeployments resourceId={resource.id} />}
+          {resource.type === 'ecs-service' && <ServiceLogs resourceId={resource.id} />}
+          {supportsLoad(resource.type) && <ResourceLoad resourceId={resource.id} />}
+          <Card>
+            <CardHeader title="Summary" />
+            <Fields entries={summary} />
+          </Card>
+          {details.length > 0 && (
+            <Card>
+              <CardHeader title="Details" />
+              <Fields entries={details} />
+            </Card>
+          )}
+          {tags.length > 0 && (
+            <Card>
+              <CardHeader title="Tags" />
+              <Fields entries={tags} />
+            </Card>
+          )}
+          {activity && (
+            <Suspense fallback={null}>
+              <RecentAwsActivity accountId={resource.cloudAccount.id} nativeId={resource.nativeId} />
+            </Suspense>
+          )}
+          {activity && activity.events.length > 0 && (
+            <section className="flex flex-col gap-2" aria-label="Recent activity">
+              <h2 className="text-sm font-semibold">Recent activity</h2>
+              <ActivityTable events={activity.events} />
+            </section>
+          )}
+        </>
       )}
     </>
   );

@@ -109,7 +109,7 @@ describe('service logs', () => {
     const id = await addService('Staging');
     const denied = await logs(id, developer).expect(200);
     expect(denied.body).toMatchObject({ access: { allowed: false }, lines: [] });
-    expect(denied.body.access.reason).toContain('View service logs');
+    expect(denied.body.access.reason).toContain('View logs');
     expect(read).not.toHaveBeenCalled();
     await grant();
     expect((await logs(id, developer).expect(200)).body.lines).toHaveLength(1);
