@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 export const READ_LIMIT = { default: { limit: 60, ttl: 60_000 } };
 export const CHANGE_LIMIT = { default: { limit: 10, ttl: 60_000 } };
-export const INVALID_REQUEST = 'That experiment request is not valid.';
+export const INVALID_REQUEST = 'That failover test request is not valid.';
 export const INVALID_GROUP = `Give the group a name and pick 1 to ${EXPERIMENT_RUN_LIMIT} different templates.`;
 
 export const region = z.string().regex(/^[a-z]{2}(-[a-z]+)+-\d{1,2}$/);

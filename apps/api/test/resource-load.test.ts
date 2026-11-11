@@ -110,6 +110,18 @@ describe('resource load', () => {
     expect(query.until.getTime()).toBeGreaterThanOrEqual(before);
   });
 
+  it('reads a fixed window, such as a failover test, with points that fit its length', async () => {
+    const id = await addResource('Staging', 'rds-instance');
+    const from = new Date(Date.now() - 50 * 60_000).toISOString();
+    const to = new Date(Date.now() - 10 * 60_000).toISOString();
+    await load(id, viewer, `from=${from}&to=${to}`).expect(200);
+    const [, query] = read.mock.calls[0]!;
+    expect(query).toEqual({ since: new Date(from), until: new Date(to), periodSeconds: 60 });
+    await load(id, viewer, `from=${to}&to=${from}`).expect(400);
+    const weekAgo = new Date(Date.now() - 8 * 24 * 60 * 60_000).toISOString();
+    await load(id, viewer, `from=${weekAgo}&to=${to}`).expect(400);
+  });
+
   it('says when the account has no access key', async () => {
     const { body } = await load(await addResource('Staging', 'rds-instance', false)).expect(200);
     expect(body.error).toBe('This account has no access key. Add one under Integrations.');

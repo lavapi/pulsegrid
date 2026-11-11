@@ -1,7 +1,8 @@
-import type { ExperimentStep, ExperimentTarget } from '@pulsegrid/shared';
+import type { ExperimentStep, ExperimentTarget, RunResult } from '@pulsegrid/shared';
 import { BellRing, TriangleAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { formatStepDuration, stateLabel, stateTone } from '@/lib/experiments';
+import type { ReactNode } from 'react';
+import { formatStepDuration, resultLabel, resultTone, stateLabel, stateTone } from '@/lib/experiments';
 
 export function StateBadge({ state }: { state: string }) {
   return (
@@ -58,5 +59,22 @@ export function StopAlarms({ alarms }: { alarms: readonly string[] }) {
         </code>
       ))}
     </p>
+  );
+}
+
+export function ResultBadge({ result }: { result: RunResult }) {
+  return (
+    <Badge tone={resultTone(result)} dot>
+      {resultLabel(result)}
+    </Badge>
+  );
+}
+
+export function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="font-medium">{children}</dd>
+    </div>
   );
 }

@@ -60,16 +60,20 @@ export function AppShell({ user, projects, accounts, selectedId, children }: App
 
   return (
     <>
-      {production && <ProductionBanner account={production} />}
+      {production && (
+        <div className="print:hidden">
+          <ProductionBanner account={production} />
+        </div>
+      )}
       <div
         className={cn(
-          'grid min-h-screen grid-cols-1',
+          'grid min-h-screen grid-cols-1 print:block',
           collapsed ? 'lg:grid-cols-[64px_minmax(0,1fr)]' : 'lg:grid-cols-[248px_minmax(0,1fr)]',
         )}
       >
         <aside
           className={cn(
-            'sticky hidden overflow-y-auto border-r bg-sidebar lg:block',
+            'sticky hidden overflow-y-auto border-r bg-sidebar lg:block print:hidden',
             production ? 'top-8 h-[calc(100vh-2rem)]' : 'top-0 h-screen',
           )}
         >
@@ -96,7 +100,7 @@ export function AppShell({ user, projects, accounts, selectedId, children }: App
         <div className="flex min-w-0 flex-col">
           <header
             className={cn(
-              'sticky z-40 flex h-[60px] items-center gap-2 border-b bg-background/85 px-4 backdrop-blur lg:px-6',
+              'sticky z-40 flex h-[60px] items-center gap-2 border-b bg-background/85 px-4 backdrop-blur lg:px-6 print:hidden',
               production ? 'top-8' : 'top-0',
             )}
           >

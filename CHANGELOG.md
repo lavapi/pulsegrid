@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- Failover tests keep a report when they end, including tests started outside PulseGrid. A group run or Run all has one report for the whole run, with the overall result, every test's result and reason, one shared timeline and the Load charts of every database and cache the tests hit. Reports can be saved as PDF.
+- **Test history** lists every report in the project, with a group run as one entry, filters for environment, test or group, result and dates, and CSV export. Reports are kept until someone with Manage environments deletes them.
+- Load charts can show a fixed time window, used by reports.
+
+### Changed
+
+- Fault experiments are now called failover tests everywhere people see them, and their pages moved to `/failover-tests`. Old links redirect. Permission keys and audit actions are unchanged, so roles keep their permissions.
+
 ## [0.13.0] - 2026-11-10
 
 ### Changed

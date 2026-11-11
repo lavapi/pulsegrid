@@ -1,6 +1,12 @@
 'use client';
 
-import { LOAD_RANGES, LOAD_SERIES_LIMIT, type LoadRange, type ResourceLoad as ResourceLoadData } from '@pulsegrid/shared';
+import {
+  LOAD_RANGES,
+  LOAD_SERIES_LIMIT,
+  type LoadRange,
+  type LoadWindow,
+  type ResourceLoad as ResourceLoadData,
+} from '@pulsegrid/shared';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -48,7 +54,19 @@ function Charts({ load }: { load: ResourceLoadData }) {
   );
 }
 
-export function ResourceLoad({ resourceId }: { resourceId: string }) {
+interface ResourceLoadProps {
+  resourceId: string;
+  title?: string;
+  /** A fixed stretch of time to show instead of the range buttons. */
+  timeWindow?: LoadWindow;
+}
+
+const queryOf = (range: LoadRange, from?: string, to?: string): string =>
+  from && to ? `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}` : `range=${range.id}`;
+
+export function ResourceLoad({ resourceId, title = 'Load', timeWindow }: ResourceLoadProps) {
+  const from = timeWindow?.from;
+  const to = timeWindow?.to;
   const [range, setRange] = useState<LoadRange>(LOAD_RANGES[0]);
   const [load, setLoad] = useState<ResourceLoadData | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -56,7 +74,7 @@ export function ResourceLoad({ resourceId }: { resourceId: string }) {
   useEffect(() => {
     let current = true;
     setLoad(null);
-    void apiSendForJson<ResourceLoadData>(`/resources/${resourceId}/load?range=${range.id}`, 'GET').then(
+    void apiSendForJson<ResourceLoadData>(`/resources/${resourceId}/load?${queryOf(range, from, to)}`, 'GET').then(
       ({ data, error }) => {
         if (current) {
           setLoad(data);
@@ -67,12 +85,19 @@ export function ResourceLoad({ resourceId }: { resourceId: string }) {
     return () => {
       current = false;
     };
-  }, [range, resourceId]);
+  }, [range, resourceId, from, to]);
 
   return (
     <Card>
-      <CardHeader title="Load" description="From CloudWatch, read when you open this page." />
-      <div className="flex border-b px-5 py-3">
+      <CardHeader
+        title={title}
+        description={
+          timeWindow
+            ? 'From CloudWatch, for the test and the minutes around it.'
+            : 'From CloudWatch, read when you open this page.'
+        }
+      />
+      <div className={timeWindow ? 'hidden' : 'flex border-b px-5 py-3'}>
         <div className="flex rounded-lg border p-0.5" role="group" aria-label="Time range">
           {LOAD_RANGES.map((item) => (
             <Button

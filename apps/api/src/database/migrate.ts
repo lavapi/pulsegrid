@@ -30,6 +30,7 @@ import * as productionEnvironments from './migrations/0028_production_environmen
 import * as projectFunctionChecks from './migrations/0029_project_function_checks';
 import * as twoFactorAttempts from './migrations/0030_two_factor_attempts';
 import * as experimentGroups from './migrations/0031_experiment_groups';
+import * as experimentReports from './migrations/0032_experiment_reports';
 
 const MIGRATIONS: Record<string, Migration> = {
   '0001_foundation': foundation,
@@ -63,6 +64,7 @@ const MIGRATIONS: Record<string, Migration> = {
   '0029_project_function_checks': projectFunctionChecks,
   '0030_two_factor_attempts': twoFactorAttempts,
   '0031_experiment_groups': experimentGroups,
+  '0032_experiment_reports': experimentReports,
 };
 
 const ensureAppRole = async (db: Kysely<unknown>, password: string): Promise<void> => {

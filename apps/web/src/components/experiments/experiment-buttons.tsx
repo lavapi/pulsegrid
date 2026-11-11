@@ -20,19 +20,19 @@ export function StartExperimentButton({ accountId, template }: { accountId: stri
         { region: template.region, templateId: template.id },
       );
       if (!data) {
-        toast.error(error ?? 'The experiment did not start. Please try again.');
+        toast.error(error ?? 'The test did not start. Please try again.');
         return;
       }
-      toast.success('Experiment started');
+      toast.success('Failover test started');
       router.push(experimentPath(data.region, data.id));
     });
 
   return (
     <ConfirmButton
-      label="Start experiment"
+      label="Start test"
       title={`Start ${template.label}?`}
       description="This deliberately breaks or slows the resources the template targets. It runs until it finishes, a stop alarm fires, or someone stops it."
-      confirmLabel="Start experiment"
+      confirmLabel="Start test"
       triggerVariant="danger"
       typeToConfirm={template.label}
       disabled={pending}
@@ -52,16 +52,16 @@ export function StopExperimentButton({ accountId, region, id }: { accountId: str
         toast.error(failure);
         return;
       }
-      toast.success('Stopping the experiment');
+      toast.success('Stopping the test');
       router.refresh();
     });
 
   return (
     <ConfirmButton
-      label="Stop experiment"
-      title="Stop this experiment?"
+      label="Stop test"
+      title="Stop this test?"
       description="AWS stops every step that is still running and undoes what it can, such as removing injected faults."
-      confirmLabel="Stop experiment"
+      confirmLabel="Stop test"
       triggerVariant="danger"
       disabled={pending}
       onConfirm={stop}
@@ -96,19 +96,19 @@ export function RunExperimentsButton({
         groupId ? { groupId } : {},
       );
       if (!data) {
-        toast.error(error ?? 'The experiments did not start. Please try again.');
+        toast.error(error ?? 'The tests did not start. Please try again.');
         return;
       }
-      toast.success('Experiments started');
+      toast.success('Failover tests started');
       router.push(experimentRunPath(data.id));
     });
 
   return (
     <ConfirmButton
       label={triggerLabel}
-      title={`Start ${templateLabels.length} experiments?`}
+      title={`Start ${templateLabels.length} failover tests?`}
       description={`This starts ${templateLabels.join(', ')} at the same time. Each deliberately breaks or slows the resources it targets until it finishes, a stop alarm fires, or someone stops it.`}
-      confirmLabel="Start experiments"
+      confirmLabel="Start tests"
       triggerVariant="danger"
       typeToConfirm={label}
       disabled={pending || templateLabels.length === 0}
@@ -128,15 +128,15 @@ export function StopRunButton({ accountId, runId }: { accountId: string; runId: 
         toast.error(failure);
         return;
       }
-      toast.success('Stopping the experiments');
+      toast.success('Stopping the tests');
       router.refresh();
     });
 
   return (
     <ConfirmButton
       label="Stop all"
-      title="Stop every experiment in this run?"
-      description="AWS stops every experiment that is still running and undoes what it can, such as removing injected faults."
+      title="Stop every test in this run?"
+      description="AWS stops every test that is still running and undoes what it can, such as removing injected faults."
       confirmLabel="Stop all"
       triggerVariant="danger"
       disabled={pending}

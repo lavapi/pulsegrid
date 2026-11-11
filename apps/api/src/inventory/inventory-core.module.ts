@@ -7,6 +7,8 @@ import { ActionRunStore } from './actions/action-run.store';
 import { ActionTracker } from './actions/action-tracker';
 import { ActivityWatcher } from './actions/activity-watcher';
 import { CredentialVault } from './connection/credential-vault';
+import { ExperimentReportCapture } from './experiments/experiment-report-capture';
+import { ExperimentReportStore } from './experiments/experiment-report.store';
 import { COST_QUEUE_NAME, CostQueue } from './costs/cost-queue';
 import { CostRefreshService } from './costs/cost-refresh.service';
 import { TokenCipher } from './connection/token-cipher';
@@ -41,6 +43,8 @@ import { SYNC_QUEUE_NAME, SyncQueue } from './sync/sync-queue';
       useFactory: (config: AppConfig) => new TokenCipher(config.tokenEncryptionKey),
     },
     CredentialVault,
+    ExperimentReportStore,
+    ExperimentReportCapture,
     CostRefreshService,
     {
       provide: CostQueue,
@@ -70,6 +74,8 @@ import { SYNC_QUEUE_NAME, SyncQueue } from './sync/sync-queue';
     CostQueue,
     CostRefreshService,
     CredentialVault,
+    ExperimentReportCapture,
+    ExperimentReportStore,
     ProviderRegistry,
     InventorySyncService,
     SyncProgressStore,

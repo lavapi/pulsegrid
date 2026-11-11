@@ -57,7 +57,7 @@ Roles belong to a project, so the same person can be a Viewer in one project and
 
 ## Cloud actions
 
-Running pipelines, force deploying a service, rebooting a database, cache or server, running fault experiments, and reading or writing app secrets each have a staging and a production permission. They're off for every role until the super admin ticks them, except **Run staging pipelines**, which Admins and Developers start with. They apply to every account in the project.
+Running pipelines, force deploying a service, rebooting a database, cache or server, running failover tests, and reading or writing app secrets each have a staging and a production permission. They're off for every role until the super admin ticks them, except **Run staging pipelines**, which Admins and Developers start with. They apply to every account in the project.
 
 Which permission applies depends on the environment: production environments need the production permission, others the staging one. Nothing runs on an account with no environment. The super admin has every permission, production included. Only the super admin decides which environments are production. See [Environments](environments.md#production).
 
@@ -70,7 +70,7 @@ Each row is two permissions in **Roles**: the staging one shown here, and the sa
 | Reboot a staging database | |
 | Reboot a staging cache | Rebooting can lose data stored in the cache, and caches in cluster mode can't be rebooted |
 | Reboot a staging server | |
-| Run staging fault experiments | Starts and stops AWS FIS experiments and groups on the **Experiments** page. See [Fault experiments](connect-aws-account.md#fault-experiments). |
+| Run staging failover tests | Starts and stops failover tests and groups on the **Failover tests** page. See [Failover tests](connect-aws-account.md#failover-tests). |
 | Read staging app secrets | Shows a secret's keys, and a value when you select **Show**. |
 | Write staging app secrets | Also adds, edits and deletes keys, and includes reading. |
 

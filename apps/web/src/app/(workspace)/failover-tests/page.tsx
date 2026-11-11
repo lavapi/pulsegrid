@@ -1,15 +1,16 @@
 import { type ExperimentsView, type ExperimentTemplate, RUN_ALL_LABEL } from '@pulsegrid/shared';
-import { FlaskConical } from 'lucide-react';
+import { FlaskConical, History } from 'lucide-react';
 import Link from 'next/link';
 import { RunExperimentsButton, StartExperimentButton } from '@/components/experiments/experiment-buttons';
 import { ExperimentGroups, RecentRuns } from '@/components/experiments/experiment-groups';
 import { StateBadge, StepSummary, StopAlarms, TargetList } from '@/components/experiments/experiment-parts';
+import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { Time } from '@/components/ui/time';
 import { getAccountContext } from '@/lib/account-context';
-import { experimentPath } from '@/lib/experiments';
+import { experimentPath, HISTORY_PATH } from '@/lib/experiments';
 import { apiGet } from '@/lib/server-api';
 
 function TemplateCard({
@@ -57,11 +58,11 @@ export default async function ExperimentsPage() {
   if (!selected) {
     return (
       <>
-        <PageHeader title="Fault experiments" />
+        <PageHeader title="Failover tests" />
         <EmptyState
           icon={FlaskConical}
           title="No cloud account yet"
-          description="Connect an AWS account under Integrations to run its fault experiments here."
+          description="Connect an AWS account under Integrations to run its failover tests here."
         />
       </>
     );
@@ -71,18 +72,25 @@ export default async function ExperimentsPage() {
   return (
     <>
       <PageHeader
-        title="Fault experiments"
-        description={`AWS FIS experiment templates in ${selected.name}. Templates are made in AWS; run and watch them here.`}
+        title="Failover tests"
+        description={`Failover test templates in ${selected.name}, from AWS FIS. Templates are made in AWS; run and watch them here.`}
         action={
-          view.access.canRun &&
-          view.templates.length > 0 && (
-            <RunExperimentsButton
-              accountId={selected.id}
-              label={RUN_ALL_LABEL}
-              templateLabels={view.templates.map(({ label }) => label)}
-              triggerLabel="Run all"
-            />
-          )
+          <div className="flex items-center gap-2">
+            <Button asChild size="sm">
+              <Link href={HISTORY_PATH}>
+                <History aria-hidden="true" />
+                Test history
+              </Link>
+            </Button>
+            {view.access.canRun && view.templates.length > 0 && (
+              <RunExperimentsButton
+                accountId={selected.id}
+                label={RUN_ALL_LABEL}
+                templateLabels={view.templates.map(({ label }) => label)}
+                triggerLabel="Run all"
+              />
+            )}
+          </div>
         }
       />
       {view.access.blockedReason && (
@@ -94,7 +102,7 @@ export default async function ExperimentsPage() {
       {!view.error && view.templates.length === 0 && (
         <EmptyState
           icon={FlaskConical}
-          title="No experiment templates"
+          title="No failover test templates"
           description="Create a template in the AWS FIS console or with Terraform, then it shows up here."
         />
       )}
@@ -114,7 +122,7 @@ export default async function ExperimentsPage() {
       </div>
       {view.experiments.length > 0 && (
         <Card>
-          <CardHeader title="Recent experiments" description="Started here or anywhere else in AWS." />
+          <CardHeader title="Recent tests" description="Started here or anywhere else in AWS." />
           <ul className="divide-y">
             {view.experiments.map((experiment) => (
               <li key={`${experiment.region}/${experiment.id}`}>

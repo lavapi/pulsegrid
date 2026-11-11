@@ -2,9 +2,8 @@ import { type ExperimentDetail, isActiveExperiment, supportsLoad } from '@pulseg
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import type { ReactNode } from 'react';
 import { StopExperimentButton } from '@/components/experiments/experiment-buttons';
-import { StateBadge, StepSummary, StopAlarms, TargetList } from '@/components/experiments/experiment-parts';
+import { Fact, StateBadge, StepSummary, StopAlarms, TargetList } from '@/components/experiments/experiment-parts';
 import { ResourceLoad } from '@/components/infrastructure/load/resource-load';
 import { LiveRefresh } from '@/components/pipelines/live-refresh';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -15,20 +14,11 @@ import { apiGet } from '@/lib/server-api';
 
 const LOAD_LIMIT = 3;
 
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium">{children}</dd>
-    </div>
-  );
-}
-
 export default async function ExperimentPage({ params }: { params: Promise<{ region: string; id: string }> }) {
   const { region, id } = await params;
   const { selected } = await getAccountContext();
   if (!selected) {
-    redirect('/experiments');
+    redirect('/failover-tests');
   }
   const experiment = await apiGet<ExperimentDetail>(
     `/cloud/accounts/${selected.id}/experiments/${encodeURIComponent(region)}/${encodeURIComponent(id)}`,
@@ -40,11 +30,11 @@ export default async function ExperimentPage({ params }: { params: Promise<{ reg
     <>
       <LiveRefresh active={active} />
       <Link
-        href="/experiments"
+        href="/failover-tests"
         className="inline-flex w-fit items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" aria-hidden="true" />
-        Fault experiments
+        Failover tests
       </Link>
       <PageHeader
         title={experiment.label}
@@ -103,7 +93,7 @@ export default async function ExperimentPage({ params }: { params: Promise<{ reg
       </Card>
       {experiment.resources.length > 0 && (
         <Card>
-          <CardHeader title="Affected resources" description="Resources this experiment picked that PulseGrid knows." />
+          <CardHeader title="Affected resources" description="Resources this test picked that PulseGrid knows." />
           <ul className="divide-y">
             {experiment.resources.map((resource) => (
               <li key={resource.id}>

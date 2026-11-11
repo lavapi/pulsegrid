@@ -18,7 +18,7 @@ describe('experimentAccess', () => {
   it('needs the production permission in production', () => {
     const production = { name: 'Staging', isProduction: true };
     expect(experimentAccess({ account: account(), environment: production }, runner).blockedReason).toBe(
-      'Ask your super admin for the Run production fault experiments permission.',
+      'Ask your super admin for the Run production failover tests permission.',
     );
     const productionRunner = new Set<UserPermission>(['production.experiment.run']);
     expect(experimentAccess({ account: account(), environment: production }, productionRunner).canRun).toBe(true);
@@ -29,7 +29,7 @@ describe('experimentAccess', () => {
       'no access key',
     );
     expect(experimentAccess({ account: account(), environment: staging }, new Set()).blockedReason).toContain(
-      'Run staging fault experiments',
+      'Run staging failover tests',
     );
     expect(experimentAccess({ account: account(), environment: null }, runner).blockedReason).toBe(
       'Assign this account to an environment first.',

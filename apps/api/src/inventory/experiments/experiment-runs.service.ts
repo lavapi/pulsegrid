@@ -2,14 +2,17 @@ import {
   EXPERIMENT_RUN_LIMIT,
   type ExperimentRunDetail,
   type ExperimentRunItem,
+  type ExperimentRunItemState,
   type ExperimentRunSummary,
   type ExperimentState,
   type ExperimentTemplate,
   type ExperimentTemplateRef,
   isActiveExperiment,
   RUN_ALL_LABEL,
+  type RunItemReport,
   type StartedExperimentRun,
   templateKey,
+  testResult,
 } from '@pulsegrid/shared';
 import { ConflictException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
@@ -18,14 +21,17 @@ import { TenantDatabase } from '../../database/tenant-database';
 import { experimentAccess } from './experiment-access';
 import { type ExperimentTarget, ExperimentGateway } from './experiment-gateway';
 import { findGroup } from './experiment-groups.service';
+import { ExperimentReportStore, type ReportRow, reportKey, reportsFor } from './experiment-report.store';
+import { knownResources } from './experiment-resources';
+import { runOutcome } from './run-outcome';
 
-const RUN_MISSING = 'That experiment run no longer exists.';
-const NOTHING_TO_RUN = 'There are no experiment templates to run.';
+const RUN_MISSING = 'That test run no longer exists.';
+const NOTHING_TO_RUN = 'There are no failover test templates to run.';
 const TOO_MANY = `A run can start at most ${EXPERIMENT_RUN_LIMIT} templates.`;
 const TEMPLATE_MISSING = 'This template no longer exists in AWS.';
-const START_FAILED = "This experiment didn't start. Please try again.";
+const START_FAILED = "This test didn't start. Please try again.";
 const READ_FAILED = "AWS couldn't be reached. Please try again.";
-const SOME_NOT_STOPPED = "Some experiments didn't stop. Please try again.";
+const SOME_NOT_STOPPED = "Some tests didn't stop. Please try again.";
 const RECENT_RUNS = 10;
 
 interface RunRow {
@@ -52,7 +58,24 @@ const toSummary = (run: RunRow): ExperimentRunSummary => {
   return { ...runInfo(run), started: run.items.length - failed, failed };
 };
 
-const experimentKey = (region: string, id: string): string => `${region}/${id}`;
+interface StartedItem {
+  region: string;
+  experimentId: string;
+}
+
+const startedItems = (items: readonly ExperimentRunItem[]): StartedItem[] =>
+  items.flatMap(({ region, experimentId }) => (experimentId ? [{ region, experimentId }] : []));
+
+const keyOf = ({ region, experimentId }: StartedItem): string => reportKey(region, experimentId);
+
+const toItemReport = (row: ReportRow): RunItemReport => ({
+  id: row.id,
+  result: testResult(row.state) ?? 'failed',
+  reason: row.reason,
+  startedAt: row.started_at?.toISOString() ?? null,
+  endedAt: row.ended_at?.toISOString() ?? null,
+  steps: row.details.steps,
+});
 
 const messageOf = (error: unknown, fallback: string): string =>
   error instanceof HttpException ? error.message : fallback;
@@ -73,6 +96,7 @@ export class ExperimentRunsService {
   constructor(
     private readonly database: TenantDatabase,
     private readonly gateway: ExperimentGateway,
+    private readonly reports: ExperimentReportStore,
   ) {}
 
   async start(
@@ -132,13 +156,23 @@ export class ExperimentRunsService {
   async detail(auth: AuthContext, accountId: string, runId: string): Promise<ExperimentRunDetail> {
     const target = await this.gateway.find(auth, accountId);
     const run = await this.findRun(auth, accountId, runId);
-    const { states, error } = await this.states(target, run.items);
+    const started = startedItems(run.items);
+    const before = await this.saved(auth, accountId, started);
+    const { states, error } = await this.liveStates(auth, target, started.filter((item) => !before.has(keyOf(item))));
+    const saved = states.size > 0 ? await this.saved(auth, accountId, started) : before;
+    const items = run.items.map((item): ExperimentRunItemState => {
+      const report = item.experimentId ? saved.get(reportKey(item.region, item.experimentId)) : undefined;
+      const live = item.experimentId ? states.get(reportKey(item.region, item.experimentId)) : undefined;
+      return { ...item, state: report?.state ?? live ?? null, report: report ? toItemReport(report) : null };
+    });
+    const resourceIds = [...saved.values()].flatMap(({ details }) => details.resourceIds);
     return {
       ...runInfo(run),
-      items: run.items.map((item) => ({
-        ...item,
-        state: item.experimentId ? (states.get(experimentKey(item.region, item.experimentId)) ?? null) : null,
-      })),
+      ...runOutcome(items),
+      accountName: target.account.name,
+      environmentName: target.environment?.name ?? null,
+      items,
+      resources: await this.database.run(auth.tenantId, (trx) => knownResources(trx, accountId, resourceIds)),
       access: experimentAccess(target, auth.permissions),
       error,
     };
@@ -149,13 +183,13 @@ export class ExperimentRunsService {
     const run = await this.findRun(auth, accountId, runId);
     const metadata = { label: run.label, cloudAccount: target.account.account_id };
     await this.gateway.authorize(auth, target, { targetType: 'experiment-run', targetId: runId, ipAddress, metadata });
-    const { states, error } = await this.states(target, run.items);
+    const { states, error } = await this.liveStates(auth, target, startedItems(run.items));
     if (error) {
       throw new ConflictException(error);
     }
-    const active = run.items.flatMap(({ region, experimentId }) => {
-      const state = experimentId ? states.get(experimentKey(region, experimentId)) : undefined;
-      return experimentId && state && isActiveExperiment(state) ? [{ region, experimentId }] : [];
+    const active = startedItems(run.items).filter((item) => {
+      const state = states.get(keyOf(item));
+      return state !== undefined && isActiveExperiment(state);
     });
     const results = await Promise.allSettled(
       active.map(({ region, experimentId }) => this.gateway.stop(auth, target, region, experimentId, ipAddress)),
@@ -202,30 +236,39 @@ export class ExperimentRunsService {
     );
   }
 
-  private async states(
+  private saved(auth: AuthContext, accountId: string, items: readonly StartedItem[]) {
+    return this.database.run(auth.tenantId, (trx) =>
+      reportsFor(trx, accountId, items.map(({ experimentId }) => experimentId)),
+    );
+  }
+
+  /** Live states from AWS, saving the report of any test that has ended since. */
+  private async liveStates(
+    auth: AuthContext,
     target: ExperimentTarget,
-    items: readonly ExperimentRunItem[],
+    items: readonly StartedItem[],
   ): Promise<{ states: Map<string, ExperimentState>; error: string | null }> {
-    const started = items.flatMap(({ region, experimentId }) => (experimentId ? [{ region, experimentId }] : []));
-    const regions = [...new Set(started.map(({ region }) => region))];
     const states = new Map<string, ExperimentState>();
     try {
+      const regions = [...new Set(items.map(({ region }) => region))];
       const listed = await Promise.all(
         regions.map((region) => this.gateway.call(target, region, (source, context) => source.listExperiments(context))),
       );
       for (const { region, id, state } of listed.flat()) {
-        states.set(experimentKey(region, id), state);
+        states.set(reportKey(region, id), state);
       }
-      const unlisted = started.filter(({ region, experimentId }) => !states.has(experimentKey(region, experimentId)));
-      const fetched = await Promise.all(
-        unlisted.map(({ region, experimentId }) =>
+      const unsettled = items.filter((item) => {
+        const state = states.get(keyOf(item));
+        return state === undefined || !isActiveExperiment(state);
+      });
+      const records = await Promise.all(
+        unsettled.map(({ region, experimentId }) =>
           this.gateway.call(target, region, (source, context) => source.getExperiment(context, experimentId)),
         ),
       );
-      for (const record of fetched) {
-        if (record) {
-          states.set(experimentKey(record.region, record.id), record.state);
-        }
+      for (const record of records.filter((item) => item !== null)) {
+        states.set(reportKey(record.region, record.id), record.state);
+        await this.reports.save(auth.tenantId, target, record);
       }
       return { states, error: null };
     } catch (error) {
