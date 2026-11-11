@@ -83,8 +83,11 @@ export interface ExperimentDetail extends ExperimentSummary {
   access: ExperimentAccess;
 }
 
-/** The most templates one group or one run can hold, to stay under AWS's limit on experiments running at once. */
+/** The most templates one group or one run can hold. AWS's limit on tests running at once is separate, and runs work within it in waves. */
 export const EXPERIMENT_RUN_LIMIT = 25;
+
+/** AWS FIS allows 5 experiments at once per account and region unless the quota was raised. */
+export const DEFAULT_EXPERIMENT_QUOTA = 5;
 export const EXPERIMENT_GROUP_NAME_LIMIT = 60;
 export const RUN_ALL_LABEL = 'All tests';
 
@@ -99,6 +102,8 @@ export interface ExperimentGroup {
   id: string;
   name: string;
   templates: ExperimentTemplateRef[];
+  /** How many tests this group last ran at a time, suggested again next time. */
+  waveSize: number | null;
 }
 
 export interface ExperimentGroupInput {
@@ -111,6 +116,24 @@ export interface ExperimentRunItem extends ExperimentTemplateRef {
   experimentId: string | null;
   /** Why this template didn't start, or null when it did. */
   error: string | null;
+  /** Not started yet: it starts when a slot in the run's wave frees up. */
+  waiting?: boolean;
+  /** Stop all cancelled it before it started. */
+  cancelled?: boolean;
+}
+
+export interface ExperimentCapacity {
+  region: string;
+  /** How many tests AWS lets the account run at once in this region. */
+  quota: number;
+  /** False when the quota couldn't be read and AWS's default is assumed. */
+  quotaKnown: boolean;
+  running: number;
+}
+
+export interface StartRunInput {
+  groupId?: string;
+  waveSize: number;
 }
 
 export interface ExperimentRunSummary {
@@ -141,7 +164,7 @@ const RESULT_BY_STATE: Partial<Record<ExperimentState, TestResult>> = {
 /** The result of an ended test, or null while it's still active. */
 export const testResult = (state: ExperimentState): TestResult | null => RESULT_BY_STATE[state] ?? null;
 
-/** Passed only when every test completed; any failure or test that didn't start fails the run. */
+/** Passed only when every test completed; any failure or test that didn't start fails the run. Cancelled tests count as stopped. */
 export const runResult = (results: readonly RunResult[], notStarted: number): RunResult => {
   if (results.includes('running')) {
     return 'running';
@@ -182,6 +205,8 @@ export interface ExperimentRunItemState extends ExperimentRunItem {
 
 export interface ExperimentRunDetail extends Omit<ExperimentRunSummary, 'started' | 'failed'> {
   accountName: string;
+  /** How many tests run at a time, or null for runs from before waves, which started everything at once. */
+  waveSize: number | null;
   environmentName: string | null;
   result: RunResult;
   endedAt: string | null;
@@ -223,6 +248,8 @@ export interface RunCounts {
   stopped: number;
   failed: number;
   notStarted: number;
+  waiting: number;
+  cancelled: number;
 }
 
 export interface TestHistoryEntry {

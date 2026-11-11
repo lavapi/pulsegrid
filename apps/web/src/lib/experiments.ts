@@ -1,4 +1,11 @@
-import { LOAD_WINDOW_MAX_MINUTES, type ExperimentState, type LoadWindow, type RunResult } from '@pulsegrid/shared';
+import {
+  EXPERIMENT_RUN_LIMIT,
+  type ExperimentCapacity,
+  type ExperimentState,
+  LOAD_WINDOW_MAX_MINUTES,
+  type LoadWindow,
+  type RunResult,
+} from '@pulsegrid/shared';
 
 type Tone = 'success' | 'warning' | 'danger' | 'neutral';
 
@@ -77,4 +84,27 @@ export const reportWindow = (from: string | null, to: string | null, now = new D
   const end = Math.min((to ? Date.parse(to) : now.getTime()) + MARGIN_MS, now.getTime());
   const longest = start + LOAD_WINDOW_MAX_MINUTES * 60_000;
   return { from: new Date(start).toISOString(), to: new Date(Math.min(end, longest)).toISOString() };
+};
+
+export interface WaveChoice {
+  /** The suggested number of tests at a time. */
+  suggested: number;
+  /** The most the run may use: the largest quota among its regions, within the run limit and test count. */
+  max: number;
+  /** Free slots across the run's regions: the smallest quota minus what's running. */
+  free: number;
+}
+
+/** What the run dialog suggests: the group's last choice, otherwise the free slots, never below 1. */
+export const waveChoice = (
+  capacity: readonly ExperimentCapacity[],
+  regions: readonly string[],
+  tests: number,
+  remembered: number | null,
+): WaveChoice => {
+  const relevant = capacity.filter(({ region }) => regions.includes(region));
+  const free = relevant.length > 0 ? Math.max(0, Math.min(...relevant.map(({ quota, running }) => quota - running))) : 0;
+  const max = Math.max(1, Math.min(EXPERIMENT_RUN_LIMIT, tests, ...relevant.map(({ quota }) => quota)));
+  const suggested = Math.min(max, Math.max(1, remembered ?? free));
+  return { suggested, max, free };
 };

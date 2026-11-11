@@ -3,6 +3,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CredentialVault } from '../src/inventory/connection/credential-vault';
 import { ExperimentReportCapture } from '../src/inventory/experiments/experiment-report-capture';
+import { ExperimentWaves } from '../src/inventory/experiments/experiment-waves';
 import { newEnvironment } from '../src/inventory/environments/account-environment';
 import { awsProvider } from '../src/inventory/providers/aws/aws.provider';
 import {
@@ -26,6 +27,7 @@ const TEMPLATE = {
 };
 
 const SECOND = { ...TEMPLATE, id: 'EXT2', label: 'Cache reboot', description: null, stopAlarms: [] };
+const THIRD = { ...TEMPLATE, id: 'EXT3', label: 'Zone outage', description: null, stopAlarms: [] };
 const summary = (id: string, templateId: string, state: ExperimentState): ExperimentSummary => ({
   id,
   region: REGION,
@@ -55,6 +57,8 @@ const source = {
   getExperiment: vi.fn<ExperimentSource['getExperiment']>(),
   start: vi.fn<ExperimentSource['start']>(),
   stop: vi.fn<ExperimentSource['stop']>(),
+  concurrencyLimit: vi.fn<ExperimentSource['concurrencyLimit']>(),
+  isQuotaFull: (error: unknown) => (error as Error).name === 'ServiceQuotaExceededException',
   failureMessage: () => 'AWS refused this experiment.',
 };
 const provider: CloudProvider = { ...awsProvider, actions: [], experimentSource: source };
@@ -130,6 +134,7 @@ describe('failover tests', () => {
     ]);
     source.start.mockResolvedValue('EXP2');
     source.stop.mockResolvedValue();
+    source.concurrencyLimit.mockResolvedValue({ limit: 5, known: true });
     await setExtraPermissions(context, context.acme, 'developer', ['experiment.run']);
   });
 
@@ -244,7 +249,7 @@ describe('failover tests', () => {
     it('creates, edits and deletes groups, and lists them on the view', async () => {
       const { id } = await addAccount('Staging');
       const { body: group } = await createGroup(id).expect(201);
-      expect(group).toEqual({ id: expect.any(String), name: 'Data layer', templates: both });
+      expect(group).toEqual({ id: expect.any(String), name: 'Data layer', templates: both, waveSize: null });
       expect((await createGroup(id)).body.message).toBe('A group with that name already exists.');
       await http()
         .put(`${groups(id)}/${group.id}`)
@@ -252,7 +257,7 @@ describe('failover tests', () => {
         .send({ name: 'Database only', templates: [first] })
         .expect(200);
       const { body: view } = await http().get(`/api/cloud/accounts/${id}/experiments`).set('Cookie', viewer).expect(200);
-      expect(view.groups).toEqual([{ id: group.id, name: 'Database only', templates: [first] }]);
+      expect(view.groups).toEqual([{ id: group.id, name: 'Database only', templates: [first], waveSize: null }]);
       await http().delete(`${groups(id)}/${group.id}`).set('Cookie', developer).expect(204);
       await http().delete(`${groups(id)}/${group.id}`).set('Cookie', developer).expect(404);
       expect((await actions(group.id)).map(({ action }) => action)).toEqual([
@@ -280,17 +285,17 @@ describe('failover tests', () => {
       const { body: group } = await createGroup(id, templates).expect(201);
       source.start.mockImplementation(async (_context, templateId) => {
         if (templateId === 'EXT2') {
-          throw Object.assign(new Error('raw'), { name: 'ServiceQuotaExceededException' });
+          throw Object.assign(new Error('raw'), { name: 'ValidationException' });
         }
         return 'RUNEXT1';
       });
-      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({ groupId: group.id }).expect(201);
+      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({ groupId: group.id, waveSize: 5 }).expect(201);
       source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running')]);
       const { body: detail } = await http().get(`${runs(id)}/${run.id}`).set('Cookie', viewer).expect(200);
       expect(detail).toMatchObject({ label: 'Data layer', startedBy: 'dev@example.test', error: null });
       expect(detail.items).toEqual([
-        { region: REGION, templateId: 'EXT1', label: 'Database failover', experimentId: 'RUNEXT1', error: null, state: 'running', report: null },
-        { region: REGION, templateId: 'EXT2', label: 'Cache reboot', experimentId: null, error: 'AWS refused this experiment.', state: null, report: null },
+        { region: REGION, templateId: 'EXT1', label: 'Database failover', experimentId: 'RUNEXT1', error: null, waiting: false, state: 'running', report: null },
+        { region: REGION, templateId: 'EXT2', label: 'Cache reboot', experimentId: null, error: 'AWS refused this experiment.', waiting: false, state: null, report: null },
         { region: REGION, templateId: 'GONE', label: 'GONE', experimentId: null, error: 'This template no longer exists in AWS.', state: null, report: null },
       ]);
       expect(await actions('RUNEXT1')).toEqual([{ action: 'cloud.experiment.started', actor_email: 'dev@example.test' }]);
@@ -304,7 +309,7 @@ describe('failover tests', () => {
 
     it('runs every template with one click, and refuses when there is nothing to run', async () => {
       const { id } = await addAccount('Staging');
-      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({}).expect(201);
+      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
       expect(source.start).toHaveBeenCalledTimes(2);
       source.listExperiments.mockResolvedValue([]);
       source.getExperiment.mockResolvedValue(null);
@@ -312,14 +317,14 @@ describe('failover tests', () => {
       expect(detail.label).toBe('All tests');
       expect(detail.items.map(({ experimentId }: { experimentId: string }) => experimentId)).toEqual(['RUNEXT1', 'RUNEXT2']);
       source.listTemplates.mockResolvedValue([]);
-      const empty = await http().post(runs(id)).set('Cookie', developer).send({});
+      const empty = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 });
       expect(empty.status).toBe(409);
       expect(empty.body.message).toBe('There are no failover test templates to run.');
     });
 
     it('stops every experiment of a run that is still active', async () => {
       const { id } = await addAccount('Staging');
-      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({}).expect(201);
+      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
       source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running'), summary('RUNEXT2', 'EXT2', 'completed')]);
       await http().post(`${runs(id)}/${run.id}/stop`).set('Cookie', developer).expect(204);
       expect(source.stop).toHaveBeenCalledTimes(1);
@@ -332,17 +337,17 @@ describe('failover tests', () => {
 
     it('needs the production permission in production, and keeps other projects out', async () => {
       const { id } = await addAccount('Production');
-      const refused = await http().post(runs(id)).set('Cookie', developer).send({});
+      const refused = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 });
       expect(refused.status).toBe(403);
       expect(source.start).not.toHaveBeenCalled();
       await setExtraPermissions(context, context.acme, 'developer', ['experiment.run', 'production.experiment.run']);
       await createGroup(id).expect(201);
-      await http().post(runs(id)).set('Cookie', developer).send({}).expect(201);
+      await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
       const staging = await addAccount('Staging');
-      const { body: run } = await http().post(runs(staging.id)).set('Cookie', developer).send({}).expect(201);
+      const { body: run } = await http().post(runs(staging.id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
       await http().get(`${runs(staging.id)}/${run.id}`).set('Cookie', otherOwner).expect(404);
-      await http().post(runs(staging.id)).set('Cookie', viewer).send({}).expect(403);
-      await http().post(runs(staging.id)).set('Cookie', developer).send({ groupId: 'nope' }).expect(400);
+      await http().post(runs(staging.id)).set('Cookie', viewer).send({ waveSize: 5 }).expect(403);
+      await http().post(runs(staging.id)).set('Cookie', developer).send({ groupId: 'nope', waveSize: 5 }).expect(400);
     });
   });
   describe('reports', () => {
@@ -383,7 +388,7 @@ describe('failover tests', () => {
 
     it('reports a group run in one place once its tests end', async () => {
       const { id } = await addAccount('Staging');
-      const { body: started } = await http().post(runs(id)).set('Cookie', developer).send({}).expect(201);
+      const { body: started } = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
       source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running'), summary('RUNEXT2', 'EXT2', 'running')]);
       const { body: live } = await http().get(`${runs(id)}/${started.id}`).set('Cookie', viewer).expect(200);
       expect(live).toMatchObject({ result: 'running', endedAt: null, environmentName: 'Staging' });
@@ -423,7 +428,7 @@ describe('failover tests', () => {
 
     it('lets only people who manage environments delete reports and runs', async () => {
       const { id } = await addAccount('Staging');
-      const { body: started } = await http().post(runs(id)).set('Cookie', developer).send({}).expect(201);
+      const { body: started } = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
       source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'completed'), summary('RUNEXT2', 'EXT2', 'completed')]);
       await http().get(`${runs(id)}/${started.id}`).set('Cookie', viewer).expect(200);
       await http().delete(`/api/experiment-reports/runs/${started.id}`).set('Cookie', developer).expect(403);
@@ -432,6 +437,112 @@ describe('failover tests', () => {
       await http().get(`${runs(id)}/${started.id}`).set('Cookie', viewer).expect(404);
       expect((await actions(started.id)).map(({ action }) => action)).toContain('cloud.experiment-run.deleted');
       await http().get('/api/experiment-reports').set('Cookie', otherOwner).expect(200, { entries: [], environments: [], labels: [] });
+    });
+  });
+  describe('waves', () => {
+    const runs = (accountId: string) => `/api/cloud/accounts/${accountId}/experiment-runs`;
+    const startRun = (accountId: string, waveSize: number) =>
+      http().post(runs(accountId)).set('Cookie', developer).send({ waveSize });
+    const detail = async (accountId: string, runId: string) =>
+      (await http().get(`${runs(accountId)}/${runId}`).set('Cookie', viewer).expect(200)).body;
+    const advanceAll = () => context.app.get(ExperimentWaves).advanceAll();
+    const advance = (runId: string) => context.app.get(ExperimentWaves).advance(context.acme.tenant.id, runId);
+    const stages = (body: { items: { experimentId: string | null; waiting?: boolean; cancelled?: boolean }[] }) =>
+      body.items.map(({ experimentId, waiting, cancelled }) => (waiting ? 'waiting' : cancelled ? 'cancelled' : experimentId));
+
+    beforeEach(() => {
+      source.listTemplates.mockResolvedValue([TEMPLATE, SECOND, THIRD]);
+      source.listExperiments.mockResolvedValue([]);
+      source.getExperiment.mockResolvedValue(null);
+      source.start.mockImplementation(async (_context, templateId) => `RUN${templateId}`);
+    });
+
+    it('shows the quota and what is running, for the dialog', async () => {
+      const { id } = await addAccount('Staging');
+      source.concurrencyLimit.mockResolvedValue({ limit: 10, known: true });
+      source.listExperiments.mockResolvedValue([summary('OUT1', 'EXT9', 'running'), summary('OLD', 'EXT9', 'completed')]);
+      const { body } = await http().get(`${runs(id)}/capacity`).set('Cookie', viewer).expect(200);
+      expect(body).toEqual([{ region: REGION, quota: 10, quotaKnown: true, running: 1 }]);
+    });
+
+    it('starts the first wave at once and the next as tests end', async () => {
+      const { id } = await addAccount('Staging');
+      const { body: run } = await startRun(id, 2).expect(201);
+      expect(source.start).toHaveBeenCalledTimes(2);
+      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running'), summary('RUNEXT2', 'EXT2', 'running')]);
+      const live = await detail(id, run.id);
+      expect(stages(live)).toEqual(['RUNEXT1', 'RUNEXT2', 'waiting']);
+      expect(live).toMatchObject({ result: 'running', waveSize: 2 });
+
+      await advance(run.id);
+      expect(stages(await detail(id, run.id))).toEqual(['RUNEXT1', 'RUNEXT2', 'waiting']);
+
+      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'completed'), summary('RUNEXT2', 'EXT2', 'running')]);
+      await advanceAll();
+      expect(stages(await detail(id, run.id))).toEqual(['RUNEXT1', 'RUNEXT2', 'RUNEXT3']);
+      const [event] = await actions('RUNEXT3');
+      expect(event).toEqual({ action: 'cloud.experiment.started', actor_email: 'dev@example.test' });
+    });
+
+    it('stays within the account quota, counting tests started elsewhere', async () => {
+      const { id } = await addAccount('Staging');
+      source.concurrencyLimit.mockResolvedValue({ limit: 2, known: true });
+      source.listExperiments.mockResolvedValue([summary('OUT1', 'EXT9', 'running')]);
+      const { body: run } = await startRun(id, 5).expect(201);
+      expect(stages(await detail(id, run.id))).toEqual(['RUNEXT1', 'waiting', 'waiting']);
+    });
+
+    it('keeps a test waiting when AWS says the quota is full, instead of failing it', async () => {
+      const { id } = await addAccount('Staging');
+      source.start.mockImplementation(async (_context, templateId) => {
+        if (templateId === 'EXT2') {
+          throw Object.assign(new Error('full'), { name: 'ServiceQuotaExceededException' });
+        }
+        return `RUN${templateId}`;
+      });
+      const { body: run } = await startRun(id, 3).expect(201);
+      const body = await detail(id, run.id);
+      expect(stages(body)).toEqual(['RUNEXT1', 'waiting', 'waiting']);
+      expect(body.items.every(({ error }: { error: string | null }) => error === null)).toBe(true);
+    });
+
+    it('cancels waiting tests on Stop all, which counts the run as stopped', async () => {
+      const { id } = await addAccount('Staging');
+      const { body: run } = await startRun(id, 1).expect(201);
+      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running')]);
+      await http().post(`${runs(id)}/${run.id}/stop`).set('Cookie', developer).expect(204);
+      expect(source.stop).toHaveBeenCalledWith({ credentials: KEY, region: REGION }, 'RUNEXT1');
+      source.start.mockClear();
+      source.listExperiments.mockResolvedValue([]);
+      await advance(run.id);
+      expect(source.start).not.toHaveBeenCalled();
+      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'stopped')]);
+      source.getExperiment.mockResolvedValue(record('RUNEXT1', 'EXT1', 'stopped'));
+      const body = await detail(id, run.id);
+      expect(stages(body)).toEqual(['RUNEXT1', 'cancelled', 'cancelled']);
+      expect(body.result).toBe('stopped');
+      const { body: history } = await http().get('/api/experiment-reports').set('Cookie', viewer).expect(200);
+      expect(history.entries.find(({ id: entryId }: { id: string }) => entryId === run.id)?.counts).toMatchObject({
+        total: 3,
+        stopped: 1,
+        cancelled: 2,
+        notStarted: 0,
+      });
+    });
+
+    it('refuses a wave size outside 1 to 25, and remembers a group last one', async () => {
+      const { id } = await addAccount('Staging');
+      await startRun(id, 0).expect(400);
+      await startRun(id, 26).expect(400);
+      const { body: group } = await http()
+        .post(`/api/cloud/accounts/${id}/experiment-groups`)
+        .set('Cookie', developer)
+        .send({ name: 'Zones', templates: [{ region: REGION, templateId: 'EXT1' }] })
+        .expect(201);
+      expect(group.waveSize).toBeNull();
+      await http().post(runs(id)).set('Cookie', developer).send({ groupId: group.id, waveSize: 1 }).expect(201);
+      const { body: view } = await http().get(`/api/cloud/accounts/${id}/experiments`).set('Cookie', viewer).expect(200);
+      expect(view.groups.find(({ id: groupId }: { id: string }) => groupId === group.id)?.waveSize).toBe(1);
     });
   });
 });

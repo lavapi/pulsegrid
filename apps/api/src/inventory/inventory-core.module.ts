@@ -9,6 +9,9 @@ import { ActivityWatcher } from './actions/activity-watcher';
 import { CredentialVault } from './connection/credential-vault';
 import { ExperimentReportCapture } from './experiments/experiment-report-capture';
 import { ExperimentReportStore } from './experiments/experiment-report.store';
+import { ExperimentStarter } from './experiments/experiment-starter';
+import { ExperimentWaveQueue, WAVE_QUEUE_NAME } from './experiments/experiment-wave-queue';
+import { ExperimentWaves } from './experiments/experiment-waves';
 import { COST_QUEUE_NAME, CostQueue } from './costs/cost-queue';
 import { CostRefreshService } from './costs/cost-refresh.service';
 import { TokenCipher } from './connection/token-cipher';
@@ -45,6 +48,16 @@ import { SYNC_QUEUE_NAME, SyncQueue } from './sync/sync-queue';
     CredentialVault,
     ExperimentReportStore,
     ExperimentReportCapture,
+    ExperimentStarter,
+    ExperimentWaves,
+    {
+      provide: ExperimentWaveQueue,
+      inject: [APP_CONFIG],
+      useFactory: (config: AppConfig) =>
+        new ExperimentWaveQueue(
+          new Queue(WAVE_QUEUE_NAME, { connection: createQueueConnection(config.redis), prefix: queuePrefix(config.redis) }),
+        ),
+    },
     CostRefreshService,
     {
       provide: CostQueue,
@@ -76,6 +89,9 @@ import { SYNC_QUEUE_NAME, SyncQueue } from './sync/sync-queue';
     CredentialVault,
     ExperimentReportCapture,
     ExperimentReportStore,
+    ExperimentStarter,
+    ExperimentWaveQueue,
+    ExperimentWaves,
     ProviderRegistry,
     InventorySyncService,
     SyncProgressStore,
@@ -87,9 +103,10 @@ export class InventoryCoreModule implements OnApplicationShutdown {
     @Inject(SyncQueue) private readonly queue: SyncQueue,
     @Inject(ActionQueue) private readonly actionQueue: ActionQueue,
     @Inject(CostQueue) private readonly costQueue: CostQueue,
+    @Inject(ExperimentWaveQueue) private readonly waveQueue: ExperimentWaveQueue,
   ) {}
 
   async onApplicationShutdown(): Promise<void> {
-    await Promise.all([this.queue.close(), this.actionQueue.close(), this.costQueue.close()]);
+    await Promise.all([this.queue.close(), this.actionQueue.close(), this.costQueue.close(), this.waveQueue.close()]);
   }
 }

@@ -20,4 +20,7 @@ export const groupSchema = z.object({
     .refine((templates) => new Set(templates.map(templateKey)).size === templates.length),
 });
 
-export const runSchema = z.object({ groupId: z.uuid().optional() });
+export const runSchema = z.object({
+  groupId: z.uuid().optional(),
+  waveSize: z.number().int().min(1).max(EXPERIMENT_RUN_LIMIT),
+});

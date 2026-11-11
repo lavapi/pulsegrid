@@ -189,7 +189,16 @@ export interface ExperimentSource<Credentials extends CloudCredentials = CloudCr
   getExperiment(context: ExperimentContext<Credentials>, id: string): Promise<ExperimentRecord | null>;
   start(context: ExperimentContext<Credentials>, templateId: string, requestToken: string): Promise<string>;
   stop(context: ExperimentContext<Credentials>, id: string): Promise<void>;
+  /** How many tests the account may run at once in the region, and whether that came from the provider or is a default. */
+  concurrencyLimit(context: ExperimentContext<Credentials>): Promise<ConcurrencyLimit>;
+  /** True when a start was refused only because the account is already running as many tests as it may. */
+  isQuotaFull(error: unknown): boolean;
   failureMessage(error: unknown): string;
+}
+
+export interface ConcurrencyLimit {
+  limit: number;
+  known: boolean;
 }
 
 export interface CostContext<Credentials extends CloudCredentials = CloudCredentials> {

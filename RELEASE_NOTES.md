@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Group runs and Run all no longer fail tests past AWS's limit of experiments running at once. You choose how many run at a time, and the rest start as earlier ones end. Run `pnpm db:migrate` after updating, and add `servicequotas:ListServiceQuotas` to every key's IAM policy so PulseGrid can read the account's quota.
+
 ## [0.15.0] - 2026-11-11
 
 - See database and cache connections out of their limit, such as 40 / 410. Add `rds:DescribeDBParameters` to every key's IAM policy, or RDS connections show without a limit.

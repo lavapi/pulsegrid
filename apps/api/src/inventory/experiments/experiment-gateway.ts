@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import type { ExperimentTemplateRef } from '@pulsegrid/shared';
 import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { AuditService } from '../../audit/audit.service';
@@ -8,12 +7,12 @@ import { CredentialVault } from '../connection/credential-vault';
 import type { CloudCredentials, ExperimentContext, ExperimentSource } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { experimentAccess, NO_CREDENTIALS } from './experiment-access';
-import { STARTED_ACTION, STOPPED_ACTION } from './experiment-audit';
+import { STOPPED_ACTION } from './experiment-audit';
+import { ExperimentStarter, REGION_MISSING } from './experiment-starter';
 import { type ExperimentAccount, findExperimentAccount } from './experiment-account';
 
 const ACCOUNT_MISSING = 'That cloud account is no longer connected.';
 const NOT_SUPPORTED = "This provider can't run failover tests yet.";
-const REGION_MISSING = "That region isn't synced for this account.";
 
 
 export interface ExperimentTarget extends ExperimentAccount {
@@ -37,6 +36,7 @@ export class ExperimentGateway {
     private readonly providers: ProviderRegistry,
     private readonly vault: CredentialVault,
     private readonly audit: AuditService,
+    private readonly starter: ExperimentStarter,
   ) {}
 
   async find(auth: AuthContext, accountId: string): Promise<ExperimentTarget> {
@@ -86,17 +86,20 @@ export class ExperimentGateway {
   async start(
     auth: AuthContext,
     target: ExperimentTarget,
-    { region, templateId }: ExperimentTemplateRef,
+    ref: ExperimentTemplateRef,
     ipAddress: string | undefined,
   ): Promise<string> {
-    const id = await this.call(target, region, (source, context) => source.start(context, templateId, randomUUID()));
-    await this.record(auth, {
-      action: STARTED_ACTION,
-      targetId: id,
+    const outcome = await this.starter.start({
+      tenantId: auth.tenantId,
+      target,
+      ref,
+      actor: { userId: auth.userId, email: auth.email },
       ipAddress,
-      metadata: { label: templateId, template: templateId, region, cloudAccount: target.account.account_id },
     });
-    return id;
+    if (outcome.kind !== 'started') {
+      throw new ConflictException(outcome.message);
+    }
+    return outcome.experimentId;
   }
 
   async stop(

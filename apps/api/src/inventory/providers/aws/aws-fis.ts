@@ -22,6 +22,7 @@ import {
 } from '@pulsegrid/shared';
 import type { ExperimentContext, ExperimentRecord, ExperimentSource } from '../provider';
 import { isAccessDenied } from './aws-error-messages';
+import { fisConcurrencyLimit } from './aws-fis-quota';
 import type { AwsKey } from './aws-key';
 
 const TEMPLATE_LIMIT = 25;
@@ -31,9 +32,11 @@ const NAME_TAG = 'Name';
 const ARN_PREFIX = 'arn:';
 const NOT_FOUND = 'ResourceNotFoundException';
 
+const QUOTA_EXCEEDED = 'ServiceQuotaExceededException';
+
 const MESSAGES: Record<string, string> = {
   ConflictException: "AWS can't do that in the experiment's current state.",
-  ServiceQuotaExceededException: 'This account is already running as many experiments as AWS allows.',
+  [QUOTA_EXCEEDED]: 'This account is already running as many experiments as AWS allows.',
   ValidationException: "AWS refused this experiment. Check the template's targets and role in the FIS console.",
   ResourceNotFoundException: 'That experiment or template no longer exists in AWS.',
 };
@@ -218,6 +221,10 @@ export const AWS_EXPERIMENT_SOURCE: ExperimentSource<AwsKey> = {
   stop: async (context, id) => {
     await client(context).send(new StopExperimentCommand({ id }));
   },
+
+  concurrencyLimit: fisConcurrencyLimit,
+
+  isQuotaFull: (error) => (error as { name?: string }).name === QUOTA_EXCEEDED,
 
   failureMessage: (error) => {
     if (isAccessDenied(error)) {

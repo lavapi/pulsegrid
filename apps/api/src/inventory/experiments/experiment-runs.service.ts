@@ -1,5 +1,6 @@
 import {
   EXPERIMENT_RUN_LIMIT,
+  type ExperimentCapacity,
   type ExperimentRunDetail,
   type ExperimentRunItem,
   type ExperimentRunItemState,
@@ -11,10 +12,11 @@ import {
   RUN_ALL_LABEL,
   type RunItemReport,
   type StartedExperimentRun,
+  type StartRunInput,
   templateKey,
   testResult,
 } from '@pulsegrid/shared';
-import { ConflictException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
 import type { TenantTransaction } from '../../database/tenant-context';
 import { TenantDatabase } from '../../database/tenant-database';
@@ -23,13 +25,14 @@ import { type ExperimentTarget, ExperimentGateway } from './experiment-gateway';
 import { findGroup } from './experiment-groups.service';
 import { ExperimentReportStore, type ReportRow, reportKey, reportsFor } from './experiment-report.store';
 import { knownResources } from './experiment-resources';
+import { ExperimentWaves } from './experiment-waves';
 import { runOutcome } from './run-outcome';
 
 const RUN_MISSING = 'That test run no longer exists.';
 const NOTHING_TO_RUN = 'There are no failover test templates to run.';
 const TOO_MANY = `A run can start at most ${EXPERIMENT_RUN_LIMIT} templates.`;
 const TEMPLATE_MISSING = 'This template no longer exists in AWS.';
-const START_FAILED = "This test didn't start. Please try again.";
+const BAD_WAVE = `Choose between 1 and ${EXPERIMENT_RUN_LIMIT} tests at a time.`;
 const READ_FAILED = "AWS couldn't be reached. Please try again.";
 const SOME_NOT_STOPPED = "Some tests didn't stop. Please try again.";
 const RECENT_RUNS = 10;
@@ -40,9 +43,10 @@ interface RunRow {
   items: ExperimentRunItem[];
   started_by_email: string | null;
   started_at: Date;
+  wave_size: number | null;
 }
 
-const RUN_COLUMNS = ['id', 'label', 'items', 'started_by_email', 'started_at'] as const;
+const RUN_COLUMNS = ['id', 'label', 'items', 'started_by_email', 'started_at', 'wave_size'] as const;
 
 const countFailed = (items: readonly ExperimentRunItem[]): number => items.filter(({ error }) => error !== null).length;
 
@@ -97,14 +101,34 @@ export class ExperimentRunsService {
     private readonly database: TenantDatabase,
     private readonly gateway: ExperimentGateway,
     private readonly reports: ExperimentReportStore,
+    private readonly waves: ExperimentWaves,
   ) {}
+
+  /** For each region: how many tests AWS allows at once, and how many run now. */
+  async capacity(auth: AuthContext, accountId: string): Promise<ExperimentCapacity[]> {
+    const target = await this.gateway.find(auth, accountId);
+    try {
+      const capacity = await this.waves.capacity(target, target.account.regions);
+      return [...capacity.entries()].map(([region, { limit, activeIds }]) => ({
+        region,
+        quota: limit.limit,
+        quotaKnown: limit.known,
+        running: activeIds.size,
+      }));
+    } catch (error) {
+      throw new ConflictException(target.source.failureMessage(error));
+    }
+  }
 
   async start(
     auth: AuthContext,
     accountId: string,
-    groupId: string | undefined,
+    { groupId, waveSize }: StartRunInput,
     ipAddress: string | undefined,
   ): Promise<StartedExperimentRun> {
+    if (!Number.isInteger(waveSize) || waveSize < 1 || waveSize > EXPERIMENT_RUN_LIMIT) {
+      throw new BadRequestException(BAD_WAVE);
+    }
     const target = await this.gateway.find(auth, accountId);
     const group = groupId
       ? await this.database.run(auth.tenantId, (trx) => findGroup(trx, accountId, groupId))
@@ -126,11 +150,17 @@ export class ExperimentRunsService {
     if (wanted.length > EXPERIMENT_RUN_LIMIT) {
       throw new ConflictException(TOO_MANY);
     }
-    const items = await Promise.all(
-      wanted.map((ref) => this.startItem(auth, target, ref, templates.get(templateKey(ref)), ipAddress)),
-    );
-    const { id } = await this.database.run(auth.tenantId, (trx) =>
-      trx
+    const items = wanted.map((ref): ExperimentRunItem => {
+      const template = templates.get(templateKey(ref));
+      return template
+        ? { ...ref, label: template.label, experimentId: null, error: null, waiting: true }
+        : { ...ref, label: ref.templateId, experimentId: null, error: TEMPLATE_MISSING };
+    });
+    const id = await this.database.run(auth.tenantId, async (trx) => {
+      if (group) {
+        await trx.updateTable('experiment_groups').set({ wave_size: waveSize }).where('id', '=', group.id).execute();
+      }
+      const row = await trx
         .insertInto('experiment_runs')
         .values({
           tenant_id: auth.tenantId,
@@ -138,17 +168,26 @@ export class ExperimentRunsService {
           label,
           items: JSON.stringify(items),
           started_by_email: auth.email,
+          wave_size: waveSize,
         })
         .returning('id')
-        .executeTakeFirstOrThrow(),
-    );
-    const failed = countFailed(items);
+        .executeTakeFirstOrThrow();
+      return row.id;
+    });
+    await this.waves.advance(auth.tenantId, id);
+    const { items: afterFirstWave } = await this.findRun(auth, accountId, id);
     await this.gateway.record(auth, {
       action: 'cloud.experiment-run.started',
       targetType: 'experiment-run',
       targetId: id,
       ipAddress,
-      metadata: { ...metadata, started: items.length - failed, failed },
+      metadata: {
+        ...metadata,
+        waveSize,
+        started: afterFirstWave.filter(({ experimentId }) => experimentId !== null).length,
+        waiting: afterFirstWave.filter(({ waiting }) => waiting).length,
+        failed: countFailed(afterFirstWave),
+      },
     });
     return { id };
   }
@@ -169,6 +208,7 @@ export class ExperimentRunsService {
     return {
       ...runInfo(run),
       ...runOutcome(items),
+      waveSize: run.wave_size,
       accountName: target.account.name,
       environmentName: target.environment?.name ?? null,
       items,
@@ -183,11 +223,12 @@ export class ExperimentRunsService {
     const run = await this.findRun(auth, accountId, runId);
     const metadata = { label: run.label, cloudAccount: target.account.account_id };
     await this.gateway.authorize(auth, target, { targetType: 'experiment-run', targetId: runId, ipAddress, metadata });
-    const { states, error } = await this.liveStates(auth, target, startedItems(run.items));
+    const { cancelled, items } = await this.cancelWaiting(auth, runId);
+    const { states, error } = await this.liveStates(auth, target, startedItems(items));
     if (error) {
       throw new ConflictException(error);
     }
-    const active = startedItems(run.items).filter((item) => {
+    const active = startedItems(items).filter((item) => {
       const state = states.get(keyOf(item));
       return state !== undefined && isActiveExperiment(state);
     });
@@ -200,29 +241,29 @@ export class ExperimentRunsService {
       targetType: 'experiment-run',
       targetId: runId,
       ipAddress,
-      metadata: { ...metadata, stopped: active.length - failed, failed },
+      metadata: { ...metadata, stopped: active.length - failed, failed, cancelled },
     });
     if (failed > 0) {
       throw new ConflictException(SOME_NOT_STOPPED);
     }
   }
 
-  private async startItem(
-    auth: AuthContext,
-    target: ExperimentTarget,
-    ref: ExperimentTemplateRef,
-    template: ExperimentTemplate | undefined,
-    ipAddress: string | undefined,
-  ): Promise<ExperimentRunItem> {
-    if (!template) {
-      return { ...ref, label: ref.templateId, experimentId: null, error: TEMPLATE_MISSING };
-    }
-    try {
-      const experimentId = await this.gateway.start(auth, target, ref, ipAddress);
-      return { ...ref, label: template.label, experimentId, error: null };
-    } catch (error) {
-      return { ...ref, label: template.label, experimentId: null, error: messageOf(error, START_FAILED) };
-    }
+  /** Cancels the tests still waiting for a slot, so no new wave starts. Waits for a wave being started to finish first. */
+  private cancelWaiting(auth: AuthContext, runId: string): Promise<{ cancelled: number; items: ExperimentRunItem[] }> {
+    return this.database.run(auth.tenantId, async (trx) => {
+      const run = await trx
+        .selectFrom('experiment_runs')
+        .select('items')
+        .where('id', '=', runId)
+        .forUpdate()
+        .executeTakeFirstOrThrow();
+      const cancelled = run.items.filter(({ waiting }) => waiting).length;
+      const items = run.items.map((item) => (item.waiting ? { ...item, waiting: false, cancelled: true } : item));
+      if (cancelled > 0) {
+        await trx.updateTable('experiment_runs').set({ items: JSON.stringify(items) }).where('id', '=', runId).execute();
+      }
+      return { cancelled, items };
+    });
   }
 
   private async templates(target: ExperimentTarget): Promise<Map<string, ExperimentTemplate>> {

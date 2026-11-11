@@ -22,7 +22,7 @@ describe('isRootArn', () => {
 describe('AWS_READ_ONLY_ACTIONS', () => {
   it('only reads', () => {
     for (const action of AWS_READ_ONLY_ACTIONS) {
-      expect(action).toMatch(/:(List|Describe|FilterLogEvents|GetMetricData|GetExperiment|LookupEvents|GetBucketLocation|GetBucketTagging|GetCostAndUsage|SimulatePrincipalPolicy)/);
+      expect(action).toMatch(/:(List|Describe|FilterLogEvents|GetMetricData|GetExperiment|LookupEvents|GetBucketLocation|GetBucketTagging|GetCostAndUsage|SimulatePrincipalPolicy|ListServiceQuotas)/);
       expect(action).not.toContain('*');
     }
   });

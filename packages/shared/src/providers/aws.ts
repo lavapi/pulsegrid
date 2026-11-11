@@ -55,6 +55,7 @@ export const AWS_READ_ONLY_ACTIONS = [
   'fis:ListExperiments',
   'fis:GetExperiment',
   'fis:ListExperimentResolvedTargets',
+  'servicequotas:ListServiceQuotas',
   'rds:DescribeDBInstances',
   'rds:DescribeDBClusters',
   'rds:DescribeDBParameters',
