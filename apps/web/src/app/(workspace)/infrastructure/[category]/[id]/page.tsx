@@ -19,6 +19,7 @@ import { CloudActivityTable } from '@/components/activity/cloud-activity-table';
 import { HealthBadge } from '@/components/health-badge';
 import { ResourceActionPanel } from '@/components/infrastructure/resource-action-panel';
 import { SecretPanel } from '@/components/infrastructure/secret-panel';
+import { ServiceDeployments } from '@/components/infrastructure/deployments/service-deployments';
 import { ResourceLoad } from '@/components/infrastructure/load/resource-load';
 import { ServiceLogs } from '@/components/infrastructure/service-logs';
 import { ServiceIcon } from '@/components/service-icon';
@@ -140,6 +141,7 @@ export default async function ResourceDetailPage({
         initialRun={run}
       />
       {secret && <SecretPanel resourceId={resource.id} view={secret} />}
+      {resource.type === 'ecs-service' && <ServiceDeployments resourceId={resource.id} />}
       {resource.type === 'ecs-service' && <ServiceLogs resourceId={resource.id} />}
       {supportsLoad(resource.type) && <ResourceLoad resourceId={resource.id} />}
       <Card>

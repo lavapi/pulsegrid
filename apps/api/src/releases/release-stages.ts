@@ -7,7 +7,7 @@ import type {
   ReleaseStageStatus,
   ReleaseState,
 } from '@pulsegrid/shared';
-import { isActivePipelineStatus } from '@pulsegrid/shared';
+import { hasReachedStage, isActivePipelineStatus, stageLabel } from '@pulsegrid/shared';
 import type { Deployment } from '../inventory/providers/provider';
 
 const NO_ROLLOUT_AFTER_MS = 15 * 60 * 1000;
@@ -170,6 +170,51 @@ const unmatchedDeployStage = (label: string, state: ReleaseState, items: readonl
     : stage(label, 'waiting', null);
 };
 
+type Traffic = NonNullable<Deployment['traffic']>;
+
+const trafficDetail = ({ stage: current, reason, rollbackReason }: Traffic, failed: boolean): string => {
+  if (failed) {
+    return rollbackReason ? `Rolled back: ${rollbackReason}` : (reason ?? 'The deployment did not finish');
+  }
+  return current ? stageLabel(current) : 'Starting';
+};
+
+const liveStatus = ({ stage: current }: Traffic, live: boolean, failed: boolean): ReleaseStageStatus => {
+  if (live) {
+    return 'success';
+  }
+  if (failed) {
+    return 'failure';
+  }
+  return hasReachedStage(current, 'production-traffic') ? 'running' : 'waiting';
+};
+
+/**
+ * Blue/green, canary and linear deployments are ready for testing once green serves test traffic,
+ * before production moves, and live once production is on green and the bake time is over.
+ */
+const trafficProgress = (
+  earlier: ReleaseStage[],
+  label: string,
+  deployment: Deployment,
+  traffic: Traffic,
+): Omit<ReleaseProgress, 'matchedBy'> => {
+  const failed = deployment.state === 'failed';
+  const live = traffic.status === 'succeeded';
+  const testing = live || (!failed && hasReachedStage(traffic.stage, 'test-traffic'));
+  const deployStatus: ReleaseStageStatus = failed ? 'failure' : testing ? 'success' : 'running';
+  return {
+    state: failed ? 'failed' : testing ? 'ready' : 'deploying',
+    stages: [
+      ...earlier,
+      stage(label, deployStatus, trafficDetail(traffic, failed)),
+      stage('Ready', testing ? 'success' : 'waiting', testing && !live ? 'Green has test traffic' : null),
+      stage('Live', liveStatus(traffic, live, failed), traffic.stage === 'bake-time' && !live ? 'Bake time' : null),
+    ],
+    readyAt: testing ? (deployment.finishedAt ?? traffic.updatedAt) : null,
+  };
+};
+
 export const releaseProgress = (
   run: PipelineRun | null,
   jobs: readonly PipelineJob[],
@@ -189,6 +234,10 @@ export const releaseProgress = (
   const earlier = pipelineStages(items);
   const finished = run.status === 'success';
   const matchedBy = finished && deployment ? matchRollout(run, deployment) : null;
+
+  if (deployment?.traffic && matchedBy) {
+    return { ...trafficProgress(earlier, label, deployment, deployment.traffic), matchedBy };
+  }
 
   if (deployment && matchedBy) {
     const state = ROLLOUT_STATES[deployment.state];
