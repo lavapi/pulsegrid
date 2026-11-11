@@ -1,4 +1,6 @@
-import { AWS_READ_ONLY_ACTIONS } from '@pulsegrid/shared';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { AWS_POLICY, AWS_READ_ONLY_ACTIONS } from '@pulsegrid/shared';
 import { describe, expect, it } from 'vitest';
 import { keyErrorMessage } from './aws-error-messages';
 import { isRootArn, keyHint, parseAwsKey } from './aws-key';
@@ -46,5 +48,14 @@ describe('keyErrorMessage', () => {
     expect(keyErrorMessage(failure('InvalidClientTokenId'))).toContain('Access Key ID');
     expect(keyErrorMessage(failure('SignatureDoesNotMatch'))).toContain('Secret Access Key');
     expect(keyErrorMessage(failure('Throttling'))).toBe("We couldn't reach AWS. Please try again.");
+  });
+});
+
+describe('the PulseGrid policy in the docs', () => {
+  it('matches the policy the app shows', () => {
+    const docs = readFileSync(join(__dirname, '../../../../../../docs/connect-aws-account.md'), 'utf8');
+    const section = docs.slice(docs.indexOf('## The PulseGrid policy'));
+    const documented = /```json\n([\s\S]*?)\n```/.exec(section)?.[1];
+    expect(JSON.parse(documented ?? '{}')).toEqual(JSON.parse(AWS_POLICY));
   });
 });
