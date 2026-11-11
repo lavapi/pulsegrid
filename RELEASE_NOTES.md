@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Failover test runs go one test at a time, and each starts only when the whole environment is healthy again: ECS services, load balancer targets, databases, caches and stop alarms. A test whose targets aren't ready is skipped with the reason. Servers a failed test left stopped are started again. Only one test runs at a time in an environment, and production runs need an extra confirmation.
+- Download a failover test report as a clean PDF table of what was done, how it ended and how fast the environment recovered.
+- Run `pnpm db:migrate` after updating. Add `cloudwatch:DescribeAlarms` and `ec2:StartInstances` to every key's IAM policy; `servicequotas:ListServiceQuotas` is no longer needed.
 - Production is shown more calmly: a thin red line on the top bar instead of a red banner, and a clear Production box in every dialog that changes production, which also asks for the resource's name. Scrolling on production pages no longer leaves a gap above the top bar.
 
 ## [0.17.0] - 2026-11-11

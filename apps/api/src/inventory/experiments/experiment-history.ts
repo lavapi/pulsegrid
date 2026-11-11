@@ -1,5 +1,6 @@
 import {
   type ExperimentRunItem,
+  type Repair,
   type RunCounts,
   type TestHistoryEntry,
   type TestHistoryFilter,
@@ -22,7 +23,7 @@ export interface HistoryRun {
   environment_name: string | null;
 }
 
-const countsOf = (items: readonly OutcomeItem[]): RunCounts => {
+const countsOf = (items: readonly (OutcomeItem & { repairs?: Repair[] })[]): RunCounts => {
   const results = items.flatMap(({ report }) => (report ? [report.result] : []));
   const count = (result: string) => results.filter((item) => item === result).length;
   return {
@@ -33,17 +34,22 @@ const countsOf = (items: readonly OutcomeItem[]): RunCounts => {
     notStarted: items.filter(didNotStart).length,
     waiting: items.filter(({ waiting }) => waiting).length,
     cancelled: items.filter(({ cancelled }) => cancelled).length,
+    skipped: items.filter(({ skipped }) => skipped).length,
+    repairs: items.reduce((sum, { repairs = [] }) => sum + repairs.length, 0),
   };
 };
 
 const runEntry = (run: HistoryRun, reports: ReadonlyMap<string, ReportRow>, now: Date): TestHistoryEntry => {
   const recent = now.getTime() - run.started_at.getTime() < LONGEST_TEST_MS;
-  const items = run.items.map(({ region, experimentId, waiting, cancelled }): OutcomeItem => {
+  const items = run.items.map(({ region, experimentId, waiting, cancelled, skipped, settling, repairs }) => {
     const report = experimentId ? reports.get(reportKey(region, experimentId)) : undefined;
     return {
       experimentId,
       waiting,
       cancelled,
+      skipped,
+      settling,
+      repairs,
       state: report?.state ?? (experimentId && recent ? 'running' : null),
       report: report
         ? { result: testResult(report.state) ?? 'failed', endedAt: report.ended_at?.toISOString() ?? null }

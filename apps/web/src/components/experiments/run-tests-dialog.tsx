@@ -1,6 +1,6 @@
 'use client';
 
-import type { ExperimentCapacity, RunOrder, StartedExperimentRun } from '@pulsegrid/shared';
+import type { RunOrder, StartedExperimentRun } from '@pulsegrid/shared';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
@@ -9,7 +9,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, Dia
 import { Field, Input } from '@/components/ui/input';
 import { ProductionNotice, useProductionTarget } from '@/components/ui/production-notice';
 import { apiSendForJson } from '@/lib/browser-api';
-import { experimentRunPath, orderText, waveChoice } from '@/lib/experiments';
+import { experimentRunPath } from '@/lib/experiments';
 
 interface RunTestsButtonProps {
   accountId: string;
@@ -17,63 +17,53 @@ interface RunTestsButtonProps {
   groupId?: string;
   label: string;
   templateLabels: string[];
-  regions: string[];
-  rememberedWaveSize?: number | null;
   triggerLabel: string;
 }
 
-function CapacityNote({ capacity, regions }: { capacity: ExperimentCapacity[]; regions: string[] }) {
-  const relevant = capacity.filter(({ region }) => regions.includes(region));
+function RunOrderList({ order }: { order: RunOrder | null }) {
+  if (!order) {
+    return <p className="text-[13px] text-muted-foreground">Working out the order…</p>;
+  }
   return (
-    <ul className="flex flex-col gap-1 rounded-lg bg-muted px-3 py-2 text-[13px]">
-      {relevant.map(({ region, quota, quotaKnown, running }) => (
-        <li key={region}>
-          AWS allows <strong>{quota}</strong> tests at once in this account in {region}
-          {quotaKnown ? '' : " (AWS's default; PulseGrid couldn't read the account's quota)"}.{' '}
-          <strong>{running}</strong> {running === 1 ? 'is' : 'are'} running now.
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-1.5">
+      <p className="text-[13px] text-muted-foreground">
+        Tests run one at a time in this order. Each starts only when the one before has ended and every service, load
+        balancer target, database and cache is healthy again.
+      </p>
+      <ol className="max-h-48 list-decimal overflow-y-auto rounded-lg bg-muted py-2 pr-3 pl-8 text-[13px]">
+        {order.tests.map(({ label, zoneWide }, index) => (
+          <li key={`${index}-${label}`}>
+            {label}
+            {zoneWide && <span className="text-muted-foreground"> · zone-wide, runs last</span>}
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
-/** Asks how many tests to run at a time, using the account's AWS quota, then starts the run. */
-export function RunTestsButton({
-  accountId,
-  groupId,
-  label,
-  templateLabels,
-  regions,
-  rememberedWaveSize = null,
-  triggerLabel,
-}: RunTestsButtonProps) {
+/** Shows the order the tests run in, one at a time, and starts the run once confirmed. */
+export function RunTestsButton({ accountId, groupId, label, templateLabels, triggerLabel }: RunTestsButtonProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const production = useProductionTarget(true);
-  const [capacity, setCapacity] = useState<ExperimentCapacity[] | null>(null);
   const [order, setOrder] = useState<RunOrder | null>(null);
-  const [waveSize, setWaveSize] = useState('');
   const [typed, setTyped] = useState('');
-  const choice = waveChoice(capacity ?? [], regions, templateLabels.length, rememberedWaveSize);
-  const size = Number(waveSize);
-  const validSize = Number.isInteger(size) && size >= 1 && size <= choice.max;
+  const [understood, setUnderstood] = useState(false);
+  const blocked = Boolean(production && order?.busy);
+  const ready = order !== null && !blocked && typed.trim() === label && (!production || understood);
 
   const change = (next: boolean) => {
     setOpen(next);
     setTyped('');
-    setCapacity(null);
+    setUnderstood(false);
     setOrder(null);
     if (next) {
       const query = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';
       void apiSendForJson<RunOrder>(`/cloud/accounts/${accountId}/experiment-runs/order${query}`, 'GET').then(
-        ({ data }) => setOrder(data),
-      );
-      void apiSendForJson<ExperimentCapacity[]>(`/cloud/accounts/${accountId}/experiment-runs/capacity`, 'GET').then(
         ({ data, error }) => {
-          const loaded = data ?? [];
-          setCapacity(loaded);
-          setWaveSize(String(waveChoice(loaded, regions, templateLabels.length, rememberedWaveSize).suggested));
+          setOrder(data ?? { tests: templateLabels.map((name) => ({ label: name, zoneWide: false })), busy: null });
           if (error) {
             toast.error(error);
           }
@@ -87,7 +77,7 @@ export function RunTestsButton({
       const { data, error } = await apiSendForJson<StartedExperimentRun>(
         `/cloud/accounts/${accountId}/experiment-runs`,
         'POST',
-        { ...(groupId ? { groupId } : {}), waveSize: size },
+        { ...(groupId ? { groupId } : {}), ...(production ? { confirmProduction: true } : {}) },
       );
       if (!data) {
         toast.error(error ?? 'The tests did not start. Please try again.');
@@ -108,37 +98,29 @@ export function RunTestsButton({
       <DialogContent>
         <DialogTitle className="text-base font-semibold">Start {templateLabels.length} failover tests?</DialogTitle>
         <DialogDescription className="mt-1.5 text-sm text-muted-foreground">
-          This runs {templateLabels.join(', ')}. Each deliberately breaks or slows the resources it targets until it
-          finishes, a stop alarm fires, or someone stops it.
+          Each test deliberately breaks or slows the resources it targets until it finishes, a stop alarm fires, or
+          someone stops it.
         </DialogDescription>
         <div className="mt-4 flex flex-col gap-4">
           <ProductionNotice target={production} />
-          {capacity === null ? (
-            <p className="text-[13px] text-muted-foreground">Checking how many tests AWS allows at once…</p>
-          ) : (
-            <CapacityNote capacity={capacity} regions={regions} />
-          )}
-          <Field label={`Tests at a time, 1 to ${choice.max}`}>
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={choice.max}
-              value={waveSize}
-              disabled={capacity === null}
-              onChange={(event) => setWaveSize(event.target.value)}
-            />
-          </Field>
-          {capacity !== null && validSize && size > choice.free && (
+          <RunOrderList order={order} />
+          {order?.busy && (
             <p className="text-[13px] text-warning">
-              Only {choice.free} {choice.free === 1 ? 'slot is' : 'slots are'} free now, so some tests wait until
-              others end.
+              {order.busy}{' '}
+              {blocked ? 'Production runs only start when nothing else is running.' : 'The first test waits until it ends.'}
             </p>
           )}
-          <p className="text-[13px] text-muted-foreground">
-            The rest wait and start as earlier tests end. Choose 1 to run them one after another.
-          </p>
-          {order && orderText(order) && <p className="text-[13px]">{orderText(order)}</p>}
+          {production && (
+            <label className="flex items-start gap-2 text-[13px]">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={understood}
+                onChange={(event) => setUnderstood(event.target.checked)}
+              />
+              I understand this runs these tests in production, one at a time.
+            </label>
+          )}
           <Field label={`Type ${label} to confirm`}>
             <Input value={typed} autoComplete="off" onChange={(event) => setTyped(event.target.value)} />
           </Field>
@@ -147,11 +129,7 @@ export function RunTestsButton({
           <DialogClose asChild>
             <Button>Cancel</Button>
           </DialogClose>
-          <Button
-            variant="danger"
-            disabled={pending || capacity === null || !validSize || typed.trim() !== label}
-            onClick={run}
-          >
+          <Button variant="danger" disabled={pending || !ready} onClick={run}>
             Start tests
           </Button>
         </div>

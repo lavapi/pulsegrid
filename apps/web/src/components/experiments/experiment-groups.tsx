@@ -33,7 +33,7 @@ export function ExperimentGroups({ accountId, view }: GroupsProps) {
     <Card>
       <CardHeader
         title="Groups"
-        description="Run several templates in one click, in waves that fit what AWS allows at once."
+        description="Run several templates in one click, one test at a time."
         action={
           access.canRun &&
           templates.length > 0 && (
@@ -71,8 +71,6 @@ export function ExperimentGroups({ accountId, view }: GroupsProps) {
                       groupId={group.id}
                       label={group.name}
                       templateLabels={labels}
-                      regions={[...new Set(group.templates.map(({ region }) => region))]}
-                      rememberedWaveSize={group.waveSize}
                       triggerLabel="Run group"
                     />
                   </span>

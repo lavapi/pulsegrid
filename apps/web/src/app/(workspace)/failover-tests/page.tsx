@@ -88,7 +88,6 @@ export default async function ExperimentsPage() {
                 accountId={selected.id}
                 label={RUN_ALL_LABEL}
                 templateLabels={view.templates.map(({ label }) => label)}
-                regions={[...new Set(view.templates.map(({ region }) => region))]}
                 triggerLabel="Run all"
               />
             )}

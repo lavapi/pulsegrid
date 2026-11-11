@@ -53,12 +53,12 @@ export const AWS_READ_ONLY_ACTIONS = [
   'ecs:DescribeServiceRevisions',
   'logs:FilterLogEvents',
   'cloudwatch:GetMetricData',
+  'cloudwatch:DescribeAlarms',
   'fis:ListExperimentTemplates',
   'fis:GetExperimentTemplate',
   'fis:ListExperiments',
   'fis:GetExperiment',
   'fis:ListExperimentResolvedTargets',
-  'servicequotas:ListServiceQuotas',
   'rds:DescribeDBInstances',
   'rds:DescribeDBClusters',
   'rds:DescribeDBParameters',
@@ -96,6 +96,7 @@ export const AWS_CHANGE_ACTIONS = [
   'secretsmanager:PutSecretValue',
   'fis:StartExperiment',
   'fis:StopExperiment',
+  'ec2:StartInstances',
 ] as const;
 
 /** Everything PulseGrid can do. Every account uses this one policy; roles in PulseGrid decide who may do what. */

@@ -2,12 +2,12 @@ import { type ExperimentReport, hasPermission } from '@pulsegrid/shared';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Fact, ResultBadge, StepSummary, StopAlarms, TargetList } from '@/components/experiments/experiment-parts';
-import { DeleteReportButton, SavePdfButton } from '@/components/experiments/report-buttons';
+import { DeleteReportButton, DownloadPdfButton } from '@/components/experiments/report-buttons';
 import { ReportLoads, RunTimeline } from '@/components/experiments/report-parts';
 import { Card, CardHeader } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { Time } from '@/components/ui/time';
-import { formatDuration, HISTORY_PATH, historyRunPath, reportWindow } from '@/lib/experiments';
+import { formatDuration, HISTORY_PATH, historyRunPath, pdfFileName, reportWindow } from '@/lib/experiments';
 import { apiGet, getCurrentUser } from '@/lib/server-api';
 
 export default async function ExperimentReportPage({ params }: { params: Promise<{ id: string }> }) {
@@ -32,7 +32,10 @@ export default async function ExperimentReportPage({ params }: { params: Promise
         action={
           <div className="flex items-center gap-2">
             <ResultBadge result={report.result} />
-            <SavePdfButton />
+            <DownloadPdfButton
+              path={`/experiment-reports/${report.id}/pdf`}
+              fileName={pdfFileName(report.label, report.startedAt)}
+            />
             {hasPermission(user, 'environments.manage') && (
               <DeleteReportButton path={`/experiment-reports/${report.id}`} label={report.label} />
             )}

@@ -34,12 +34,12 @@ Every account uses this one policy, production included. Roles in PulseGrid deci
         "ecs:DescribeServiceRevisions",
         "logs:FilterLogEvents",
         "cloudwatch:GetMetricData",
+        "cloudwatch:DescribeAlarms",
         "fis:ListExperimentTemplates",
         "fis:GetExperimentTemplate",
         "fis:ListExperiments",
         "fis:GetExperiment",
         "fis:ListExperimentResolvedTargets",
-        "servicequotas:ListServiceQuotas",
         "rds:DescribeDBInstances",
         "rds:DescribeDBClusters",
         "rds:DescribeDBParameters",
@@ -73,7 +73,8 @@ Every account uses this one policy, production included. Roles in PulseGrid deci
         "secretsmanager:GetSecretValue",
         "secretsmanager:PutSecretValue",
         "fis:StartExperiment",
-        "fis:StopExperiment"
+        "fis:StopExperiment",
+        "ec2:StartInstances"
       ],
       "Resource": "*"
     }
@@ -95,11 +96,12 @@ Every account uses this one policy, production included. Roles in PulseGrid deci
 | `secretsmanager:ListSecrets` | Secret names and details |
 | `logs:FilterLogEvents` | [Service logs](#service-logs) |
 | `cloudwatch:GetMetricData` | [Load](#load) charts, including those in failover test reports |
+| `cloudwatch:DescribeAlarms` | Checking that failover tests' stop alarms are OK before and after each test |
 | `cloudtrail:LookupEvents` | [AWS activity](#aws-activity) and changes made outside PulseGrid |
 | `ce:GetCostAndUsage` | [Costs](#costs) |
 | `fis:` list and get actions | [Failover tests](#failover-tests), reports and history |
 | `fis:StartExperiment`, `fis:StopExperiment` | Starting and stopping tests, groups, Run all and Stop all |
-| `servicequotas:ListServiceQuotas` | How many failover tests AWS allows at once, for running groups in waves |
+| `ec2:StartInstances` | Starting servers again that a failed or stopped failover test left stopped |
 | `ecs:UpdateService` | Force deploy |
 | `rds:RebootDBInstance`, `elasticache:RebootCacheCluster`, `ec2:RebootInstances` | Reboots |
 | `ec2:DescribeInstanceStatus` | Checking that a rebooted server came back |
@@ -219,26 +221,31 @@ A test's page refreshes every 5 seconds while it runs. It shows each step's stat
 
 **Groups** are named lists of templates in one account, kept in PulseGrid. A template can be in several groups. **Run group** runs every template in the group, and **Run all** in the page header runs every template in the account. One run holds at most 25 templates.
 
-AWS limits how many FIS experiments an account can run at once in each region: 5 unless the quota was raised. So runs go in **waves**. Before a run starts, the dialog reads the account's quota and how many tests are running now, for example *AWS allows 5 tests at once in this account in eu-central-1. 1 is running now.*, and asks for **Tests at a time**:
+**Tests in a run go one at a time.** The next test starts only after the one before it has ended and the whole environment is healthy again. Nothing starts on a timer. The background worker checks every 15 seconds.
 
-- It suggests the free slots, or the number the group used last time. You can lower it, down to 1 to run tests one after another, or raise it up to the quota. Above the free slots, the extra tests wait.
-- If the quota can't be read, PulseGrid assumes AWS's default of 5 and says so.
-- You type the group's name, or `All tests`, to confirm.
+**The environment must be healthy before and after every test.** PulseGrid checks, in the test's region:
 
-PulseGrid starts the first wave straight away and marks the rest **Waiting**. The background worker checks every 15 seconds and starts the next waiting test as soon as one ends, never going past the chosen number or the account's quota. Tests started elsewhere in the account count too. If AWS still refuses a start because the quota is full, the test stays waiting rather than failing. **Stop all** stops the running tests and cancels the waiting ones, which show as **Cancelled**. Each group remembers its last choice.
+- every ECS service has as many tasks running as it wants, and exactly one deployment;
+- every target behind the account's load balancers is healthy;
+- every Aurora or RDS cluster and database instance is *available*;
+- every Valkey or Redis replication group, and each of its nodes, is *available*;
+- the stop alarms of the run's tests are *OK*.
 
-Tests never overlap on the same resource, and they wait for it to recover:
+A part PulseGrid can't read counts as unhealthy, and the run says which permission to add. If the environment isn't healthy within 30 minutes, before a test or after one, the run stops, the remaining tests are cancelled, and the report says what was unhealthy.
 
-- PulseGrid works out what each test acts on from its targets. Listed ARNs and tags are matched against the resources PulseGrid knows, and ECS tasks are matched by their cluster and service. When it can't tell which resource a target picks, it assumes any resource of that type, so possible clashes are kept apart.
-- A test waits while another test on the same resource runs. After that test ends, it also waits for the resource to settle for 2 minutes and to be healthy again in AWS: databases and caches *available*, ECS services with all tasks running and one deployment, servers passing both status checks.
-- If a resource isn't healthy 30 minutes after its test ended, the tests waiting for it are cancelled with that reason, rather than run against a broken resource.
-- **Zone-wide tests** run last, one at a time, with nothing else running. These are tests that cut a whole Availability Zone off, such as network disruption or tests that target subnets.
+**Tests whose targets aren't ready are skipped**, with the reason, and the run goes on. For example a test on a cache that isn't *available*, a test on a server that isn't passing both status checks, or a test that stops one ECS task when the service has fewer than 2 running. A skipped test isn't a failure.
 
-The run dialog says how a run will be ordered, for example *Of 11 tests, 3 tests share a resource with another, so they take turns and wait for it to recover; 2 zone-wide tests run alone at the end.* The run report says why each waiting test is waiting. Checking recovery uses describe actions already in the PulseGrid policy.
+**Servers left stopped are started again.** When a test that stops EC2 servers ends failed or stopped, PulseGrid starts the servers it targeted, retrying while they're still stopping. Each start is in the report. A server that can't be started within 30 minutes is listed under **Needs attention** to start by hand.
 
-To run more tests at once, raise the quota in **Service Quotas > AWS Fault Injection Service** for the region. PulseGrid reads the new quota within an hour.
+**Only one failover test runs at a time in an environment**, across every account in it, every person, groups, Run all and single tests, including experiments started in the AWS console. A run waits for the environment to be free; starting a single test while another runs is refused.
 
-Creating, changing, deleting and running groups need the same key and permission as single tests, staging or production depending on the account's environment. Group changes, runs and Stop all are recorded in Activity, along with each test they started or stopped. Reading the quota needs `servicequotas:ListServiceQuotas`, which is in the PulseGrid policy.
+**Zone-wide tests** run last. These are tests that cut a whole Availability Zone off, such as network disruption or tests that target subnets.
+
+The run dialog lists the tests in the order they'll run, and says when something else is running. You type the group's name, or `All tests`, to confirm. **Stop all** stops the running test and cancels the rest; PulseGrid still starts any servers that test left stopped.
+
+**In production**, you also tick that you understand the tests run in production, one at a time, and the run doesn't start while anything else is running there.
+
+Creating, changing, deleting and running groups need the same key and permission as single tests, staging or production depending on the account's environment. Group changes, runs and Stop all are recorded in Activity, along with each test they started or stopped.
 
 ### Reports and history
 
@@ -248,14 +255,16 @@ The result is **Passed** when the test completed, **Stopped** when a person or a
 
 **A group run or Run all is reported in one place.** Its page is the report for the whole run:
 
-- **Summary:** environment, account, who started it, start, end and duration, and the overall result. A run passes only when every test completed. It fails when any test failed or didn't start, and is stopped when any test was stopped or cancelled. It keeps running until the last wave ends.
-- **Every test in one table**, with its result, why it ended, and its timing. Tests that didn't start show why, and waiting or cancelled tests say so.
+- **Summary:** environment, account, who started it, start, end and duration, and the overall result. A run passes only when every test completed. It fails when any test failed or didn't start, and is stopped when any test was stopped or cancelled. It keeps running until the last test ends.
+- **Every test in one table**, in the order it ran, with its result and why, its start, end and duration, how long the environment took to be healthy again, and any servers PulseGrid started again. Skipped, waiting and cancelled tests say why.
 - **One timeline** with every test and its steps on the same time axis.
 - **Load charts** for the databases and caches the tests hit, from 10 minutes before the run to 10 minutes after it.
 
 While tests are running, the page refreshes every 5 seconds and **Stop all** stops every test that's still active.
 
-A single test's report has the same parts for that one test. **Save as PDF** on either page opens the print dialog with the report laid out for printing; choose **Save as PDF** there.
+A single test's report has the same parts for that one test.
+
+**Download PDF** on either page downloads the report as a table: the run's facts, then one row per test with what was done, the result and why, timing, how long until healthy again, and repairs, followed by anything that needs attention. Times are in UTC or your local time, whichever the top bar shows.
 
 **Test history**, linked from the Failover tests page, lists the reports of the account selected in the top bar, newest first, so staging and production history stay apart. A group run or Run all is one entry, with a count such as "4 tests · 3 passed · 1 stopped"; tests started on their own are their own entries. Filter by test or group, result and dates, so you can compare the same group over time, and **Export CSV** downloads what's shown.
 

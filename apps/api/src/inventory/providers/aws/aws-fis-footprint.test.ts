@@ -1,15 +1,16 @@
+import { DescribeServicesCommand, ECSClient } from '@aws-sdk/client-ecs';
 import { DescribeDBInstancesCommand, RDSClient } from '@aws-sdk/client-rds';
 import type { ExperimentTarget, ExperimentTemplate } from '@pulsegrid/shared';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { InventoryItem } from '../provider';
 import { fisFootprint } from './aws-fis-footprint';
-import { fisIsRecovered } from './aws-fis-recovery';
+import { fisNotReady } from './aws-fis-readiness';
 
 const inventory: InventoryItem[] = [
-  { id: 'r1', type: 'rds-instance', nativeId: 'arn:aws:rds:eu-central-1:1:db:staging-db', name: 'staging-db', tags: { Env: 'staging' }, details: {} },
-  { id: 'r2', type: 'rds-instance', nativeId: 'arn:aws:rds:eu-central-1:1:db:reports-db', name: 'reports-db', tags: { Env: 'staging' }, details: {} },
-  { id: 's1', type: 'ecs-service', nativeId: 'arn:aws:ecs:eu-central-1:1:service/main/api', name: 'api', tags: {}, details: { cluster: 'main' } },
+  { id: 'r1', type: 'rds-instance', nativeId: 'arn:aws:rds:eu-central-1:1:db:staging-db', name: 'staging-db', region: 'eu-central-1', tags: { Env: 'staging' }, details: {} },
+  { id: 'r2', type: 'rds-instance', nativeId: 'arn:aws:rds:eu-central-1:1:db:reports-db', name: 'reports-db', region: 'eu-central-1', tags: { Env: 'staging' }, details: {} },
+  { id: 's1', type: 'ecs-service', nativeId: 'arn:aws:ecs:eu-central-1:1:service/main/api', name: 'api', region: 'eu-central-1', tags: {}, details: { cluster: 'main' } },
 ];
 const target = (overrides: Partial<ExperimentTarget>): ExperimentTarget => ({
   name: 'Targets',
@@ -57,26 +58,48 @@ describe('fisFootprint', () => {
 
   it('spots tests that act on a whole zone', () => {
     expect(fisFootprint(template([target({ resourceType: 'aws:ec2:subnet' })], ['aws:network:disrupt-connectivity']), inventory))
-      .toEqual({ resources: [], zoneWide: true });
+      .toMatchObject({ resources: [], zoneWide: true });
     expect(fisFootprint(template([target({})], ['aws:network:disrupt-connectivity']), inventory).zoneWide).toBe(true);
   });
 });
 
-describe('fisIsRecovered', () => {
-  const rds = mockClient(RDSClient);
-  const context = { credentials: { accessKeyId: 'a', secretAccessKey: 'b' }, region: 'eu-central-1' };
-  beforeEach(() => rds.reset());
+describe('test flags', () => {
+  it('spots tests that stop servers, and ECS tests that need a spare task', () => {
+    const servers = template([target({ resourceType: 'aws:ec2:instance' })], ['aws:ec2:stop-instances']);
+    expect(fisFootprint(servers, inventory)).toMatchObject({ stopsInstances: true, needsSpareTask: false });
+    const oneTask = target({ resourceType: 'aws:ecs:task', selectionMode: 'COUNT(1)', parameters: { cluster: 'main', service: 'api' } });
+    expect(fisFootprint(template([oneTask], ['aws:ecs:stop-task']), inventory).needsSpareTask).toBe(true);
+    const allTasks = { ...oneTask, selectionMode: 'ALL' };
+    expect(fisFootprint(template([allTasks], ['aws:ecs:stop-task']), inventory).needsSpareTask).toBe(false);
+  });
+});
 
-  it('says a database has recovered once it is available again', async () => {
-    rds.on(DescribeDBInstancesCommand).resolvesOnce({ DBInstances: [{ DBInstanceStatus: 'rebooting' }] });
-    expect(await fisIsRecovered(context, inventory[0]!)).toBe(false);
-    rds.on(DescribeDBInstancesCommand).resolves({ DBInstances: [{ DBInstanceStatus: 'available' }] });
-    expect(await fisIsRecovered(context, inventory[0]!)).toBe(true);
+describe('fisNotReady', () => {
+  const rds = mockClient(RDSClient);
+  const ecs = mockClient(ECSClient);
+  const context = { credentials: { accessKeyId: 'a', secretAccessKey: 'b' }, region: 'eu-central-1' };
+  const footprint = { resources: [], zoneWide: false, stopsInstances: false, needsSpareTask: false };
+  beforeEach(() => {
+    rds.reset();
+    ecs.reset();
   });
 
-  it("doesn't know when AWS can't be asked, or for resources without a check", async () => {
+  it('says a database is not ready until it is available', async () => {
+    rds.on(DescribeDBInstancesCommand).resolvesOnce({ DBInstances: [{ DBInstanceStatus: 'rebooting' }] });
+    expect(await fisNotReady(context, inventory[0]!, footprint)).toBe("staging-db isn't available (rebooting)");
+    rds.on(DescribeDBInstancesCommand).resolves({ DBInstances: [{ DBInstanceStatus: 'available' }] });
+    expect(await fisNotReady(context, inventory[0]!, footprint)).toBeNull();
+  });
+
+  it('needs two running tasks before stopping one', async () => {
+    ecs.on(DescribeServicesCommand).resolves({ services: [{ runningCount: 1, desiredCount: 1, deployments: [{}] }] });
+    expect(await fisNotReady(context, inventory[2]!, { ...footprint, needsSpareTask: true })).toBe('api has 1 running task, needs 2');
+    expect(await fisNotReady(context, inventory[2]!, footprint)).toBeNull();
+  });
+
+  it("doesn't skip when AWS can't be asked, or for resources without a check", async () => {
     rds.on(DescribeDBInstancesCommand).rejects(Object.assign(new Error('no'), { name: 'AccessDenied' }));
-    expect(await fisIsRecovered(context, inventory[0]!)).toBeNull();
-    expect(await fisIsRecovered(context, { ...inventory[0]!, type: 's3-bucket' })).toBeNull();
+    expect(await fisNotReady(context, inventory[0]!, footprint)).toBeNull();
+    expect(await fisNotReady(context, { ...inventory[0]!, type: 's3-bucket' }, footprint)).toBeNull();
   });
 });

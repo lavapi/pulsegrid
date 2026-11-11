@@ -29,6 +29,8 @@ const countsOf = ({ counts }: TestHistoryEntry): string | null => {
     counts.notStarted && `${counts.notStarted} didn't start`,
     counts.cancelled && `${counts.cancelled} cancelled`,
     counts.waiting && `${counts.waiting} waiting`,
+    counts.skipped && `${counts.skipped} skipped`,
+    counts.repairs && `${counts.repairs} ${counts.repairs === 1 ? 'repair' : 'repairs'}`,
   ];
   return parts.filter(Boolean).join(' · ');
 };
