@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-11
+
 ### Added
 
 - ECS services that use native blue/green, canary or linear deployments show a deployment card with the stages, lifecycle hooks, blue and green revisions, traffic shares, and how it ended. Releases is ready for testing once green serves test traffic, and adds a Live stage for when production is on green and the bake time is over. The PulseGrid policy includes `ecs:ListServiceDeployments`, `ecs:DescribeServiceDeployments` and `ecs:DescribeServiceRevisions`.
