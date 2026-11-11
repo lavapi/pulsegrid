@@ -42,7 +42,7 @@ export class ResourceLoadService {
         {
           credentials,
           region: resource.region,
-          resource: { type: resource.type, name: resource.name, details: resource.details },
+          resource: { type: resource.type, name: resource.name, nativeId: resource.native_id, details: resource.details },
         },
         query,
       );

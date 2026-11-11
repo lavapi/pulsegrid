@@ -72,6 +72,8 @@ export const AWS_READ_ONLY_ACTIONS = [
   'ec2:DescribeSubnets',
   'ec2:DescribeSecurityGroups',
   'ec2:DescribeRouteTables',
+  'ec2:DescribeInstanceTypes',
+  'ec2:DescribeVolumes',
   'elasticloadbalancing:DescribeLoadBalancers',
   'elasticloadbalancing:DescribeTags',
   'elasticloadbalancing:DescribeTargetGroups',

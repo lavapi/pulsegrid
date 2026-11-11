@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- See memory and storage as used out of total, such as 2.5 GB / 24 GB, and how many vCPUs a database, cache, service or server has. ECS services and EC2 servers now have load charts too. EC2 memory and disk use need the CloudWatch agent on the server.
+- Add `ec2:DescribeInstanceTypes` and `ec2:DescribeVolumes` to every key's IAM policy, or charts show without totals.
+
 ## [0.14.0] - 2026-11-11
 
 - Fault experiments are now **Failover tests**. Old links and existing roles keep working.
