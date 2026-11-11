@@ -2,9 +2,8 @@ import { type ExperimentDetail, isActiveExperiment, supportsLoad } from '@pulseg
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import type { ReactNode } from 'react';
 import { StopExperimentButton } from '@/components/experiments/experiment-buttons';
-import { StateBadge, StepSummary, StopAlarms, TargetList } from '@/components/experiments/experiment-parts';
+import { Fact, StateBadge, StepSummary, StopAlarms, TargetList } from '@/components/experiments/experiment-parts';
 import { ResourceLoad } from '@/components/infrastructure/load/resource-load';
 import { LiveRefresh } from '@/components/pipelines/live-refresh';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -14,15 +13,6 @@ import { getAccountContext } from '@/lib/account-context';
 import { apiGet } from '@/lib/server-api';
 
 const LOAD_LIMIT = 3;
-
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium">{children}</dd>
-    </div>
-  );
-}
 
 export default async function ExperimentPage({ params }: { params: Promise<{ region: string; id: string }> }) {
   const { region, id } = await params;

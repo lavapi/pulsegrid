@@ -1,15 +1,16 @@
 import { type ExperimentsView, type ExperimentTemplate, RUN_ALL_LABEL } from '@pulsegrid/shared';
-import { FlaskConical } from 'lucide-react';
+import { FlaskConical, History } from 'lucide-react';
 import Link from 'next/link';
 import { RunExperimentsButton, StartExperimentButton } from '@/components/experiments/experiment-buttons';
 import { ExperimentGroups, RecentRuns } from '@/components/experiments/experiment-groups';
 import { StateBadge, StepSummary, StopAlarms, TargetList } from '@/components/experiments/experiment-parts';
+import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { Time } from '@/components/ui/time';
 import { getAccountContext } from '@/lib/account-context';
-import { experimentPath } from '@/lib/experiments';
+import { experimentPath, HISTORY_PATH } from '@/lib/experiments';
 import { apiGet } from '@/lib/server-api';
 
 function TemplateCard({
@@ -74,15 +75,22 @@ export default async function ExperimentsPage() {
         title="Failover tests"
         description={`Failover test templates in ${selected.name}, from AWS FIS. Templates are made in AWS; run and watch them here.`}
         action={
-          view.access.canRun &&
-          view.templates.length > 0 && (
-            <RunExperimentsButton
-              accountId={selected.id}
-              label={RUN_ALL_LABEL}
-              templateLabels={view.templates.map(({ label }) => label)}
-              triggerLabel="Run all"
-            />
-          )
+          <div className="flex items-center gap-2">
+            <Button asChild size="sm">
+              <Link href={HISTORY_PATH}>
+                <History aria-hidden="true" />
+                Test history
+              </Link>
+            </Button>
+            {view.access.canRun && view.templates.length > 0 && (
+              <RunExperimentsButton
+                accountId={selected.id}
+                label={RUN_ALL_LABEL}
+                templateLabels={view.templates.map(({ label }) => label)}
+                triggerLabel="Run all"
+              />
+            )}
+          </div>
         }
       />
       {view.access.blockedReason && (

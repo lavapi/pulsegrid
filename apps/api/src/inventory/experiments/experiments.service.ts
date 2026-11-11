@@ -1,7 +1,5 @@
 import {
-  categoryOf,
   type ExperimentDetail,
-  type ExperimentResource,
   type ExperimentSummary,
   type ExperimentsView,
   type ExperimentTemplate,
@@ -9,11 +7,13 @@ import {
 } from '@pulsegrid/shared';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
-import type { TenantTransaction } from '../../database/tenant-context';
 import { TenantDatabase } from '../../database/tenant-database';
 import { experimentAccess } from './experiment-access';
-import { type ExperimentTarget, ExperimentGateway, STARTED_ACTION } from './experiment-gateway';
+import { startedBy } from './experiment-audit';
+import { type ExperimentTarget, ExperimentGateway } from './experiment-gateway';
 import { listGroups } from './experiment-groups.service';
+import { ExperimentReportStore } from './experiment-report.store';
+import { knownResources } from './experiment-resources';
 import { recentRuns } from './experiment-runs.service';
 
 const EXPERIMENT_MISSING = 'That failover test no longer exists in AWS.';
@@ -34,6 +34,7 @@ export class ExperimentsService {
   constructor(
     private readonly database: TenantDatabase,
     private readonly gateway: ExperimentGateway,
+    private readonly reports: ExperimentReportStore,
   ) {}
 
   async view(auth: AuthContext, accountId: string): Promise<ExperimentsView> {
@@ -55,13 +56,14 @@ export class ExperimentsService {
     if (!record) {
       throw new NotFoundException(EXPERIMENT_MISSING);
     }
+    await this.reports.save(auth.tenantId, target, record);
     const { resolvedResourceIds, ...experiment } = record;
     const listed = experiment.targets.flatMap(({ resourceIds }) => resourceIds);
     const wanted = [...new Set([...resolvedResourceIds, ...listed])];
     return this.database.run(auth.tenantId, async (trx) => ({
       ...experiment,
-      startedBy: await this.startedBy(trx, id),
-      resources: await this.knownResources(trx, accountId, wanted),
+      startedBy: await startedBy(trx, id),
+      resources: await knownResources(trx, accountId, wanted),
       access: experimentAccess(target, auth.permissions),
     }));
   }
@@ -120,38 +122,5 @@ export class ExperimentsService {
       this.logger.warn(`Experiment list failed: ${(error as Error).name}`);
       return { templates: [], experiments: [], error: target.source.failureMessage(error) };
     }
-  }
-
-  private async startedBy(trx: TenantTransaction, experimentId: string): Promise<string | null> {
-    const event = await trx
-      .selectFrom('audit_events')
-      .select('actor_email')
-      .where('action', '=', STARTED_ACTION)
-      .where('target_id', '=', experimentId)
-      .executeTakeFirst();
-    return event?.actor_email ?? null;
-  }
-
-  private async knownResources(
-    trx: TenantTransaction,
-    accountId: string,
-    nativeIds: readonly string[],
-  ): Promise<ExperimentResource[]> {
-    if (nativeIds.length === 0) {
-      return [];
-    }
-    const rows = await trx
-      .selectFrom('resources')
-      .select(['id', 'name', 'type'])
-      .where('cloud_account_id', '=', accountId)
-      .where('native_id', 'in', nativeIds)
-      .orderBy('name')
-      .execute();
-    return rows.map(({ id, name, type }) => ({
-      id,
-      name,
-      type,
-      path: `/infrastructure/${categoryOf(type)}/${id}`,
-    }));
   }
 }

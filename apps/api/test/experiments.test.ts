@@ -2,9 +2,15 @@ import type { ExperimentState, ExperimentSummary } from '@pulsegrid/shared';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CredentialVault } from '../src/inventory/connection/credential-vault';
+import { ExperimentReportCapture } from '../src/inventory/experiments/experiment-report-capture';
 import { newEnvironment } from '../src/inventory/environments/account-environment';
 import { awsProvider } from '../src/inventory/providers/aws/aws.provider';
-import { CLOUD_PROVIDER_LIST, type CloudProvider, type ExperimentSource } from '../src/inventory/providers/provider';
+import {
+  CLOUD_PROVIDER_LIST,
+  type CloudProvider,
+  type ExperimentRecord,
+  type ExperimentSource,
+} from '../src/inventory/providers/provider';
 import { setExtraPermissions, signIn, startTestApp, type TestContext, user } from './support/test-app';
 
 const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
@@ -31,6 +37,18 @@ const summary = (id: string, templateId: string, state: ExperimentState): Experi
   endedAt: null,
 });
 
+const record = (id: string, templateId: string, state: ExperimentState, label = 'Database failover'): ExperimentRecord => ({
+  ...summary(id, templateId, state),
+  label,
+  description: null,
+  reason: state === 'stopped' ? 'Experiment stopped by stop condition.' : null,
+  endedAt: '2026-11-10T12:10:00.000Z',
+  steps: [{ name: 'Reboot', actionId: 'aws:rds:reboot-db-instances', description: null, duration: null, state, reason: null, startedAt: null, endedAt: null }],
+  targets: [],
+  stopAlarms: ['staging-errors'],
+  resolvedResourceIds: [],
+});
+
 const source = {
   listTemplates: vi.fn<ExperimentSource['listTemplates']>(),
   listExperiments: vi.fn<ExperimentSource['listExperiments']>(),
@@ -46,6 +64,7 @@ describe('failover tests', () => {
   let developer: string;
   let viewer: string;
   let otherOwner: string;
+  let admin: string;
   let sequence = 0;
   const http = () => request(context.app.getHttpServer());
 
@@ -100,6 +119,7 @@ describe('failover tests', () => {
     developer = await signIn(context, context.acme, user('dev', 'developer'));
     viewer = await signIn(context, context.acme, user('val', 'viewer'));
     otherOwner = await signIn(context, context.globex, user('gia', 'admin'));
+    admin = await signIn(context, context.acme, user('ada', 'admin'));
   });
   afterAll(() => context.close());
   beforeEach(async () => {
@@ -269,9 +289,9 @@ describe('failover tests', () => {
       const { body: detail } = await http().get(`${runs(id)}/${run.id}`).set('Cookie', viewer).expect(200);
       expect(detail).toMatchObject({ label: 'Data layer', startedBy: 'dev@example.test', error: null });
       expect(detail.items).toEqual([
-        { region: REGION, templateId: 'EXT1', label: 'Database failover', experimentId: 'RUNEXT1', error: null, state: 'running' },
-        { region: REGION, templateId: 'EXT2', label: 'Cache reboot', experimentId: null, error: 'AWS refused this experiment.', state: null },
-        { region: REGION, templateId: 'GONE', label: 'GONE', experimentId: null, error: 'This template no longer exists in AWS.', state: null },
+        { region: REGION, templateId: 'EXT1', label: 'Database failover', experimentId: 'RUNEXT1', error: null, state: 'running', report: null },
+        { region: REGION, templateId: 'EXT2', label: 'Cache reboot', experimentId: null, error: 'AWS refused this experiment.', state: null, report: null },
+        { region: REGION, templateId: 'GONE', label: 'GONE', experimentId: null, error: 'This template no longer exists in AWS.', state: null, report: null },
       ]);
       expect(await actions('RUNEXT1')).toEqual([{ action: 'cloud.experiment.started', actor_email: 'dev@example.test' }]);
       const [event] = await context.owner.selectFrom('audit_events').select(['action', 'metadata']).where('target_id', '=', run.id).execute();
@@ -323,6 +343,95 @@ describe('failover tests', () => {
       await http().get(`${runs(staging.id)}/${run.id}`).set('Cookie', otherOwner).expect(404);
       await http().post(runs(staging.id)).set('Cookie', viewer).send({}).expect(403);
       await http().post(runs(staging.id)).set('Cookie', developer).send({ groupId: 'nope' }).expect(400);
+    });
+  });
+  describe('reports', () => {
+    const runs = (accountId: string) => `/api/cloud/accounts/${accountId}/experiment-runs`;
+    const history = (query = '', cookie = viewer) => http().get(`/api/experiment-reports${query}`).set('Cookie', cookie);
+    const capture = (accountId: string) =>
+      context.app.get(ExperimentReportCapture).captureAccount({ tenantId: context.acme.tenant.id, accountId });
+    const reportCount = async (accountId: string) =>
+      (await context.owner.selectFrom('experiment_reports').select('id').where('cloud_account_id', '=', accountId).execute()).length;
+
+    beforeEach(() => {
+      source.listTemplates.mockResolvedValue([TEMPLATE, SECOND]);
+      source.start.mockImplementation(async (_context, templateId) => `RUN${templateId}`);
+      source.getExperiment.mockImplementation(async (_context, id) =>
+        id === 'RUNEXT2' ? record(id, 'EXT2', 'stopped', 'Cache reboot') : record(id, 'EXT1', 'completed'),
+      );
+    });
+
+    it('saves a report once for every test that ended, including ones started outside PulseGrid', async () => {
+      const { id } = await addAccount('Staging');
+      source.listExperiments.mockResolvedValue([summary('OUT1', 'EXT1', 'completed'), summary('LIVE', 'EXT1', 'running')]);
+      await capture(id);
+      await capture(id);
+      expect(source.getExperiment).toHaveBeenCalledTimes(1);
+      expect(await reportCount(id)).toBe(1);
+      const saved = await context.owner
+        .selectFrom('experiment_reports')
+        .select('id')
+        .where('experiment_id', '=', 'OUT1')
+        .executeTakeFirstOrThrow();
+      const { body } = await history();
+      const entry = body.entries.find(({ id: entryId }: { id: string }) => entryId === saved.id);
+      expect(entry).toMatchObject({ kind: 'test', label: 'Database failover', result: 'passed', startedBy: null });
+      const { body: report } = await http().get(`/api/experiment-reports/${saved.id}`).set('Cookie', viewer).expect(200);
+      expect(report).toMatchObject({ experimentId: 'OUT1', environmentName: 'Staging', stopAlarms: ['staging-errors'], run: null });
+      expect(report.accountName).toBe('Staging account');
+    });
+
+    it('reports a group run in one place once its tests end', async () => {
+      const { id } = await addAccount('Staging');
+      const { body: started } = await http().post(runs(id)).set('Cookie', developer).send({}).expect(201);
+      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running'), summary('RUNEXT2', 'EXT2', 'running')]);
+      const { body: live } = await http().get(`${runs(id)}/${started.id}`).set('Cookie', viewer).expect(200);
+      expect(live).toMatchObject({ result: 'running', endedAt: null, environmentName: 'Staging' });
+
+      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'completed'), summary('RUNEXT2', 'EXT2', 'stopped')]);
+      const { body: done } = await http().get(`${runs(id)}/${started.id}`).set('Cookie', viewer).expect(200);
+      expect(done).toMatchObject({ result: 'stopped', endedAt: '2026-11-10T12:10:00.000Z' });
+      expect(done.items.map(({ report }: { report: { result: string } }) => report.result)).toEqual(['passed', 'stopped']);
+      expect(done.items[1].report).toMatchObject({ reason: 'Experiment stopped by stop condition.' });
+      expect(await reportCount(id)).toBe(2);
+
+      const { body } = await history('?label=All%20tests');
+      expect(body.entries[0]).toMatchObject({
+        kind: 'run',
+        id: started.id,
+        result: 'stopped',
+        counts: { total: 2, passed: 1, stopped: 1, failed: 0, notStarted: 0 },
+      });
+      expect(body.entries.filter(({ kind }: { kind: string }) => kind === 'test')).toEqual([]);
+      expect(body.labels).toContain('All tests');
+      const reportId = done.items[0].report.id;
+      const { body: report } = await http().get(`/api/experiment-reports/${reportId}`).set('Cookie', viewer).expect(200);
+      expect(report.run).toEqual({ id: started.id, label: 'All tests' });
+    });
+
+    it('exports the history as CSV and refuses bad filters', async () => {
+      const { id } = await addAccount('Staging');
+      source.listExperiments.mockResolvedValue([summary('CSV1', 'EXT1', 'completed')]);
+      await capture(id);
+      const response = await history('/export?result=passed').expect(200);
+      expect(response.headers['content-type']).toContain('text/csv');
+      expect(response.text.split('\n')[0]).toContain('Type,Name,Account');
+      expect(response.text).toContain('Test,Database failover');
+      await history('?result=great').expect(400);
+      await history('?from=yesterday').expect(400);
+    });
+
+    it('lets only people who manage environments delete reports and runs', async () => {
+      const { id } = await addAccount('Staging');
+      const { body: started } = await http().post(runs(id)).set('Cookie', developer).send({}).expect(201);
+      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'completed'), summary('RUNEXT2', 'EXT2', 'completed')]);
+      await http().get(`${runs(id)}/${started.id}`).set('Cookie', viewer).expect(200);
+      await http().delete(`/api/experiment-reports/runs/${started.id}`).set('Cookie', developer).expect(403);
+      await http().delete(`/api/experiment-reports/runs/${started.id}`).set('Cookie', admin).expect(204);
+      expect(await reportCount(id)).toBe(0);
+      await http().get(`${runs(id)}/${started.id}`).set('Cookie', viewer).expect(404);
+      expect((await actions(started.id)).map(({ action }) => action)).toContain('cloud.experiment-run.deleted');
+      await http().get('/api/experiment-reports').set('Cookie', otherOwner).expect(200, { entries: [], environments: [], labels: [] });
     });
   });
 });

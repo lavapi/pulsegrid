@@ -7,7 +7,7 @@ Everyone in the project sees its connected accounts. Dashboard roles control wha
 ## Create a key
 
 1. In the AWS account, create a dedicated IAM user for the dashboard. Don't use a personal user or an admin user.
-2. Attach the PulseGrid policy shown on the **AWS** integration page. Every account uses the same policy, production included. It allows the list and describe actions, logs and costs PulseGrid reads, and the actions it can take: force deploys, reboots, fault experiments and app secret values. It can't read S3 files or create or delete resources. Who can take which action, in staging and in production, is set by roles in PulseGrid.
+2. Attach the PulseGrid policy shown on the **AWS** integration page. Every account uses the same policy, production included. It allows the list and describe actions, logs and costs PulseGrid reads, and the actions it can take: force deploys, reboots, failover tests and app secret values. It can't read S3 files or create or delete resources. Who can take which action, in staging and in production, is set by roles in PulseGrid.
 3. Create an access key for that user.
 
 Root account keys and temporary keys are refused.
@@ -83,21 +83,40 @@ Above the charts, the section lists the capacity the resource has, such as the i
 
 Load needs `cloudwatch:GetMetricData`, which is in the PulseGrid policy. **Keys connected before load was added don't have it.** Add it to their IAM policy, or the Load section says the key can't read load.
 
-## Fault experiments
+## Failover tests
 
-The **Experiments** page lists the AWS FIS experiment templates of the account selected in the top bar, in every synced region, and its 20 most recent experiments per region. Each template shows its targets, its steps with their durations, and the CloudWatch alarms that stop it early. A template with no stop alarm is marked, because only a person can stop it. Templates are created in the AWS console or with Terraform; PulseGrid doesn't create or change them.
+Failover tests are AWS FIS experiments, run and reported from PulseGrid. The **Failover tests** page lists the FIS experiment templates of the account selected in the top bar, in every synced region, and its 20 most recent tests per region. Each template shows its targets, its steps with their durations, and the CloudWatch alarms that stop it early. A template with no stop alarm is marked, because only a person can stop it. Templates are created in the AWS console or with Terraform; PulseGrid doesn't create or change them. Links to the old `/experiments` pages still work.
 
-Everyone can see templates and experiments. Starting or stopping one needs an access key and the **Run staging fault experiments** permission, or **Run production fault experiments** for an account in a production environment. Starting asks you to type the template's name.
+Everyone can see templates and tests. Starting or stopping one needs an access key and the **Run staging failover tests** permission, or **Run production failover tests** for an account in a production environment. Starting asks you to type the template's name.
 
-An experiment's page refreshes every 5 seconds while it runs. It shows each step's state and timing, why the experiment ended, and who started it from PulseGrid; experiments started elsewhere show **Outside PulseGrid**. Databases and caches the experiment picked that PulseGrid knows are listed with their Load charts, so you can see the effect. Every start and stop is recorded in Activity, and so is every refused attempt.
+A test's page refreshes every 5 seconds while it runs. It shows each step's state and timing, why the test ended, and who started it from PulseGrid; tests started elsewhere show **Outside PulseGrid**. Databases and caches the test picked that PulseGrid knows are listed with their Load charts, so you can see the effect. Every start and stop is recorded in Activity, and so is every refused attempt.
 
 ### Groups and Run all
 
-**Groups** are named lists of templates in one account, kept in PulseGrid. A template can be in several groups. **Run group** starts every template in the group at the same time, and **Run all** in the page header starts every template in the account. Both ask you to type the group's name, or `All experiments`. One run starts at most 25 templates, to stay under the AWS limit on experiments running at once.
+**Groups** are named lists of templates in one account, kept in PulseGrid. A template can be in several groups. **Run group** starts every template in the group at the same time, and **Run all** in the page header starts every template in the account. Both ask you to type the group's name, or `All tests`. One run starts at most 25 templates, to stay under the AWS limit on experiments running at once.
 
-Each run has its own page with the live state of every experiment, linked to its page, and refreshes every 5 seconds while any is running. A template that no longer exists in AWS, or that AWS refuses to start, is shown with the reason, and the others still run. **Stop all** stops every experiment of the run that's still active. Recent runs are listed on the Experiments page.
+Creating, changing, deleting and running groups need the same key and permission as single tests, staging or production depending on the account's environment. Group changes, runs and Stop all are recorded in Activity, along with each test they started or stopped. No extra AWS permissions are needed.
 
-Creating, changing, deleting and running groups need the same key and permission as single experiments, staging or production depending on the account's environment. Group changes, runs and Stop all are recorded in Activity, along with each experiment they started or stopped. No extra AWS permissions are needed.
+### Reports and history
+
+When a test ends, PulseGrid saves its report: the template, account and environment, who started it, when it started and ended, the result, why it ended, each step with its timing, and the resources it picked. This includes tests started in the AWS console or by other tools. The background worker looks for ended tests every 2 minutes, and opening a test or run saves its report at once.
+
+The result is **Passed** when the test completed, **Stopped** when a person or a stop alarm stopped it, and **Failed** when AWS reports a failure or cancelled it.
+
+**A group run or Run all is reported in one place.** Its page is the report for the whole run:
+
+- **Summary:** environment, account, who started it, start, end and duration, and the overall result. A run passes only when every test completed. It fails when any test failed or didn't start, and is stopped when any test was stopped.
+- **Every test in one table**, with its result, why it ended, and its timing. Tests that didn't start show why.
+- **One timeline** with every test and its steps on the same time axis.
+- **Load charts** for the databases and caches the tests hit, from 10 minutes before the run to 10 minutes after it.
+
+While tests are running, the page refreshes every 5 seconds and **Stop all** stops every test that's still active.
+
+A single test's report has the same parts for that one test. **Save as PDF** on either page opens the print dialog with the report laid out for printing; choose **Save as PDF** there.
+
+**Test history**, linked from the Failover tests page, lists every report in the project, newest first. A group run or Run all is one entry, with a count such as "4 tests · 3 passed · 1 stopped"; tests started on their own are their own entries. Filter by environment, test or group, result and dates, so you can compare the same group over time, and **Export CSV** downloads what's shown.
+
+Reports are kept in PulseGrid until someone with **Manage environments** deletes them, so history outlives AWS, which drops experiments after about 120 days. Deleting a run deletes the reports of its tests too. Everyone can see reports. Load charts are read from CloudWatch when a report is opened. CloudWatch keeps 1-minute points for 15 days, then 5-minute points until 63 days and hourly points after that, so older reports show coarser charts.
 
 The PulseGrid policy includes `fis:ListExperimentTemplates`, `fis:GetExperimentTemplate`, `fis:ListExperiments`, `fis:GetExperiment`, `fis:ListExperimentResolvedTargets`, `fis:StartExperiment` and `fis:StopExperiment`. FIS runs each experiment with the role in its template, so the key itself never gets the permissions the experiment uses.
 

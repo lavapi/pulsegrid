@@ -7,6 +7,8 @@ import { ExperimentGroupsController } from './experiments/experiment-groups.cont
 import { ExperimentGroupsService } from './experiments/experiment-groups.service';
 import { ExperimentRunsController } from './experiments/experiment-runs.controller';
 import { ExperimentRunsService } from './experiments/experiment-runs.service';
+import { ExperimentReportsController } from './experiments/experiment-reports.controller';
+import { ExperimentReportsService } from './experiments/experiment-reports.service';
 import { ExperimentsController } from './experiments/experiments.controller';
 import { ExperimentsService } from './experiments/experiments.service';
 import { ResourceActionsController } from './actions/resource-actions.controller';
@@ -40,6 +42,7 @@ import { SyncProgressController } from './sync/sync-progress.controller';
     ExperimentsController,
     ExperimentGroupsController,
     ExperimentRunsController,
+    ExperimentReportsController,
     CostsController,
     EnvironmentDomainsController,
     EnvironmentsController,
@@ -58,6 +61,7 @@ import { SyncProgressController } from './sync/sync-progress.controller';
     ExperimentGateway,
     ExperimentGroupsService,
     ExperimentRunsService,
+    ExperimentReportsService,
     CostsService,
     EnvironmentDomainsService,
     EnvironmentsService,

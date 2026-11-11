@@ -29,6 +29,8 @@ const ACTION_LABELS: Record<string, string> = {
   'cloud.experiment.started': 'Failover test started',
   'cloud.experiment-run.started': 'Failover tests started together',
   'cloud.experiment-run.stopped': 'Failover tests stopped together',
+  'cloud.experiment-run.deleted': 'Test run report deleted',
+  'cloud.experiment-report.deleted': 'Failover test report deleted',
   'cloud.experiment-group.created': 'Test group created',
   'cloud.experiment-group.updated': 'Test group changed',
   'cloud.experiment-group.deleted': 'Test group deleted',

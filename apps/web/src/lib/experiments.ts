@@ -1,4 +1,4 @@
-import type { ExperimentState } from '@pulsegrid/shared';
+import { LOAD_WINDOW_MAX_MINUTES, type ExperimentState, type LoadWindow, type RunResult } from '@pulsegrid/shared';
 
 type Tone = 'success' | 'warning' | 'danger' | 'neutral';
 
@@ -33,3 +33,48 @@ export const formatStepDuration = (duration: string | null): string | null => {
 export const experimentPath = (region: string, id: string): string => `/failover-tests/${region}/${id}`;
 
 export const experimentRunPath = (id: string): string => `/failover-tests/runs/${id}`;
+
+export const reportPath = (id: string): string => `/failover-tests/reports/${id}`;
+
+export const HISTORY_PATH = '/failover-tests/history';
+
+/** A run page for a history entry, which may belong to another account than the one selected. */
+export const historyRunPath = (id: string, accountId: string): string =>
+  `${experimentRunPath(id)}?account=${encodeURIComponent(accountId)}`;
+
+const RESULTS: Record<RunResult, { label: string; tone: Tone }> = {
+  passed: { label: 'Passed', tone: 'success' },
+  stopped: { label: 'Stopped', tone: 'warning' },
+  failed: { label: 'Failed', tone: 'danger' },
+  running: { label: 'Running', tone: 'warning' },
+  unknown: { label: 'Unknown', tone: 'neutral' },
+};
+
+export const resultLabel = (result: RunResult): string => RESULTS[result].label;
+
+export const resultTone = (result: RunResult): Tone => RESULTS[result].tone;
+
+export const formatDuration = (from: string | null, to: string | null): string | null => {
+  if (!from || !to) {
+    return null;
+  }
+  const minutes = Math.round((Date.parse(to) - Date.parse(from)) / 60_000);
+  if (minutes < 1) {
+    return 'under 1 min';
+  }
+  const hours = Math.floor(minutes / 60);
+  return hours > 0 ? `${hours} h ${minutes % 60} min` : `${minutes} min`;
+};
+
+const MARGIN_MS = 10 * 60_000;
+
+/** The test's time with 10 minutes either side, so the load before and after shows too. */
+export const reportWindow = (from: string | null, to: string | null, now = new Date()): LoadWindow | null => {
+  if (!from) {
+    return null;
+  }
+  const start = Date.parse(from) - MARGIN_MS;
+  const end = Math.min((to ? Date.parse(to) : now.getTime()) + MARGIN_MS, now.getTime());
+  const longest = start + LOAD_WINDOW_MAX_MINUTES * 60_000;
+  return { from: new Date(start).toISOString(), to: new Date(Math.min(end, longest)).toISOString() };
+};

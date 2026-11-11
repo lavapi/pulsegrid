@@ -5,17 +5,16 @@ import { AuditService } from '../../audit/audit.service';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { TenantDatabase } from '../../database/tenant-database';
 import { CredentialVault } from '../connection/credential-vault';
-import { toAccountEnvironment } from '../environments/account-environment';
 import type { CloudCredentials, ExperimentContext, ExperimentSource } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
-import { type ExperimentAccount, experimentAccess, NO_CREDENTIALS } from './experiment-access';
+import { experimentAccess, NO_CREDENTIALS } from './experiment-access';
+import { STARTED_ACTION, STOPPED_ACTION } from './experiment-audit';
+import { type ExperimentAccount, findExperimentAccount } from './experiment-account';
 
 const ACCOUNT_MISSING = 'That cloud account is no longer connected.';
 const NOT_SUPPORTED = "This provider can't run failover tests yet.";
 const REGION_MISSING = "That region isn't synced for this account.";
 
-export const STARTED_ACTION = 'cloud.experiment.started';
-export const STOPPED_ACTION = 'cloud.experiment.stopped';
 
 export interface ExperimentTarget extends ExperimentAccount {
   source: ExperimentSource;
@@ -41,24 +40,15 @@ export class ExperimentGateway {
   ) {}
 
   async find(auth: AuthContext, accountId: string): Promise<ExperimentTarget> {
-    const row = await this.database.run(auth.tenantId, (trx) =>
-      trx
-        .selectFrom('cloud_accounts')
-        .leftJoin('environments', 'environments.id', 'cloud_accounts.environment_id')
-        .selectAll('cloud_accounts')
-        .select(['environments.name as environment_name', 'environments.is_production'])
-        .where('cloud_accounts.id', '=', accountId)
-        .executeTakeFirst(),
-    );
-    if (!row) {
+    const found = await this.database.run(auth.tenantId, (trx) => findExperimentAccount(trx, accountId));
+    if (!found) {
       throw new NotFoundException(ACCOUNT_MISSING);
     }
-    const { environment_name: name, is_production: isProduction, ...account } = row;
-    const source = this.providers.get(account.provider).experimentSource;
+    const source = this.providers.get(found.account.provider).experimentSource;
     if (!source) {
       throw new ConflictException(NOT_SUPPORTED);
     }
-    return { account, environment: toAccountEnvironment(name, isProduction), source };
+    return { ...found, source };
   }
 
   async authorize(auth: AuthContext, target: ExperimentTarget, denied: Omit<AuditRecord, 'action'>): Promise<void> {

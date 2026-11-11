@@ -86,7 +86,7 @@ export function ExperimentGroups({ accountId, view }: GroupsProps) {
 export function RecentRuns({ runs }: { runs: readonly ExperimentRunSummary[] }) {
   return (
     <Card>
-      <CardHeader title="Recent group runs" description="Groups and Run all started here." />
+      <CardHeader title="Recent group runs" description="Groups and Run all started here. Each opens one report for the whole run." />
       <ul className="divide-y">
         {runs.map((run) => (
           <li key={run.id}>

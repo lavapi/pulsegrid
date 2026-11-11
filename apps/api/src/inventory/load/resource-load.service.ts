@@ -1,13 +1,13 @@
-import type { LoadRange, ResourceLoad } from '@pulsegrid/shared';
+import type { ResourceLoad } from '@pulsegrid/shared';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { CredentialVault } from '../connection/credential-vault';
+import type { MetricQuery } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { ResourceAccess } from '../resources/resource-access';
 
 const NO_LOAD = "This resource doesn't have load to show.";
 const NO_CREDENTIALS = 'This account has no access key. Add one under Integrations.';
-const MS_PER_MINUTE = 60_000;
 
 const empty = (error: string | null): ResourceLoad => ({
   available: true,
@@ -27,7 +27,7 @@ export class ResourceLoadService {
     private readonly vault: CredentialVault,
   ) {}
 
-  async read(auth: AuthContext, id: string, range: LoadRange): Promise<ResourceLoad> {
+  async read(auth: AuthContext, id: string, query: MetricQuery): Promise<ResourceLoad> {
     const { resource, account } = await this.access.load(auth, id);
     const source = this.providers.get(account.provider).metricSource;
     if (!source?.resourceTypes.includes(resource.type)) {
@@ -37,8 +37,6 @@ export class ResourceLoadService {
     if (!credentials) {
       return empty(NO_CREDENTIALS);
     }
-    const until = new Date();
-    const since = new Date(until.getTime() - range.minutes * MS_PER_MINUTE);
     try {
       const result = await source.read(
         {
@@ -46,7 +44,7 @@ export class ResourceLoadService {
           region: resource.region,
           resource: { type: resource.type, name: resource.name, details: resource.details },
         },
-        { since, until, periodSeconds: range.periodSeconds },
+        query,
       );
       return { available: true, ...result, error: null };
     } catch (error) {
