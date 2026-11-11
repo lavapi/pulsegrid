@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from './dialog';
 import { Field, Input } from './input';
+import { ProductionNotice, useProductionTarget } from './production-notice';
 
 interface ConfirmButtonProps {
   label: string;
@@ -21,6 +22,8 @@ interface ConfirmButtonProps {
   /** When set, the person has to type this before confirming. */
   typeToConfirm?: string;
   triggerVariant?: ComponentProps<typeof Button>['variant'];
+  /** Warn when this changes production: true for the selected account, or the name of what's production. */
+  warnProduction?: boolean | string;
   onConfirm: () => void;
 }
 
@@ -32,8 +35,10 @@ export function ConfirmButton({
   disabled,
   typeToConfirm,
   triggerVariant = 'dangerGhost',
+  warnProduction,
   onConfirm,
 }: ConfirmButtonProps) {
+  const production = useProductionTarget(warnProduction);
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState('');
   const confirmed = !typeToConfirm || typed.trim() === typeToConfirm;
@@ -55,6 +60,9 @@ export function ConfirmButton({
         <DialogDescription className="mt-1.5 text-sm text-muted-foreground">
           {description}
         </DialogDescription>
+        <div className="mt-4 empty:hidden">
+          <ProductionNotice target={production} />
+        </div>
         {typeToConfirm && (
           <Field label={`Type ${typeToConfirm} to confirm`} className="mt-4">
             <Input value={typed} autoComplete="off" onChange={(event) => setTyped(event.target.value)} />

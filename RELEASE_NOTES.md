@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Production is shown more calmly: a thin red line on the top bar instead of a red banner, and a clear Production box in every dialog that changes production, which also asks for the resource's name. Scrolling on production pages no longer leaves a gap above the top bar.
+
 ## [0.17.0] - 2026-11-11
 
 - Failover test runs no longer overlap tests on the same resource: each waits for the resource to recover first, and zone-wide tests such as zone outages run alone at the end.

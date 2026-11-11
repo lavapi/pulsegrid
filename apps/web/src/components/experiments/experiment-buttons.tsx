@@ -30,6 +30,7 @@ export function StartExperimentButton({ accountId, template }: { accountId: stri
   return (
     <ConfirmButton
       label="Start test"
+      warnProduction
       title={`Start ${template.label}?`}
       description="This deliberately breaks or slows the resources the template targets. It runs until it finishes, a stop alarm fires, or someone stops it."
       confirmLabel="Start test"
@@ -59,6 +60,7 @@ export function StopExperimentButton({ accountId, region, id }: { accountId: str
   return (
     <ConfirmButton
       label="Stop test"
+      warnProduction
       title="Stop this test?"
       description="AWS stops every step that is still running and undoes what it can, such as removing injected faults."
       confirmLabel="Stop test"
@@ -87,6 +89,7 @@ export function StopRunButton({ accountId, runId }: { accountId: string; runId: 
   return (
     <ConfirmButton
       label="Stop all"
+      warnProduction
       title="Stop every test in this run?"
       description="AWS stops every test that is still running and undoes what it can, such as removing injected faults."
       confirmLabel="Stop all"

@@ -2,6 +2,8 @@
 
 import { type ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ProductionNotice, useProductionTarget } from '@/components/ui/production-notice';
+import { Field, Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogClose,
@@ -22,6 +24,10 @@ interface ActionDialogProps {
   canConfirm?: boolean;
   wide?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Warn when this changes production: true for the selected account, or the name of what's production. */
+  warnProduction?: boolean | string;
+  /** In production, the name to type before confirming. */
+  confirmName?: string;
   children?: ReactNode;
   onConfirm: () => void;
 }
@@ -37,14 +43,20 @@ export function ActionDialog({
   canConfirm = true,
   wide = false,
   onOpenChange,
+  warnProduction,
+  confirmName,
   children,
   onConfirm,
 }: ActionDialogProps) {
   const [open, setOpen] = useState(false);
-  const confirmed = canConfirm && !blockedReason;
+  const [typed, setTyped] = useState('');
+  const production = useProductionTarget(warnProduction);
+  const needsName = Boolean(production && confirmName);
+  const confirmed = canConfirm && !blockedReason && (!needsName || typed.trim() === confirmName);
 
   const change = (next: boolean) => {
     setOpen(next);
+    setTyped('');
     onOpenChange?.(next);
   };
 
@@ -65,7 +77,13 @@ export function ActionDialog({
           {description}
         </DialogDescription>
         <form className="mt-4 flex flex-col gap-4" onSubmit={submit}>
+          <ProductionNotice target={production} />
           {children}
+          {needsName && (
+            <Field label={`Type ${confirmName} to confirm`}>
+              <Input value={typed} autoComplete="off" onChange={(event) => setTyped(event.target.value)} />
+            </Field>
+          )}
           {blockedReason && (
             <p className="rounded-lg bg-warning-soft px-3 py-2.5 text-[13px] text-warning" role="status">
               {blockedReason}
