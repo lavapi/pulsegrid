@@ -69,6 +69,10 @@ describe('pathAfterSwitch', () => {
     expect(pathAfterSwitch('/failover-tests')).toBeNull();
   });
 
+  it('stays on test history, without the previous account filters', () => {
+    expect(pathAfterSwitch('/failover-tests/history')).toBe('/failover-tests/history');
+  });
+
   it('leaves a resource from the previous account', () => {
     expect(pathAfterSwitch('/infrastructure/rds/abc')).toBe('/infrastructure/rds');
   });

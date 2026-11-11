@@ -70,12 +70,11 @@ describe('historyEntries', () => {
     expect(historyEntries([run('2026-11-10T11:00:00.000Z', ['E9'])], [], {}, NOW)[0]?.result).toBe('unknown');
   });
 
-  it('filters by environment, name and result', () => {
+  it('filters by name and result', () => {
     const runs = [run('2026-11-11T10:00:00.000Z', ['E1'])];
     const reports = [report('E1', 'completed'), report('E3', 'failed', 'Cache reboot')];
     expect(historyEntries(runs, reports, { result: 'failed' }, NOW).map(({ label }) => label)).toEqual(['Cache reboot']);
     expect(historyEntries(runs, reports, { label: 'Data layer' }, NOW)).toHaveLength(1);
-    expect(historyEntries(runs, reports, { environment: 'Production' }, NOW)).toEqual([]);
   });
 });
 

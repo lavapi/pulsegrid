@@ -9,9 +9,10 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/ui/page-header';
 import { Time } from '@/components/ui/time';
 import { formatDuration, historyRunPath, reportPath } from '@/lib/experiments';
+import { getAccountContext } from '@/lib/account-context';
 import { apiGet } from '@/lib/server-api';
 
-const FILTERS = ['environment', 'label', 'result', 'from', 'to'] as const;
+const FILTERS = ['label', 'result', 'from', 'to'] as const;
 
 const entryPath = (entry: TestHistoryEntry): string =>
   entry.kind === 'run' ? historyRunPath(entry.id, entry.accountId) : reportPath(entry.id);
@@ -38,10 +39,24 @@ export default async function TestHistoryPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const params = await searchParams;
-  const query = new URLSearchParams(
-    FILTERS.flatMap((name) => (params[name] ? [[name, params[name]] as [string, string]] : [])),
-  ).toString();
-  const suffix = query ? `?${query}` : '';
+  const { selected } = await getAccountContext();
+  if (!selected) {
+    return (
+      <>
+        <PageHeader title="Test history" />
+        <EmptyState
+          icon={History}
+          title="No cloud account yet"
+          description="Connect an AWS account under Integrations to keep the history of its failover tests here."
+        />
+      </>
+    );
+  }
+  const query = new URLSearchParams([
+    ['account', selected.id],
+    ...FILTERS.flatMap((name) => (params[name] ? [[name, params[name]] as [string, string]] : [])),
+  ]).toString();
+  const suffix = `?${query}`;
   const history = await apiGet<TestHistory>(`/experiment-reports${suffix}`);
 
   return (
@@ -55,10 +70,10 @@ export default async function TestHistoryPage({
       </Link>
       <PageHeader
         title="Test history"
-        description="Every failover test that has ended, in every account. Group runs and Run all show as one entry."
+        description={`Failover tests that have ended in ${selected.name}. Group runs and Run all show as one entry.`}
         action={<ExportHistoryButton query={suffix} />}
       />
-      <HistoryFilters environments={history.environments} labels={history.labels} />
+      <HistoryFilters labels={history.labels} />
       {history.entries.length === 0 ? (
         <EmptyState
           icon={History}
@@ -71,7 +86,6 @@ export default async function TestHistoryPage({
             <thead className="text-left text-[12px] text-faint">
               <tr>
                 <th className="px-5 py-2 font-semibold">Test or run</th>
-                <th className="px-5 py-2 font-semibold">Environment</th>
                 <th className="px-5 py-2 font-semibold">Result</th>
                 <th className="px-5 py-2 font-semibold">Started</th>
                 <th className="px-5 py-2 font-semibold">Duration</th>
@@ -86,10 +100,9 @@ export default async function TestHistoryPage({
                       {entry.label}
                     </Link>
                     <div className="text-[12px] text-muted-foreground">
-                      {countsOf(entry) ?? 'Single test'} · {entry.accountName}
+                      {countsOf(entry) ?? 'Single test'}
                     </div>
                   </td>
-                  <td className="px-5 py-3">{entry.environmentName ?? 'None'}</td>
                   <td className="px-5 py-3">
                     <ResultBadge result={entry.result} />
                   </td>

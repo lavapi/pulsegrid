@@ -80,10 +80,9 @@ const testEntry = (report: ReportRow): TestHistoryEntry => ({
   counts: null,
 });
 
-type EntryFilter = Pick<TestHistoryFilter, 'environment' | 'label' | 'result'>;
+type EntryFilter = Pick<TestHistoryFilter, 'label' | 'result'>;
 
-const matches = (entry: TestHistoryEntry, { environment, label, result }: EntryFilter): boolean =>
-  (!environment || entry.environmentName === environment) &&
+const matches = (entry: TestHistoryEntry, { label, result }: EntryFilter): boolean =>
   (!label || entry.label === label) &&
   (!result || entry.result === result);
 

@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Fixed
+
+- Test history and its CSV export show only the account selected in the top bar, so staging and production history no longer mix.
+
 ## [0.16.0] - 2026-11-11
 
 ### Added
