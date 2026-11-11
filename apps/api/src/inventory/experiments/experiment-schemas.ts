@@ -22,7 +22,7 @@ export const groupSchema = z.object({
 
 export const runSchema = z.object({
   groupId: z.uuid().optional(),
-  waveSize: z.number().int().min(1).max(EXPERIMENT_RUN_LIMIT),
+  confirmProduction: z.boolean().optional(),
 });
 
 export const orderSchema = z.object({ groupId: z.uuid().optional() });

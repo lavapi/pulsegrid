@@ -77,6 +77,8 @@ export function ResourceActionPanel({ resourceId, resourceName, actions, initial
                     confirmLabel={buttonLabel}
                     pending={pending}
                     danger
+                    warnProduction
+                    confirmName={resourceName}
                     onConfirm={() => start(action)}
                   />
                 );

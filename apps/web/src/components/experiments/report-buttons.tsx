@@ -8,12 +8,25 @@ import { Button } from '@/components/ui/button';
 import { ConfirmButton } from '@/components/ui/confirm-button';
 import { apiDownload, apiSend } from '@/lib/browser-api';
 import { HISTORY_PATH } from '@/lib/experiments';
+import { useTimeMode } from '@/lib/time-mode';
 
-export function SavePdfButton() {
+/** Downloads the report as a PDF table, with times in the zone the reader has chosen. */
+export function DownloadPdfButton({ path, fileName }: { path: string; fileName: string }) {
+  const mode = useTimeMode();
+  const [pending, startTransition] = useTransition();
+  const download = () =>
+    startTransition(async () => {
+      const timeZone = mode === 'utc' ? 'UTC' : Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const separator = path.includes('?') ? '&' : '?';
+      const failure = await apiDownload(`${path}${separator}timeZone=${encodeURIComponent(timeZone)}`, fileName);
+      if (failure) {
+        toast.error(failure);
+      }
+    });
   return (
-    <Button size="sm" className="print:hidden" onClick={() => window.print()}>
+    <Button size="sm" disabled={pending} onClick={download}>
       <FileDown aria-hidden="true" />
-      Save as PDF
+      Download PDF
     </Button>
   );
 }

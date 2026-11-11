@@ -4,17 +4,26 @@ export interface OutcomeItem {
   experimentId: string | null;
   waiting?: boolean;
   cancelled?: boolean;
+  skipped?: string | null;
+  settling?: boolean;
   state: ExperimentState | null;
   report: { result: TestResult; endedAt: string | null } | null;
 }
 
 /** A test that never started because AWS refused it or the template was gone, rather than one still to come or cancelled. */
-export const didNotStart = ({ experimentId, waiting, cancelled }: OutcomeItem): boolean =>
-  experimentId === null && !waiting && !cancelled;
+export const didNotStart = ({ experimentId, waiting, cancelled, skipped }: OutcomeItem): boolean =>
+  experimentId === null && !waiting && !cancelled && !skipped;
 
-const itemResult = ({ state, report, waiting, cancelled }: OutcomeItem): RunResult => {
+/** A skipped test had a reason not to run, so it doesn't count against the run. */
+const itemResult = ({ state, report, waiting, cancelled, skipped, settling }: OutcomeItem): RunResult => {
+  if (settling) {
+    return 'running';
+  }
   if (report) {
     return report.result;
+  }
+  if (skipped) {
+    return 'passed';
   }
   if (waiting) {
     return 'running';

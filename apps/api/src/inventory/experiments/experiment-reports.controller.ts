@@ -1,5 +1,17 @@
 import { RUN_RESULTS, type ExperimentReport, type RunResult, type TestHistory } from '@pulsegrid/shared';
-import { Controller, Delete, Get, Header, HttpCode, Param, ParseUUIDPipe, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Header,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Query,
+  Req,
+  type StreamableFile,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { z } from 'zod';
@@ -25,6 +37,9 @@ const historySchema = z
   })
   .transform((query): HistoryQuery => query);
 
+const pdfSchema = z.object({ timeZone: z.string().max(64).optional() });
+const runPdfSchema = pdfSchema.extend({ account: z.uuid() });
+
 @Controller('experiment-reports')
 @UseGuards(ThrottlerGuard)
 export class ExperimentReportsController {
@@ -48,6 +63,26 @@ export class ExperimentReportsController {
     @Query(new ZodPipe(historySchema, INVALID_FILTER)) query: HistoryQuery,
   ): Promise<string> {
     return this.reports.csv(auth, query);
+  }
+
+  @Get('runs/:runId/pdf')
+  @Throttle(READ_LIMIT)
+  runPdf(
+    @CurrentAuth() auth: AuthContext,
+    @Param('runId', ParseUUIDPipe) runId: string,
+    @Query(new ZodPipe(runPdfSchema, INVALID_FILTER)) query: z.infer<typeof runPdfSchema>,
+  ): Promise<StreamableFile> {
+    return this.reports.runPdf(auth, query.account, runId, query.timeZone);
+  }
+
+  @Get(':id/pdf')
+  @Throttle(READ_LIMIT)
+  testPdf(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query(new ZodPipe(pdfSchema, INVALID_FILTER)) query: z.infer<typeof pdfSchema>,
+  ): Promise<StreamableFile> {
+    return this.reports.testPdf(auth, id, query.timeZone);
   }
 
   @Delete('runs/:runId')

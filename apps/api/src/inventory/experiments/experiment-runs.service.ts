@@ -1,6 +1,6 @@
 import {
   EXPERIMENT_RUN_LIMIT,
-  type ExperimentCapacity,
+  type ExperimentGroup,
   type ExperimentRunDetail,
   type ExperimentRunItem,
   type ExperimentRunItemState,
@@ -26,15 +26,16 @@ import { type ExperimentTarget, ExperimentGateway } from './experiment-gateway';
 import { findGroup } from './experiment-groups.service';
 import { ExperimentReportStore, type ReportRow, reportKey, reportsFor } from './experiment-report.store';
 import { knownResources } from './experiment-resources';
-import { ExperimentWaves, inventoryOf } from './experiment-waves';
-import { sharingCount } from './wave-plan';
+import { EnvironmentLock } from './environment-lock';
+import { inventoryIn, nextWaiting, RunSequencer } from './run-sequencer';
 import { runOutcome } from './run-outcome';
 
 const RUN_MISSING = 'That test run no longer exists.';
 const NOTHING_TO_RUN = 'There are no failover test templates to run.';
 const TOO_MANY = `A run can start at most ${EXPERIMENT_RUN_LIMIT} templates.`;
 const TEMPLATE_MISSING = 'This template no longer exists in AWS.';
-const BAD_WAVE = `Choose between 1 and ${EXPERIMENT_RUN_LIMIT} tests at a time.`;
+const CONFIRM_PRODUCTION = 'Confirm that these tests run in production before starting them.';
+const ONE_AT_A_TIME = 1;
 const READ_FAILED = "AWS couldn't be reached. Please try again.";
 const SOME_NOT_STOPPED = "Some tests didn't stop. Please try again.";
 const RECENT_RUNS = 10;
@@ -46,9 +47,10 @@ interface RunRow {
   started_by_email: string | null;
   started_at: Date;
   wave_size: number | null;
+  stopped_reason: string | null;
 }
 
-const RUN_COLUMNS = ['id', 'label', 'items', 'started_by_email', 'started_at', 'wave_size'] as const;
+const RUN_COLUMNS = ['id', 'label', 'items', 'started_by_email', 'started_at', 'wave_size', 'stopped_reason'] as const;
 
 const countFailed = (items: readonly ExperimentRunItem[]): number => items.filter(({ error }) => error !== null).length;
 
@@ -103,51 +105,25 @@ export class ExperimentRunsService {
     private readonly database: TenantDatabase,
     private readonly gateway: ExperimentGateway,
     private readonly reports: ExperimentReportStore,
-    private readonly waves: ExperimentWaves,
+    private readonly sequencer: RunSequencer,
+    private readonly lock: EnvironmentLock,
   ) {}
 
-  /** What a group or Run all will do: how many tests, how many share a resource, how many act on a whole zone. */
+  /** The tests a group or Run all will start, one at a time, in order, and whether the environment is busy. */
   async order(auth: AuthContext, accountId: string, groupId: string | undefined): Promise<RunOrder> {
     const target = await this.gateway.find(auth, accountId);
     const group = groupId ? await this.database.run(auth.tenantId, (trx) => findGroup(trx, accountId, groupId)) : null;
-    const templates = await this.templates(target);
-    const inventory = [...(await this.database.run(auth.tenantId, (trx) => inventoryOf(trx, accountId))).values()];
-    const chosen = group
-      ? group.templates.flatMap((ref) => templates.get(templateKey(ref)) ?? [])
-      : [...templates.values()];
-    const footprints = chosen.map((template) => target.source.footprint(template, inventory));
-    return {
-      tests: chosen.length,
-      sharing: sharingCount(footprints),
-      zoneWide: footprints.filter(({ zoneWide }) => zoneWide).length,
-    };
-  }
-
-  /** For each region: how many tests AWS allows at once, and how many run now. */
-  async capacity(auth: AuthContext, accountId: string): Promise<ExperimentCapacity[]> {
-    const target = await this.gateway.find(auth, accountId);
-    try {
-      const capacity = await this.waves.capacity(target, target.account.regions);
-      return [...capacity.entries()].map(([region, { limit, activeIds }]) => ({
-        region,
-        quota: limit.limit,
-        quotaKnown: limit.known,
-        running: activeIds.size,
-      }));
-    } catch (error) {
-      throw new ConflictException(target.source.failureMessage(error));
-    }
+    const items = await this.plannedItems(auth, target, group);
+    const busy = await this.database.run(auth.tenantId, (trx) => this.lock.busy(trx, target.account));
+    return { tests: inRunOrder(items).map(({ label, zoneWide = false }) => ({ label, zoneWide })), busy };
   }
 
   async start(
     auth: AuthContext,
     accountId: string,
-    { groupId, waveSize }: StartRunInput,
+    { groupId, confirmProduction }: StartRunInput,
     ipAddress: string | undefined,
   ): Promise<StartedExperimentRun> {
-    if (!Number.isInteger(waveSize) || waveSize < 1 || waveSize > EXPERIMENT_RUN_LIMIT) {
-      throw new BadRequestException(BAD_WAVE);
-    }
     const target = await this.gateway.find(auth, accountId);
     const group = groupId
       ? await this.database.run(auth.tenantId, (trx) => findGroup(trx, accountId, groupId))
@@ -160,27 +136,18 @@ export class ExperimentRunsService {
       ipAddress,
       metadata,
     });
-    const templates = await this.templates(target);
-    const wanted: ExperimentTemplateRef[] =
-      group?.templates ?? [...templates.values()].map(({ id, region }) => ({ region, templateId: id }));
-    if (wanted.length === 0) {
-      throw new ConflictException(NOTHING_TO_RUN);
+    const production = target.environment?.isProduction ?? true;
+    if (production && !confirmProduction) {
+      throw new BadRequestException(CONFIRM_PRODUCTION);
     }
-    if (wanted.length > EXPERIMENT_RUN_LIMIT) {
-      throw new ConflictException(TOO_MANY);
-    }
-    const inventory = [...(await this.database.run(auth.tenantId, (trx) => inventoryOf(trx, accountId))).values()];
-    const items = wanted.map((ref): ExperimentRunItem => {
-      const template = templates.get(templateKey(ref));
-      if (!template) {
-        return { ...ref, label: ref.templateId, experimentId: null, error: TEMPLATE_MISSING };
-      }
-      const { resources, zoneWide } = target.source.footprint(template, inventory);
-      return { ...ref, label: template.label, experimentId: null, error: null, waiting: true, resources, zoneWide };
-    });
+    const items = inRunOrder(await this.plannedItems(auth, target, group));
     const id = await this.database.run(auth.tenantId, async (trx) => {
-      if (group) {
-        await trx.updateTable('experiment_groups').set({ wave_size: waveSize }).where('id', '=', group.id).execute();
+      if (production) {
+        await this.lock.hold(trx, target.account);
+        const busy = await this.lock.busy(trx, target.account);
+        if (busy) {
+          throw new ConflictException(`Production is busy, so the run didn't start. ${busy}`);
+        }
       }
       const row = await trx
         .insertInto('experiment_runs')
@@ -190,28 +157,55 @@ export class ExperimentRunsService {
           label,
           items: JSON.stringify(items),
           started_by_email: auth.email,
-          wave_size: waveSize,
+          wave_size: ONE_AT_A_TIME,
         })
         .returning('id')
         .executeTakeFirstOrThrow();
       return row.id;
     });
-    await this.waves.advance(auth.tenantId, id);
-    const { items: afterFirstWave } = await this.findRun(auth, accountId, id);
+    await this.sequencer.advance(auth.tenantId, id);
     await this.gateway.record(auth, {
       action: 'cloud.experiment-run.started',
       targetType: 'experiment-run',
       targetId: id,
       ipAddress,
-      metadata: {
-        ...metadata,
-        waveSize,
-        started: afterFirstWave.filter(({ experimentId }) => experimentId !== null).length,
-        waiting: afterFirstWave.filter(({ waiting }) => waiting).length,
-        failed: countFailed(afterFirstWave),
-      },
+      metadata: { ...metadata, tests: items.length, production },
     });
     return { id };
+  }
+
+  /** The run's tests with what each acts on, ready to start one at a time. */
+  private async plannedItems(auth: AuthContext, target: ExperimentTarget, group: ExperimentGroup | null) {
+    const accountId = target.account.id;
+    const templates = await this.templates(target);
+    const wanted: ExperimentTemplateRef[] =
+      group?.templates ?? [...templates.values()].map(({ id, region }) => ({ region, templateId: id }));
+    if (wanted.length === 0) {
+      throw new ConflictException(NOTHING_TO_RUN);
+    }
+    if (wanted.length > EXPERIMENT_RUN_LIMIT) {
+      throw new ConflictException(TOO_MANY);
+    }
+    const inventory = await this.database.run(auth.tenantId, (trx) => inventoryIn(trx, accountId));
+    return wanted.map((ref): ExperimentRunItem => {
+      const template = templates.get(templateKey(ref));
+      if (!template) {
+        return { ...ref, label: ref.templateId, experimentId: null, error: TEMPLATE_MISSING };
+      }
+      const { resources, zoneWide, stopsInstances, needsSpareTask } = target.source.footprint(template, inventory);
+      return {
+        ...ref,
+        label: template.label,
+        experimentId: null,
+        error: null,
+        waiting: true,
+        resources,
+        zoneWide,
+        stopsInstances,
+        needsSpareTask,
+        alarms: template.stopAlarms,
+      };
+    });
   }
 
   async detail(auth: AuthContext, accountId: string, runId: string): Promise<ExperimentRunDetail> {
@@ -231,6 +225,7 @@ export class ExperimentRunsService {
       ...runInfo(run),
       ...runOutcome(items),
       waveSize: run.wave_size,
+      stoppedReason: run.stopped_reason,
       accountName: target.account.name,
       environmentName: target.environment?.name ?? null,
       items,
@@ -270,7 +265,7 @@ export class ExperimentRunsService {
     }
   }
 
-  /** Cancels the tests still waiting for a slot, so no new wave starts. Waits for a wave being started to finish first. */
+  /** Cancels the tests still waiting, so no new test starts. Waits for a test being started to finish first. */
   private cancelWaiting(auth: AuthContext, runId: string): Promise<{ cancelled: number; items: ExperimentRunItem[] }> {
     return this.database.run(auth.tenantId, async (trx) => {
       const run = await trx
@@ -354,3 +349,15 @@ export class ExperimentRunsService {
     return run;
   }
 }
+
+/** The order a run starts its tests in: zone-wide tests after every other. */
+const inRunOrder = (items: readonly ExperimentRunItem[]): ExperimentRunItem[] => {
+  const ordered: ExperimentRunItem[] = [];
+  const left = [...items];
+  while (left.some(({ waiting }) => waiting)) {
+    const index = nextWaiting(left);
+    ordered.push(left[index] as ExperimentRunItem);
+    left[index] = { ...(left[index] as ExperimentRunItem), waiting: false };
+  }
+  return [...ordered, ...items.filter(({ waiting }) => !waiting)];
+};

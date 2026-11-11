@@ -192,20 +192,33 @@ export interface ExperimentSource<Credentials extends CloudCredentials = CloudCr
   getExperiment(context: ExperimentContext<Credentials>, id: string): Promise<ExperimentRecord | null>;
   start(context: ExperimentContext<Credentials>, templateId: string, requestToken: string): Promise<string>;
   stop(context: ExperimentContext<Credentials>, id: string): Promise<void>;
-  /** How many tests the account may run at once in the region, and whether that came from the provider or is a default. */
-  concurrencyLimit(context: ExperimentContext<Credentials>): Promise<ConcurrencyLimit>;
   /** True when a start was refused only because the account is already running as many tests as it may. */
   isQuotaFull(error: unknown): boolean;
   /** The known resources a template acts on, and whether it acts on a whole zone. */
   footprint(template: ExperimentTemplate, inventory: readonly InventoryItem[]): TestFootprint;
-  /** Whether a resource is healthy again, or null when the provider can't tell. */
-  isRecovered(context: ExperimentContext<Credentials>, resource: InventoryItem): Promise<boolean | null>;
+  /** What's unhealthy in the environment, in plain words: services, load balancer targets, databases, caches, stop alarms. */
+  environmentHealth(
+    context: ExperimentContext<Credentials>,
+    inventory: readonly InventoryItem[],
+    alarms: readonly string[],
+  ): Promise<string[]>;
+  /** Why a test's target isn't ready to be tested, or null when it is. */
+  notReady(
+    context: ExperimentContext<Credentials>,
+    resource: InventoryItem,
+    footprint: TestFootprint,
+  ): Promise<string | null>;
+  /** Starts servers a test left stopped. Servers still stopping are reported as waiting, to try again. */
+  restartStopped(context: ExperimentContext<Credentials>, resourceIds: readonly string[]): Promise<RestartOutcome>;
+  /** The provider IDs of everything an ended test picked. */
+  resolvedTargets(context: ExperimentContext<Credentials>, experimentId: string): Promise<string[]>;
   failureMessage(error: unknown): string;
 }
 
 export interface InventoryItem {
   id: string;
   type: ResourceType;
+  region: string;
   nativeId: string;
   name: string;
   tags: Record<string, string>;
@@ -215,11 +228,17 @@ export interface InventoryItem {
 export interface TestFootprint {
   resources: TouchedResource[];
   zoneWide: boolean;
+  /** It stops servers, so PulseGrid starts them again if it ends badly. */
+  stopsInstances: boolean;
+  /** It stops some of a service's tasks, so the service needs at least two running. */
+  needsSpareTask: boolean;
 }
 
-export interface ConcurrencyLimit {
-  limit: number;
-  known: boolean;
+export interface RestartOutcome {
+  /** Server IDs started again now. */
+  started: string[];
+  /** Server IDs still stopping, or whose start failed, to try again. */
+  waiting: string[];
 }
 
 export interface CostContext<Credentials extends CloudCredentials = CloudCredentials> {

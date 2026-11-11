@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { experimentPath, experimentRunPath, formatDuration, orderText, waveChoice, formatStepDuration, historyRunPath, reportWindow, stateLabel, stateTone } from './experiments';
+import { experimentPath, experimentRunPath, formatDuration, pdfFileName, formatStepDuration, historyRunPath, reportWindow, stateLabel, stateTone } from './experiments';
 
 describe('experiment helpers', () => {
   it('colours states by what they mean', () => {
@@ -46,32 +46,9 @@ describe('reports', () => {
   });
 });
 
-describe('waveChoice', () => {
-  const capacity = [
-    { region: 'eu-central-1', quota: 5, quotaKnown: true, running: 1 },
-    { region: 'eu-west-1', quota: 10, quotaKnown: true, running: 0 },
-  ];
-
-  it('suggests the free slots in the run regions', () => {
-    expect(waveChoice(capacity, ['eu-central-1'], 11, null)).toEqual({ suggested: 4, max: 5, free: 4 });
-  });
-
-  it('prefers the group last choice, within the limits', () => {
-    expect(waveChoice(capacity, ['eu-central-1'], 11, 2).suggested).toBe(2);
-    expect(waveChoice(capacity, ['eu-central-1'], 3, 9)).toMatchObject({ suggested: 3, max: 3 });
-  });
-
-  it('never suggests less than one, even when the account is full', () => {
-    const full = [{ region: 'eu-central-1', quota: 5, quotaKnown: false, running: 5 }];
-    expect(waveChoice(full, ['eu-central-1'], 4, null)).toEqual({ suggested: 1, max: 4, free: 0 });
-  });
-});
-
-describe('orderText', () => {
-  it('explains tests that take turns and zone-wide tests', () => {
-    expect(orderText({ tests: 11, sharing: 3, zoneWide: 2 })).toBe(
-      'Of 11 tests, 3 tests share a resource with another, so they take turns and wait for it to recover; 2 zone-wide tests run alone at the end.',
-    );
-    expect(orderText({ tests: 2, sharing: 0, zoneWide: 0 })).toBeNull();
+describe('pdfFileName', () => {
+  it('names the file after the run and its day', () => {
+    expect(pdfFileName('All tests', '2026-11-11T21:50:00.000Z')).toBe('failover-tests-all-tests-2026-11-11.pdf');
+    expect(pdfFileName('Zone outage (eu-central-1a)!', null)).toBe('failover-tests-zone-outage-eu-central-1a-.pdf');
   });
 });

@@ -5,13 +5,14 @@ import {
   type ExperimentTemplate,
   type StartedExperiment,
 } from '@pulsegrid/shared';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { TenantDatabase } from '../../database/tenant-database';
 import { experimentAccess } from './experiment-access';
 import { startedBy } from './experiment-audit';
 import { type ExperimentTarget, ExperimentGateway } from './experiment-gateway';
 import { listGroups } from './experiment-groups.service';
+import { EnvironmentLock } from './environment-lock';
 import { ExperimentReportStore } from './experiment-report.store';
 import { knownResources } from './experiment-resources';
 import { recentRuns } from './experiment-runs.service';
@@ -35,6 +36,7 @@ export class ExperimentsService {
     private readonly database: TenantDatabase,
     private readonly gateway: ExperimentGateway,
     private readonly reports: ExperimentReportStore,
+    private readonly lock: EnvironmentLock,
   ) {}
 
   async view(auth: AuthContext, accountId: string): Promise<ExperimentsView> {
@@ -81,7 +83,14 @@ export class ExperimentsService {
       ipAddress,
       metadata: { label: templateId, region, cloudAccount: target.account.account_id },
     });
-    const id = await this.gateway.start(auth, target, { region, templateId }, ipAddress);
+    const id = await this.database.run(auth.tenantId, async (trx) => {
+      await this.lock.hold(trx, target.account);
+      const busy = await this.lock.busy(trx, target.account);
+      if (busy) {
+        throw new ConflictException(`Only one failover test runs at a time in an environment. ${busy}`);
+      }
+      return this.gateway.start(auth, target, { region, templateId }, ipAddress);
+    });
     return { id, region };
   }
 

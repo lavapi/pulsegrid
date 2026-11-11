@@ -32,6 +32,7 @@ import * as twoFactorAttempts from './migrations/0030_two_factor_attempts';
 import * as experimentGroups from './migrations/0031_experiment_groups';
 import * as experimentReports from './migrations/0032_experiment_reports';
 import * as experimentWaves from './migrations/0033_experiment_waves';
+import * as sequentialRuns from './migrations/0034_sequential_runs';
 
 const MIGRATIONS: Record<string, Migration> = {
   '0001_foundation': foundation,
@@ -67,6 +68,7 @@ const MIGRATIONS: Record<string, Migration> = {
   '0031_experiment_groups': experimentGroups,
   '0032_experiment_reports': experimentReports,
   '0033_experiment_waves': experimentWaves,
+  '0034_sequential_runs': sequentialRuns,
 };
 
 const ensureAppRole = async (db: Kysely<unknown>, password: string): Promise<void> => {

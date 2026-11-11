@@ -8,9 +8,9 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { Button } from '@/components/ui/button';
 import { followsAccountSwitcher } from '@/lib/account-selection';
+import { ProductionAccountProvider } from '@/lib/production-account';
 import { cn } from '@/lib/utils';
 import { CommandMenu } from './command-menu';
-import { ProductionBanner } from './production-banner';
 import { Sidebar } from './sidebar';
 import { ThemeToggle } from './theme-toggle';
 import { TimeModeToggle } from './time-mode-toggle';
@@ -59,12 +59,7 @@ export function AppShell({ user, projects, accounts, selectedId, children }: App
   };
 
   return (
-    <>
-      {production && (
-        <div className="print:hidden">
-          <ProductionBanner account={production} />
-        </div>
-      )}
+    <ProductionAccountProvider account={production ?? null}>
       <div
         className={cn(
           'grid min-h-screen grid-cols-1 print:block',
@@ -74,7 +69,7 @@ export function AppShell({ user, projects, accounts, selectedId, children }: App
         <aside
           className={cn(
             'sticky hidden overflow-y-auto border-r bg-sidebar lg:block print:hidden',
-            production ? 'top-8 h-[calc(100vh-2rem)]' : 'top-0 h-screen',
+            'top-0 h-screen',
           )}
         >
           <Sidebar user={user} projects={projects} collapsed={collapsed} />
@@ -101,7 +96,8 @@ export function AppShell({ user, projects, accounts, selectedId, children }: App
           <header
             className={cn(
               'sticky z-40 flex h-[60px] items-center gap-2 border-b bg-background/85 px-4 backdrop-blur lg:px-6 print:hidden',
-              production ? 'top-8' : 'top-0',
+              'top-0',
+              production && 'border-t-[3px] border-t-production print:border-t-0',
             )}
           >
             <Button
@@ -154,6 +150,6 @@ export function AppShell({ user, projects, accounts, selectedId, children }: App
           access={user}
         />
       </div>
-    </>
+    </ProductionAccountProvider>
   );
 }
