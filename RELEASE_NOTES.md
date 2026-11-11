@@ -5,7 +5,6 @@
 ## [0.17.0] - 2026-11-11
 
 - Failover test runs no longer overlap tests on the same resource: each waits for the resource to recover first, and zone-wide tests such as zone outages run alone at the end.
-
 - Blue/green deployments say live traffic instead of ECS's "production traffic", which applies in every environment and was easy to mistake for production.
 
 ## [0.16.1] - 2026-11-11
