@@ -1,3 +1,4 @@
+import { DEPLOYMENT_STAGES } from '@pulsegrid/shared';
 import { describe, expect, it } from 'vitest';
 import { deploymentStatusLabel, stepStates } from './service-deployments';
 
@@ -19,5 +20,13 @@ describe('stepStates', () => {
 
   it('labels statuses in plain words', () => {
     expect(deploymentStatusLabel('rolled-back')).toBe('Rolled back');
+  });
+});
+
+describe('stage names', () => {
+  it('say live traffic, never production, so they are not mistaken for the production environment', () => {
+    const labels = DEPLOYMENT_STAGES.map(({ label }) => label);
+    expect(labels).toContain('Live traffic to green');
+    expect(labels.join(' ')).not.toMatch(/production/i);
   });
 });

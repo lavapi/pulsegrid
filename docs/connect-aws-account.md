@@ -168,8 +168,10 @@ Figures come from AWS and can lag by up to a day, so they may differ slightly fr
 
 An ECS service that uses ECS's own **blue/green**, **canary** or **linear** deployments shows a deployment card on its page:
 
-- The **stages**: scale up green, test traffic to green, production traffic to green, bake time, and clean up blue. Stages where your lifecycle hooks run are marked.
-- **Blue** (live before the deployment) and **green** (the new revision) side by side, with their task definition, images, tasks running, and the share of test and production traffic each asked for.
+- The **stages**: scale up green, test traffic to green, live traffic to green, bake time, and clean up blue. Stages where your lifecycle hooks run are marked.
+- **Blue** (live before the deployment) and **green** (the new revision) side by side, with their task definition, images, tasks running, and the share of test and live traffic each asked for.
+
+**Live traffic** is what your users send through the load balancer's main listener. ECS calls it "production traffic" in every environment, staging included, so PulseGrid says live traffic to avoid mixing it up with the production environment. **Test traffic** goes through the separate test listener, so you can try green before users reach it. After a deployment completes, ECS can still show the old side with all test traffic: the test listener's rule is left pointing at it, and nothing is sent there unless someone calls the test listener.
 - How it ended: completed, stopped, or rolled back with ECS's reason.
 - Earlier deployments of the service.
 
