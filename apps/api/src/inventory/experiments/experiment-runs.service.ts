@@ -11,6 +11,7 @@ import {
   isActiveExperiment,
   RUN_ALL_LABEL,
   type RunItemReport,
+  type RunOrder,
   type StartedExperimentRun,
   type StartRunInput,
   templateKey,
@@ -25,7 +26,8 @@ import { type ExperimentTarget, ExperimentGateway } from './experiment-gateway';
 import { findGroup } from './experiment-groups.service';
 import { ExperimentReportStore, type ReportRow, reportKey, reportsFor } from './experiment-report.store';
 import { knownResources } from './experiment-resources';
-import { ExperimentWaves } from './experiment-waves';
+import { ExperimentWaves, inventoryOf } from './experiment-waves';
+import { sharingCount } from './wave-plan';
 import { runOutcome } from './run-outcome';
 
 const RUN_MISSING = 'That test run no longer exists.';
@@ -104,6 +106,23 @@ export class ExperimentRunsService {
     private readonly waves: ExperimentWaves,
   ) {}
 
+  /** What a group or Run all will do: how many tests, how many share a resource, how many act on a whole zone. */
+  async order(auth: AuthContext, accountId: string, groupId: string | undefined): Promise<RunOrder> {
+    const target = await this.gateway.find(auth, accountId);
+    const group = groupId ? await this.database.run(auth.tenantId, (trx) => findGroup(trx, accountId, groupId)) : null;
+    const templates = await this.templates(target);
+    const inventory = [...(await this.database.run(auth.tenantId, (trx) => inventoryOf(trx, accountId))).values()];
+    const chosen = group
+      ? group.templates.flatMap((ref) => templates.get(templateKey(ref)) ?? [])
+      : [...templates.values()];
+    const footprints = chosen.map((template) => target.source.footprint(template, inventory));
+    return {
+      tests: chosen.length,
+      sharing: sharingCount(footprints),
+      zoneWide: footprints.filter(({ zoneWide }) => zoneWide).length,
+    };
+  }
+
   /** For each region: how many tests AWS allows at once, and how many run now. */
   async capacity(auth: AuthContext, accountId: string): Promise<ExperimentCapacity[]> {
     const target = await this.gateway.find(auth, accountId);
@@ -150,11 +169,14 @@ export class ExperimentRunsService {
     if (wanted.length > EXPERIMENT_RUN_LIMIT) {
       throw new ConflictException(TOO_MANY);
     }
+    const inventory = [...(await this.database.run(auth.tenantId, (trx) => inventoryOf(trx, accountId))).values()];
     const items = wanted.map((ref): ExperimentRunItem => {
       const template = templates.get(templateKey(ref));
-      return template
-        ? { ...ref, label: template.label, experimentId: null, error: null, waiting: true }
-        : { ...ref, label: ref.templateId, experimentId: null, error: TEMPLATE_MISSING };
+      if (!template) {
+        return { ...ref, label: ref.templateId, experimentId: null, error: TEMPLATE_MISSING };
+      }
+      const { resources, zoneWide } = target.source.footprint(template, inventory);
+      return { ...ref, label: template.label, experimentId: null, error: null, waiting: true, resources, zoneWide };
     });
     const id = await this.database.run(auth.tenantId, async (trx) => {
       if (group) {

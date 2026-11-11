@@ -4,6 +4,7 @@ import {
   type ExperimentState,
   LOAD_WINDOW_MAX_MINUTES,
   type LoadWindow,
+  type RunOrder,
   type RunResult,
 } from '@pulsegrid/shared';
 
@@ -84,6 +85,16 @@ export const reportWindow = (from: string | null, to: string | null, now = new D
   const end = Math.min((to ? Date.parse(to) : now.getTime()) + MARGIN_MS, now.getTime());
   const longest = start + LOAD_WINDOW_MAX_MINUTES * 60_000;
   return { from: new Date(start).toISOString(), to: new Date(Math.min(end, longest)).toISOString() };
+};
+
+/** The run dialog's summary of how tests will be ordered, or null when they all simply run in waves. */
+export const orderText = ({ tests, sharing, zoneWide }: RunOrder): string | null => {
+  const parts = [
+    sharing > 0 &&
+      `${sharing} ${sharing === 1 ? 'test shares' : 'tests share'} a resource with another, so they take turns and wait for it to recover`,
+    zoneWide > 0 && `${zoneWide} zone-wide ${zoneWide === 1 ? 'test runs' : 'tests run'} alone at the end`,
+  ].filter(Boolean);
+  return parts.length > 0 ? `Of ${tests} tests, ${parts.join('; ')}.` : null;
 };
 
 export interface WaveChoice {

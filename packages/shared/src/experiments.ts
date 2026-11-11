@@ -23,6 +23,10 @@ export interface ExperimentTarget {
   /** What the target picks: listed resources, tags or filters, in plain words. */
   selection: string;
   resourceIds: string[];
+  /** Tags a resource must have to be picked. Missing on reports saved before tags were kept. */
+  tags?: Record<string, string>;
+  /** Extra target settings, such as the cluster and service of ECS tasks. */
+  parameters?: Record<string, string>;
 }
 
 export interface ExperimentStep {
@@ -116,10 +120,34 @@ export interface ExperimentRunItem extends ExperimentTemplateRef {
   experimentId: string | null;
   /** Why this template didn't start, or null when it did. */
   error: string | null;
-  /** Not started yet: it starts when a slot in the run's wave frees up. */
+  /** Not started yet: it starts when a slot in the run's wave frees up and what it touches has recovered. */
   waiting?: boolean;
-  /** Stop all cancelled it before it started. */
+  /** Stop all cancelled it before it started, or a resource it needs didn't recover in time. */
   cancelled?: boolean;
+  /** Why it's still waiting or was cancelled, in plain words. */
+  note?: string | null;
+  /** The resources this test acts on, so tests on the same resource never overlap. */
+  resources?: TouchedResource[];
+  /** Acts on a whole Availability Zone, so it runs alone after every other test. */
+  zoneWide?: boolean;
+  /** When the test ended, once the scheduler has seen it end. */
+  endedAt?: string | null;
+  /** Its resources are healthy again after it ended. */
+  recovered?: boolean;
+}
+
+export interface TouchedResource {
+  /** `type|id` of a PulseGrid resource, or `type|*` when the test could pick any resource of that type. */
+  key: string;
+  name: string;
+}
+
+/** What a run will do, shown before it starts. */
+export interface RunOrder {
+  tests: number;
+  /** Tests that share a resource with another test, so they wait for it to finish and recover. */
+  sharing: number;
+  zoneWide: number;
 }
 
 export interface ExperimentCapacity {

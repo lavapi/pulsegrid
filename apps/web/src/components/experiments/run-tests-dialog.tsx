@@ -1,6 +1,6 @@
 'use client';
 
-import type { ExperimentCapacity, StartedExperimentRun } from '@pulsegrid/shared';
+import type { ExperimentCapacity, RunOrder, StartedExperimentRun } from '@pulsegrid/shared';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Field, Input } from '@/components/ui/input';
 import { apiSendForJson } from '@/lib/browser-api';
-import { experimentRunPath, waveChoice } from '@/lib/experiments';
+import { experimentRunPath, orderText, waveChoice } from '@/lib/experiments';
 
 interface RunTestsButtonProps {
   accountId: string;
@@ -50,6 +50,7 @@ export function RunTestsButton({
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [capacity, setCapacity] = useState<ExperimentCapacity[] | null>(null);
+  const [order, setOrder] = useState<RunOrder | null>(null);
   const [waveSize, setWaveSize] = useState('');
   const [typed, setTyped] = useState('');
   const choice = waveChoice(capacity ?? [], regions, templateLabels.length, rememberedWaveSize);
@@ -60,7 +61,12 @@ export function RunTestsButton({
     setOpen(next);
     setTyped('');
     setCapacity(null);
+    setOrder(null);
     if (next) {
+      const query = groupId ? `?groupId=${encodeURIComponent(groupId)}` : '';
+      void apiSendForJson<RunOrder>(`/cloud/accounts/${accountId}/experiment-runs/order${query}`, 'GET').then(
+        ({ data }) => setOrder(data),
+      );
       void apiSendForJson<ExperimentCapacity[]>(`/cloud/accounts/${accountId}/experiment-runs/capacity`, 'GET').then(
         ({ data, error }) => {
           const loaded = data ?? [];
@@ -129,6 +135,7 @@ export function RunTestsButton({
           <p className="text-[13px] text-muted-foreground">
             The rest wait and start as earlier tests end. Choose 1 to run them one after another.
           </p>
+          {order && orderText(order) && <p className="text-[13px]">{orderText(order)}</p>}
           <Field label={`Type ${label} to confirm`}>
             <Input value={typed} autoComplete="off" onChange={(event) => setTyped(event.target.value)} />
           </Field>

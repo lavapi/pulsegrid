@@ -64,6 +64,7 @@ function ItemRow({ item }: { item: ExperimentRunItemState }) {
   const reason =
     item.error ??
     item.report?.reason ??
+    item.note ??
     (item.waiting ? 'Starts when a slot frees up.' : item.cancelled ? 'Stop all cancelled it before it started.' : null);
   const startedAt = item.report?.startedAt ?? null;
   const endedAt = item.report?.endedAt ?? null;
@@ -79,6 +80,7 @@ function ItemRow({ item }: { item: ExperimentRunItemState }) {
         )}
         <div className="text-[12px] text-muted-foreground">
           {item.experimentId ?? item.templateId} · {item.region}
+          {item.zoneWide && ' · zone-wide, runs alone at the end'}
         </div>
         {reason && <div className="text-[12px] text-muted-foreground">{reason}</div>}
       </td>
@@ -156,7 +158,7 @@ export default async function ExperimentRunPage({
         </dl>
         <p className="border-t px-5 py-3 text-[13px] text-muted-foreground">
           {ended.length} of {run.items.length} tests have ended
-          {waiting > 0 && `, ${waiting} waiting for a slot`}. {RESULT_NOTES[run.result]}
+          {waiting > 0 && `, ${waiting} waiting`}. {RESULT_NOTES[run.result]}
         </p>
       </Card>
       <Card className="overflow-x-auto">

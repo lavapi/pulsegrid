@@ -6,10 +6,12 @@ import type { Database } from '../../database/schema';
 import type { TenantTransaction } from '../../database/tenant-context';
 import { TenantDatabase } from '../../database/tenant-database';
 import { CredentialVault } from '../connection/credential-vault';
-import type { ConcurrencyLimit } from '../providers/provider';
+import type { ConcurrencyLimit, InventoryItem } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { findExperimentAccount } from './experiment-account';
 import { ExperimentStarter, type StartTarget } from './experiment-starter';
+import { parseKey } from './resource-keys';
+import { NOTES, planWave, RECOVERY_TIMEOUT_MS, SETTLE_MS } from './wave-plan';
 
 export interface RegionCapacity {
   limit: ConcurrencyLimit;
@@ -23,10 +25,6 @@ interface WaveRun {
   wave_size: number | null;
   started_by_email: string | null;
 }
-
-const waitingRegions = (items: readonly ExperimentRunItem[]): string[] => [
-  ...new Set(items.filter(({ waiting }) => waiting).map(({ region }) => region)),
-];
 
 /** Room for more of this run's tests: what's left of its wave, and of the account's quota. */
 export const freeSlots = (
@@ -92,7 +90,8 @@ export class ExperimentWaves {
       if (!found || !source) {
         return;
       }
-      const items = await this.startWaiting(tenantId, { account: found.account, source }, run);
+      const inventory = await inventoryOf(trx, run.cloud_account_id);
+      const items = await this.startWaiting(tenantId, { account: found.account, source }, run, inventory);
       await trx.updateTable('experiment_runs').set({ items: JSON.stringify(items) }).where('id', '=', runId).execute();
     });
   }
@@ -110,35 +109,93 @@ export class ExperimentWaves {
     }
   }
 
-  private async startWaiting(tenantId: string, target: StartTarget, run: WaveRun): Promise<ExperimentRunItem[]> {
-    const regions = waitingRegions(run.items);
+  private async startWaiting(
+    tenantId: string,
+    target: StartTarget,
+    run: WaveRun,
+    inventory: ReadonlyMap<string, InventoryItem>,
+  ): Promise<ExperimentRunItem[]> {
+    const now = Date.now();
+    const regions = [...new Set(run.items.map(({ region }) => region))];
     const capacity = await this.capacity(target, regions);
-    const items = [...run.items];
+    const seen = run.items.map((item) => noteEnd(item, capacity, now));
+    const items = await Promise.all(seen.map((item) => this.checkRecovery(target, item, inventory, now)));
+    const rooms = new Map(
+      [...capacity].map(([region, room]) => [region, { slots: freeSlots(items, region, run.wave_size, room), activeIds: room.activeIds }]),
+    );
+    const plan = planWave(items, rooms);
     const actor = run.started_by_email ? { email: run.started_by_email } : undefined;
-    for (const region of regions) {
-      const room = capacity.get(region);
-      let slots = room ? freeSlots(items, region, run.wave_size, room) : 0;
-      for (const [index, item] of items.entries()) {
-        if (slots <= 0) {
-          break;
-        }
-        if (!item.waiting || item.region !== region) {
-          continue;
-        }
-        const outcome = await this.starter.start({ tenantId, target, ref: item, actor });
-        if (outcome.kind === 'busy') {
-          break;
-        }
-        items[index] =
-          outcome.kind === 'started'
-            ? { ...item, waiting: false, experimentId: outcome.experimentId }
-            : { ...item, waiting: false, error: outcome.message };
-        slots -= outcome.kind === 'started' ? 1 : 0;
+    const next = items.map((item, index): ExperimentRunItem => {
+      const cancelled = plan.cancel.get(index);
+      if (cancelled) {
+        return { ...item, waiting: false, cancelled: true, note: cancelled };
       }
+      return item.waiting ? { ...item, note: plan.notes.get(index) ?? null } : item;
+    });
+    const full = new Set<string>();
+    for (const index of plan.start) {
+      const item = next[index] as ExperimentRunItem;
+      if (full.has(item.region)) {
+        next[index] = { ...item, note: NOTES.slot };
+        continue;
+      }
+      const outcome = await this.starter.start({ tenantId, target, ref: item, actor });
+      if (outcome.kind === 'busy') {
+        full.add(item.region);
+      }
+      next[index] =
+        outcome.kind === 'started'
+          ? { ...item, waiting: false, note: null, experimentId: outcome.experimentId }
+          : outcome.kind === 'busy'
+            ? { ...item, note: NOTES.slot }
+            : { ...item, waiting: false, note: null, error: outcome.message };
     }
-    return items;
+    return next;
+  }
+
+  /** Marks a test's resources recovered once it has settled and AWS says each is healthy, or failed after 30 minutes. */
+  private async checkRecovery(
+    { account, source }: StartTarget,
+    item: ExperimentRunItem,
+    inventory: ReadonlyMap<string, InventoryItem>,
+    now: number,
+  ): Promise<ExperimentRunItem> {
+    if (!item.endedAt || item.recovered !== undefined) {
+      return item;
+    }
+    const since = now - Date.parse(item.endedAt);
+    if (since < SETTLE_MS) {
+      return item;
+    }
+    const credentials = this.vault.open(account);
+    const resources = (item.resources ?? []).flatMap(({ key }) => inventory.get(parseKey(key).id) ?? []);
+    const checks = credentials
+      ? await Promise.all(resources.map((resource) => source.isRecovered({ credentials, region: item.region }, resource)))
+      : [];
+    if (checks.every((healthy) => healthy !== false)) {
+      return { ...item, recovered: true };
+    }
+    return since > RECOVERY_TIMEOUT_MS ? { ...item, recovered: false } : item;
   }
 }
+
+/** Notes when a started test is no longer running, which starts its settling time. */
+const noteEnd = (item: ExperimentRunItem, capacity: ReadonlyMap<string, RegionCapacity>, now: number): ExperimentRunItem => {
+  const running = item.experimentId !== null && (capacity.get(item.region)?.activeIds.has(item.experimentId) ?? false);
+  return item.experimentId === null || running || item.endedAt ? item : { ...item, endedAt: new Date(now).toISOString() };
+};
+
+/** The account's resources PulseGrid knows, by ID: what failover tests are matched against. */
+export const inventoryOf = async (trx: TenantTransaction, accountId: string): Promise<Map<string, InventoryItem>> => {
+  const rows = await trx
+    .selectFrom('resources')
+    .select(['id', 'type', 'native_id', 'name', 'tags', 'details'])
+    .where('cloud_account_id', '=', accountId)
+    .execute();
+  return new Map(
+    rows.map(({ id, type, native_id: nativeId, name, tags, details }) => [id, { id, type, nativeId, name, tags, details }]),
+  );
+};
 
 const waitingRuns = (trx: TenantTransaction) =>
   trx

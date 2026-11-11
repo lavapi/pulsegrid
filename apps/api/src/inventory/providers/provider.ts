@@ -13,6 +13,7 @@ import type {
   ResourceHealth,
   ResourceType,
   ServiceDeploymentsView,
+  TouchedResource,
   TrafficDeployment,
 } from '@pulsegrid/shared';
 
@@ -195,7 +196,25 @@ export interface ExperimentSource<Credentials extends CloudCredentials = CloudCr
   concurrencyLimit(context: ExperimentContext<Credentials>): Promise<ConcurrencyLimit>;
   /** True when a start was refused only because the account is already running as many tests as it may. */
   isQuotaFull(error: unknown): boolean;
+  /** The known resources a template acts on, and whether it acts on a whole zone. */
+  footprint(template: ExperimentTemplate, inventory: readonly InventoryItem[]): TestFootprint;
+  /** Whether a resource is healthy again, or null when the provider can't tell. */
+  isRecovered(context: ExperimentContext<Credentials>, resource: InventoryItem): Promise<boolean | null>;
   failureMessage(error: unknown): string;
+}
+
+export interface InventoryItem {
+  id: string;
+  type: ResourceType;
+  nativeId: string;
+  name: string;
+  tags: Record<string, string>;
+  details: Record<string, unknown>;
+}
+
+export interface TestFootprint {
+  resources: TouchedResource[];
+  zoneWide: boolean;
 }
 
 export interface ConcurrencyLimit {
