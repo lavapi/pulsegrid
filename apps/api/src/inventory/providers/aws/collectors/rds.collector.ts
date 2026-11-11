@@ -42,6 +42,7 @@ const toInstanceResource = (instance: DBInstance, region: string): CollectedReso
         ({ SubnetIdentifier }) => SubnetIdentifier ?? [],
       ),
       securityGroups: securityGroupsOf(instance.VpcSecurityGroups),
+      parameterGroup: instance.DBParameterGroups?.[0]?.DBParameterGroupName,
     },
   };
 };

@@ -1,5 +1,6 @@
 import { DescribeInstanceTypesCommand, DescribeVolumesCommand, EC2Client, type _InstanceType } from '@aws-sdk/client-ec2';
 import { DescribeTaskDefinitionCommand, ECSClient } from '@aws-sdk/client-ecs';
+import { paginateDescribeDBParameters, RDSClient } from '@aws-sdk/client-rds';
 import type { AwsKey } from './aws-key';
 
 const BYTES_PER_MIB = 1024 ** 2;
@@ -30,6 +31,11 @@ interface Lookup {
 /** Instance types and task definition revisions never change, so their sizes are kept for the life of the process. */
 const specs = new Map<string, InstanceSpec | null>();
 const tasks = new Map<string, TaskSize | null>();
+
+/** Parameter groups can be edited, so their settings are kept only for a short while. */
+const SETTING_TTL_MS = 10 * 60_000;
+const MAX_CONNECTIONS = 'max_connections';
+const settings = new Map<string, { value: string | null; until: number }>();
 
 /** RDS and ElastiCache classes are EC2 types with a prefix: db.r6g.large and cache.r6g.large are both r6g.large. */
 export const ec2TypeOf = (type: string): string => type.replace(/^(db|cache)\./, '');
@@ -106,6 +112,37 @@ export const diskSizes = async (
       rootBytes: root ? sizeOf(root.Size) : null,
       count: Volumes.length,
     };
+  } catch {
+    return null;
+  }
+};
+
+/** The max_connections value in an RDS parameter group: a number, a formula, or null when unset or unreadable. */
+export const maxConnectionsSetting = async (
+  { credentials, region }: Lookup,
+  parameterGroup: string,
+  now = Date.now(),
+): Promise<string | null> => {
+  const key = `${region}/${parameterGroup}`;
+  const cached = settings.get(key);
+  if (cached && cached.until > now) {
+    return cached.value;
+  }
+  try {
+    const pages = paginateDescribeDBParameters(
+      { client: new RDSClient({ region, credentials }) },
+      { DBParameterGroupName: parameterGroup },
+    );
+    let value: string | null = null;
+    for await (const { Parameters = [] } of pages) {
+      const found = Parameters.find(({ ParameterName }) => ParameterName === MAX_CONNECTIONS);
+      if (found) {
+        value = found.ParameterValue ?? null;
+        break;
+      }
+    }
+    settings.set(key, { value, until: now + SETTING_TTL_MS });
+    return value;
   } catch {
     return null;
   }

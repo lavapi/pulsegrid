@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- See database and cache connections out of their limit, such as 40 / 410. Add `rds:DescribeDBParameters` to every key's IAM policy, or RDS connections show without a limit.
+
 - See memory and storage as used out of total, such as 2.5 GB / 24 GB, and how many vCPUs a database, cache, service or server has. ECS services and EC2 servers now have load charts too. EC2 memory and disk use need the CloudWatch agent on the server.
 - Add `ec2:DescribeInstanceTypes` and `ec2:DescribeVolumes` to every key's IAM policy, or charts show without totals.
 

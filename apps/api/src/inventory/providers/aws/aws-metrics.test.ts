@@ -1,6 +1,7 @@
 import { CloudWatchClient, GetMetricDataCommand, type MetricDataQuery } from '@aws-sdk/client-cloudwatch';
 import { DescribeInstanceTypesCommand, DescribeVolumesCommand, EC2Client } from '@aws-sdk/client-ec2';
 import { DescribeTaskDefinitionCommand, ECSClient } from '@aws-sdk/client-ecs';
+import { DescribeDBParametersCommand, RDSClient } from '@aws-sdk/client-rds';
 import type { ResourceType } from '@pulsegrid/shared';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -10,6 +11,7 @@ import { AWS_METRIC_SOURCE } from './aws-metrics';
 const cloudWatch = mockClient(CloudWatchClient);
 const ec2 = mockClient(EC2Client);
 const ecs = mockClient(ECSClient);
+const rds = mockClient(RDSClient);
 const until = new Date('2026-11-10T12:00:00Z');
 const query = { since: new Date('2026-11-10T11:00:00Z'), until, periodSeconds: 60 };
 const GIB = 1024 ** 3;
@@ -61,6 +63,7 @@ beforeEach(() => {
   cloudWatch.reset();
   ec2.reset();
   ecs.reset();
+  rds.reset();
 });
 
 describe('ec2TypeOf', () => {
@@ -104,6 +107,35 @@ describe('AWS_METRIC_SOURCE', () => {
       { label: 'Engine', value: 'postgres 16.4' },
       { label: 'Allocated storage', value: '100 GB' },
     ]);
+  });
+
+  it('shows connections out of the limit set in the parameter group', async () => {
+    answerAll();
+    rds
+      .on(DescribeDBParametersCommand, { DBParameterGroupName: 'app-postgres' })
+      .resolvesOnce({ Parameters: [{ ParameterName: 'autovacuum', ParameterValue: '1' }], Marker: 'next' })
+      .resolvesOnce({ Parameters: [{ ParameterName: 'max_connections', ParameterValue: '500' }] });
+    const result = await read('rds-instance', { instanceClass: 'db.t4g.large', parameterGroup: 'app-postgres' });
+    expect(result.charts.find(({ id }) => id === 'connections')).toMatchObject({
+      total: 500,
+      warnAbove: 400,
+      note: 'limit from parameter group app-postgres',
+    });
+    expect(result.capacity).toContainEqual({ label: 'Max connections', value: '500' });
+  });
+
+  it('works out the default connection limit from the instance memory', async () => {
+    answerAll();
+    instanceType('r6g.large', 2, 16_384);
+    rds.on(DescribeDBParametersCommand).resolves({
+      Parameters: [{ ParameterName: 'max_connections', ParameterValue: 'LEAST({DBInstanceClassMemory/9531392},5000)' }],
+    });
+    const result = await read('rds-instance', { instanceClass: 'db.r6g.large', parameterGroup: 'default.postgres16' });
+    expect(result.charts.find(({ id }) => id === 'connections')).toMatchObject({
+      total: 1802,
+      note: 'limit is about this, from the default for this instance size',
+    });
+    expect(result.capacity).toContainEqual({ label: 'Max connections', value: 'about 1,802' });
   });
 
   it('falls back to free memory when the key cannot look up instance types', async () => {
@@ -151,6 +183,7 @@ describe('AWS_METRIC_SOURCE', () => {
     expect(result.charts[0]).toMatchObject({ note: 'of 2 vCPUs per node' });
     expect(result.charts[2]).toMatchObject({ unit: 'bytes', total: 10 * GIB, note: 'per node' });
     expect(result.capacity).toContainEqual({ label: 'Memory limit per node', value: '10 GB' });
+    expect(result.charts.find(({ id }) => id === 'connections')).toMatchObject({ total: 65_000, note: 'per node' });
   });
 
   it('keeps the memory share when there is no memory in use to work the limit out from', async () => {

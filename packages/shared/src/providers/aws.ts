@@ -57,6 +57,7 @@ export const AWS_READ_ONLY_ACTIONS = [
   'fis:ListExperimentResolvedTargets',
   'rds:DescribeDBInstances',
   'rds:DescribeDBClusters',
+  'rds:DescribeDBParameters',
   'elasticache:DescribeReplicationGroups',
   'elasticache:DescribeCacheClusters',
   'elasticache:DescribeCacheSubnetGroups',

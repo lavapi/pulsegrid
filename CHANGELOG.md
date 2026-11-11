@@ -6,6 +6,7 @@ All notable changes to this project are documented in this file. The format is b
 
 ### Added
 
+- Connections show as used out of the limit, such as 40 / 410. For RDS the limit is `max_connections` from the parameter group, worked out from the instance memory when it's the AWS default. For ElastiCache it's 65,000 per node. The PulseGrid policy includes `rds:DescribeDBParameters`.
 - Load shows memory and storage as used out of total, such as 2.5 GB / 24 GB, and CPU against the number of vCPUs, for RDS instances and ElastiCache caches.
 - ECS services and EC2 servers have a Load section. ECS shows CPU and memory against what its tasks reserve. EC2 shows CPU, its vCPUs, memory and disks, and memory and root disk use when the CloudWatch agent sends them.
 - The PulseGrid policy includes `ec2:DescribeInstanceTypes` and `ec2:DescribeVolumes`, for those totals.

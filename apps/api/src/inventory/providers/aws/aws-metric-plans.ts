@@ -6,8 +6,9 @@ import {
   type ResourceType,
   trimmedNumber,
 } from '@pulsegrid/shared';
-import { diskSizes, type InstanceSpec, instanceSpec, taskSize } from './aws-capacity';
+import { diskSizes, type InstanceSpec, instanceSpec, maxConnectionsSetting, taskSize } from './aws-capacity';
 import type { AwsKey } from './aws-key';
+import { type ConnectionLimit, connectionLimit } from './connection-limit';
 
 const RDS = 'AWS/RDS';
 const ELASTICACHE = 'AWS/ElastiCache';
@@ -20,6 +21,9 @@ const SERVERLESS_CLASS = 'db.serverless';
 const INSTANCE_ID = /^i-[0-9a-f]{8,17}$/;
 const MEMORY_WARN_SHARE = 0.9;
 const STORAGE_WARN_SHARE = 0.85;
+const CONNECTIONS_WARN_SHARE = 0.8;
+/** Redis and Valkey cap client connections at 65,000 per node, whatever the node type. */
+const CACHE_MAX_CONNECTIONS = 65_000;
 const NEEDS_AGENT = 'Needs the CloudWatch agent on the server';
 
 export interface MetricDefinition {
@@ -147,7 +151,27 @@ const CACHE_CONNECTIONS: MetricDefinition = {
   unit: 'count',
   metric: 'CurrConnections',
   statistic: 'Average',
+  total: CACHE_MAX_CONNECTIONS,
+  limit: CACHE_MAX_CONNECTIONS,
+  warnAbove: CACHE_MAX_CONNECTIONS * CONNECTIONS_WARN_SHARE,
+  note: 'per node',
 };
+
+const connectionsOutOf = (limit: ConnectionLimit | null, parameterGroup: string | null): MetricDefinition =>
+  limit
+    ? {
+        ...DATABASE_CONNECTIONS,
+        total: limit.value,
+        limit: limit.value,
+        warnAbove: limit.value * CONNECTIONS_WARN_SHARE,
+        note: limit.estimated
+          ? 'limit is about this, from the default for this instance size'
+          : `limit from parameter group ${parameterGroup}`,
+      }
+    : DATABASE_CONNECTIONS;
+
+const limitText = (limit: ConnectionLimit | null): string | null =>
+  limit ? `${limit.estimated ? 'about ' : ''}${trimmedNumber(limit.value, 0)}` : null;
 const EVICTIONS: MetricDefinition = {
   id: 'evictions',
   label: 'Evictions',
@@ -190,7 +214,12 @@ const rdsInstancePlan = async (input: PlanInput): Promise<MetricPlan> => {
   const serverless = instanceClass === SERVERLESS_CLASS;
   const allocatedGb = positive(details['storageGb']);
   const inCluster = text(details['cluster']) !== null;
-  const spec = instanceClass && !serverless ? await instanceSpec(input, instanceClass) : null;
+  const parameterGroup = text(details['parameterGroup']);
+  const [spec, setting] = await Promise.all([
+    instanceClass && !serverless ? instanceSpec(input, instanceClass) : null,
+    parameterGroup ? maxConnectionsSetting(input, parameterGroup) : null,
+  ]);
+  const limit = connectionLimit(setting, spec?.memoryBytes ?? null);
   const storage =
     allocatedGb !== null && !inCluster
       ? [
@@ -212,13 +241,14 @@ const rdsInstancePlan = async (input: PlanInput): Promise<MetricPlan> => {
         ? usedOf({ id: 'memory', label: 'Memory used', metric: 'FreeableMemory' }, spec.memoryBytes, (free) => spec.memoryBytes - free)
         : FREE_MEMORY,
       ...storage,
-      DATABASE_CONNECTIONS,
+      connectionsOutOf(limit, parameterGroup),
       latency('read-latency', 'Read latency', 'ReadLatency'),
       latency('write-latency', 'Write latency', 'WriteLatency'),
     ],
     capacity: facts([
       ['Instance class', instanceClass],
       ...specFacts(spec),
+      ['Max connections', limitText(limit)],
       ['Engine', engineOf(details)],
       ['Allocated storage', allocatedGb === null || inCluster ? null : formatBytes(allocatedGb * BYTES_PER_GIB)],
     ]),
@@ -293,7 +323,12 @@ const cachePlan = async (
       CACHE_CONNECTIONS,
       EVICTIONS,
     ],
-    capacity: facts([['Node type', nodeType], [`vCPUs per node`, spec ? trimmedNumber(spec.vcpus, 2) : null], ...capacity]),
+    capacity: facts([
+      ['Node type', nodeType],
+      ['vCPUs per node', spec ? trimmedNumber(spec.vcpus, 2) : null],
+      ['Max connections per node', trimmedNumber(CACHE_MAX_CONNECTIONS, 0)],
+      ...capacity,
+    ]),
     finish: withCacheMemoryTotal,
   };
 };
