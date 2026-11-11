@@ -45,6 +45,7 @@ const rollout: Deployment = {
   desiredTasks: 2,
   images: ['repo/api:abc1234'],
   targetLabel: 'ECS Fargate',
+  traffic: null,
 };
 
 const client = {
@@ -66,7 +67,12 @@ const git: GitProvider = {
 const read = vi.fn<(context: unknown) => Promise<Deployment | null>>();
 const cloud: CloudProvider = {
   ...awsProvider,
-  deploymentSource: { resourceType: 'ecs-service', read },
+  deploymentSource: {
+    resourceType: 'ecs-service',
+    read,
+    recent: async () => ({ strategy: 'rolling', deployments: [], error: null }),
+    failureMessage: () => 'AWS refused this.',
+  },
 };
 
 describe('releases', () => {

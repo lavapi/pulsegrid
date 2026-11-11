@@ -12,6 +12,8 @@ import type {
   Resource,
   ResourceHealth,
   ResourceType,
+  ServiceDeploymentsView,
+  TrafficDeployment,
 } from '@pulsegrid/shared';
 
 export const GLOBAL_REGION = 'global';
@@ -189,7 +191,16 @@ export interface ExperimentSource<Credentials extends CloudCredentials = CloudCr
   getExperiment(context: ExperimentContext<Credentials>, id: string): Promise<ExperimentRecord | null>;
   start(context: ExperimentContext<Credentials>, templateId: string, requestToken: string): Promise<string>;
   stop(context: ExperimentContext<Credentials>, id: string): Promise<void>;
+  /** How many tests the account may run at once in the region, and whether that came from the provider or is a default. */
+  concurrencyLimit(context: ExperimentContext<Credentials>): Promise<ConcurrencyLimit>;
+  /** True when a start was refused only because the account is already running as many tests as it may. */
+  isQuotaFull(error: unknown): boolean;
   failureMessage(error: unknown): string;
+}
+
+export interface ConcurrencyLimit {
+  limit: number;
+  known: boolean;
 }
 
 export interface CostContext<Credentials extends CloudCredentials = CloudCredentials> {
@@ -225,11 +236,16 @@ export interface Deployment {
   desiredTasks: number;
   images: string[];
   targetLabel: string;
+  /** Set for deployments that shift traffic, such as blue/green; null for rolling ones. */
+  traffic: Pick<TrafficDeployment, 'stage' | 'status' | 'reason' | 'rollbackReason' | 'updatedAt'> | null;
 }
 
 export interface DeploymentSource<Credentials extends CloudCredentials = CloudCredentials> {
   resourceType: ResourceType;
   read(context: ResourceActionContext<Credentials>): Promise<Deployment | null>;
+  /** Recent traffic-shifting deployments of a service, newest first. */
+  recent(context: ResourceActionContext<Credentials>, limit: number): Promise<ServiceDeploymentsView>;
+  failureMessage(error: unknown): string;
 }
 
 export class CredentialsRejected extends Error {}

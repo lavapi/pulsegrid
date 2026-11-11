@@ -54,6 +54,18 @@ Build, Test and Image come from the jobs of the latest run, or from its steps if
 
 The ECS stage is read live from AWS. This uses `ecs:DescribeServices` and `ecs:DescribeTaskDefinition`, which are in the PulseGrid policy. **Ready for testing** appears when the pipeline has succeeded and ECS says the matching rollout has completed. ECS only completes a rollout once the new tasks are running and, behind a load balancer, healthy.
 
+### Blue/green, canary and linear services
+
+Services that use ECS's own blue/green, canary or linear deployments show the traffic stages instead:
+
+| Stage | Means |
+|---|---|
+| **ECS Fargate blue/green** (or canary, linear) | Green scales up; the line shows the stage ECS reports |
+| **Ready** | Green serves test traffic, so you can test it before production moves |
+| **Live** | Production traffic is on green and the bake time is over |
+
+A rollback shows as failed with ECS's reason, for example **Rolled back: alarm fired**. Matching a deployment to a run uses the green revision's image tag, as above. Reading these needs `ecs:ListServiceDeployments`, `ecs:DescribeServiceDeployments` and `ecs:DescribeServiceRevisions`, which are in the PulseGrid policy; without them, the line falls back to the rolling view. Deployments managed by CodeDeploy aren't covered.
+
 To match a rollout to a run, the dashboard looks for the run's commit in the image tag:
 
 - If the tag has the commit, for example `api:abc1234` or `api:sha-abc1234`, the match is exact.

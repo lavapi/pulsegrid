@@ -10,6 +10,7 @@ export * from './load';
 export * from './api';
 export * from './pipelines';
 export * from './releases';
+export * from './service-deployments';
 export * from './environment-domains';
 export * from './environments';
 export * from './inventory';

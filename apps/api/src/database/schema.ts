@@ -121,6 +121,7 @@ export interface ExperimentGroupsTable {
   cloud_account_id: string;
   name: string;
   templates: JsonColumn<ExperimentTemplateRef[]>;
+  wave_size: ColumnType<number | null, number | null | undefined, number | null>;
   created_at: CreatedAt;
 }
 
@@ -129,7 +130,8 @@ export interface ExperimentRunsTable {
   tenant_id: string;
   cloud_account_id: string;
   label: string;
-  items: ColumnType<ExperimentRunItem[], string, never>;
+  items: ColumnType<ExperimentRunItem[], string, string>;
+  wave_size: ColumnType<number | null, number | null | undefined, never>;
   started_by_email: string | null;
   started_at: CreatedAt;
 }

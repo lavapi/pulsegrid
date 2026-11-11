@@ -120,6 +120,7 @@ const toServiceResource = (
     taskDefinition: shortTaskDefinition(service.taskDefinition),
     platformVersion: service.platformVersion,
     rolloutState: service.deployments?.[0]?.rolloutState,
+    deploymentStrategy: service.deploymentConfiguration?.strategy ?? 'ROLLING',
     ...networkOf(service),
   },
 });

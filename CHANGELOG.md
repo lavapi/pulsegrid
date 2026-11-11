@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-11
+
+### Added
+
+- ECS services that use native blue/green, canary or linear deployments show a deployment card with the stages, lifecycle hooks, blue and green revisions, traffic shares, and how it ended. Releases is ready for testing once green serves test traffic, and adds a Live stage for when production is on green and the bake time is over. The PulseGrid policy includes `ecs:ListServiceDeployments`, `ecs:DescribeServiceDeployments` and `ecs:DescribeServiceRevisions`.
+- Group runs and Run all go in waves within AWS's limit on experiments running at once. The run dialog reads the account's quota and what's running, and asks how many tests to run at a time; the rest wait and start as earlier ones end. Stop all cancels waiting tests. Each group remembers its last choice, and reports and history show waiting and cancelled tests.
+- Test history links back to Failover tests.
+- The PulseGrid policy includes `servicequotas:ListServiceQuotas`.
+
+### Fixed
+
+- Running more tests than AWS allows at once no longer fails the extra ones with "This account is already running as many experiments as AWS allows".
+
 ## [0.15.0] - 2026-11-11
 
 ### Added

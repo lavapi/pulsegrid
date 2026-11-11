@@ -29,6 +29,9 @@ Every account uses this one policy, production included. Roles in PulseGrid deci
         "ecs:DescribeServices",
         "ecs:ListTagsForResource",
         "ecs:DescribeTaskDefinition",
+        "ecs:ListServiceDeployments",
+        "ecs:DescribeServiceDeployments",
+        "ecs:DescribeServiceRevisions",
         "logs:FilterLogEvents",
         "cloudwatch:GetMetricData",
         "fis:ListExperimentTemplates",
@@ -36,6 +39,7 @@ Every account uses this one policy, production included. Roles in PulseGrid deci
         "fis:ListExperiments",
         "fis:GetExperiment",
         "fis:ListExperimentResolvedTargets",
+        "servicequotas:ListServiceQuotas",
         "rds:DescribeDBInstances",
         "rds:DescribeDBClusters",
         "rds:DescribeDBParameters",
@@ -80,6 +84,7 @@ Every account uses this one policy, production included. Roles in PulseGrid deci
 | Actions | Used for |
 |---|---|
 | `ecs:` list and describe, `ecs:ListTagsForResource`, `ecs:DescribeTaskDefinition` | Inventory, the map, Releases, and log settings |
+| `ecs:ListServiceDeployments`, `ecs:DescribeServiceDeployments`, `ecs:DescribeServiceRevisions` | Blue/green, canary and linear deployments on ECS service pages and Releases |
 | `rds:DescribeDBInstances`, `rds:DescribeDBClusters` | Inventory and capacity |
 | `rds:DescribeDBParameters` | The connection limit on [Load](#load), from each database's parameter group |
 | `elasticache:` describe and `ListTagsForResource` | Inventory, capacity and tag filters |
@@ -94,6 +99,7 @@ Every account uses this one policy, production included. Roles in PulseGrid deci
 | `ce:GetCostAndUsage` | [Costs](#costs) |
 | `fis:` list and get actions | [Failover tests](#failover-tests), reports and history |
 | `fis:StartExperiment`, `fis:StopExperiment` | Starting and stopping tests, groups, Run all and Stop all |
+| `servicequotas:ListServiceQuotas` | How many failover tests AWS allows at once, for running groups in waves |
 | `ecs:UpdateService` | Force deploy |
 | `rds:RebootDBInstance`, `elasticache:RebootCacheCluster`, `ec2:RebootInstances` | Reboots |
 | `ec2:DescribeInstanceStatus` | Checking that a rebooted server came back |
@@ -158,6 +164,17 @@ Figures come from AWS and can lag by up to a day, so they may differ slightly fr
 - Events usually take about 15 minutes to appear, so this isn't for real-time alerts.
 - AWS only knows the login used, so a shared IAM user or role shows that name.
 - Data access, such as reading S3 files, and changes from inside a server aren't included.
+## ECS deployments
+
+An ECS service that uses ECS's own **blue/green**, **canary** or **linear** deployments shows a deployment card on its page:
+
+- The **stages**: scale up green, test traffic to green, production traffic to green, bake time, and clean up blue. Stages where your lifecycle hooks run are marked.
+- **Blue** (live before the deployment) and **green** (the new revision) side by side, with their task definition, images, tasks running, and the share of test and production traffic each asked for.
+- How it ended: completed, stopped, or rolled back with ECS's reason.
+- Earlier deployments of the service.
+
+The card refreshes every 5 seconds while a deployment runs, and every 30 seconds otherwise. Everyone can see it, in every environment. Services with rolling deployments don't show it; their rollouts appear on Releases as before. Deployments managed by CodeDeploy aren't covered. See [Releases](pipelines.md#releases) for how these stages show there.
+
 ## Service logs
 
 ECS services show a **Logs** section. The dashboard finds the CloudWatch log group from the service's task definition, so services using another log driver show a message instead. Logs need the **View service logs** permission, and work in every environment, because reading them changes nothing. Opening a service's logs is recorded in Activity, once every 15 minutes per person and service while they keep reading. Lines are read when you look at them and are never stored. The longest range is 24 hours.
@@ -198,9 +215,19 @@ A test's page refreshes every 5 seconds while it runs. It shows each step's stat
 
 ### Groups and Run all
 
-**Groups** are named lists of templates in one account, kept in PulseGrid. A template can be in several groups. **Run group** starts every template in the group at the same time, and **Run all** in the page header starts every template in the account. Both ask you to type the group's name, or `All tests`. One run starts at most 25 templates, to stay under the AWS limit on experiments running at once.
+**Groups** are named lists of templates in one account, kept in PulseGrid. A template can be in several groups. **Run group** runs every template in the group, and **Run all** in the page header runs every template in the account. One run holds at most 25 templates.
 
-Creating, changing, deleting and running groups need the same key and permission as single tests, staging or production depending on the account's environment. Group changes, runs and Stop all are recorded in Activity, along with each test they started or stopped. No extra AWS permissions are needed.
+AWS limits how many FIS experiments an account can run at once in each region: 5 unless the quota was raised. So runs go in **waves**. Before a run starts, the dialog reads the account's quota and how many tests are running now, for example *AWS allows 5 tests at once in this account in eu-central-1. 1 is running now.*, and asks for **Tests at a time**:
+
+- It suggests the free slots, or the number the group used last time. You can lower it, down to 1 to run tests one after another, or raise it up to the quota. Above the free slots, the extra tests wait.
+- If the quota can't be read, PulseGrid assumes AWS's default of 5 and says so.
+- You type the group's name, or `All tests`, to confirm.
+
+PulseGrid starts the first wave straight away and marks the rest **Waiting**. The background worker checks every 15 seconds and starts the next waiting test as soon as one ends, never going past the chosen number or the account's quota. Tests started elsewhere in the account count too. If AWS still refuses a start because the quota is full, the test stays waiting rather than failing. **Stop all** stops the running tests and cancels the waiting ones, which show as **Cancelled**. Each group remembers its last choice.
+
+To run more tests at once, raise the quota in **Service Quotas > AWS Fault Injection Service** for the region. PulseGrid reads the new quota within an hour.
+
+Creating, changing, deleting and running groups need the same key and permission as single tests, staging or production depending on the account's environment. Group changes, runs and Stop all are recorded in Activity, along with each test they started or stopped. Reading the quota needs `servicequotas:ListServiceQuotas`, which is in the PulseGrid policy.
 
 ### Reports and history
 
@@ -210,8 +237,8 @@ The result is **Passed** when the test completed, **Stopped** when a person or a
 
 **A group run or Run all is reported in one place.** Its page is the report for the whole run:
 
-- **Summary:** environment, account, who started it, start, end and duration, and the overall result. A run passes only when every test completed. It fails when any test failed or didn't start, and is stopped when any test was stopped.
-- **Every test in one table**, with its result, why it ended, and its timing. Tests that didn't start show why.
+- **Summary:** environment, account, who started it, start, end and duration, and the overall result. A run passes only when every test completed. It fails when any test failed or didn't start, and is stopped when any test was stopped or cancelled. It keeps running until the last wave ends.
+- **Every test in one table**, with its result, why it ended, and its timing. Tests that didn't start show why, and waiting or cancelled tests say so.
 - **One timeline** with every test and its steps on the same time axis.
 - **Load charts** for the databases and caches the tests hit, from 10 minutes before the run to 10 minutes after it.
 
