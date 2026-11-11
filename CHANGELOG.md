@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-11
+
 ### Added
 
 - Connections show as used out of the limit, such as 40 / 410. For RDS the limit is `max_connections` from the parameter group, worked out from the instance memory when it's the AWS default. For ElastiCache it's 65,000 per node. The PulseGrid policy includes `rds:DescribeDBParameters`.
