@@ -12,6 +12,8 @@ import type {
   Resource,
   ResourceHealth,
   ResourceType,
+  ServiceDeploymentsView,
+  TrafficDeployment,
 } from '@pulsegrid/shared';
 
 export const GLOBAL_REGION = 'global';
@@ -234,11 +236,16 @@ export interface Deployment {
   desiredTasks: number;
   images: string[];
   targetLabel: string;
+  /** Set for deployments that shift traffic, such as blue/green; null for rolling ones. */
+  traffic: Pick<TrafficDeployment, 'stage' | 'status' | 'reason' | 'rollbackReason' | 'updatedAt'> | null;
 }
 
 export interface DeploymentSource<Credentials extends CloudCredentials = CloudCredentials> {
   resourceType: ResourceType;
   read(context: ResourceActionContext<Credentials>): Promise<Deployment | null>;
+  /** Recent traffic-shifting deployments of a service, newest first. */
+  recent(context: ResourceActionContext<Credentials>, limit: number): Promise<ServiceDeploymentsView>;
+  failureMessage(error: unknown): string;
 }
 
 export class CredentialsRejected extends Error {}

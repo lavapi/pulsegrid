@@ -29,6 +29,9 @@ Every account uses this one policy, production included. Roles in PulseGrid deci
         "ecs:DescribeServices",
         "ecs:ListTagsForResource",
         "ecs:DescribeTaskDefinition",
+        "ecs:ListServiceDeployments",
+        "ecs:DescribeServiceDeployments",
+        "ecs:DescribeServiceRevisions",
         "logs:FilterLogEvents",
         "cloudwatch:GetMetricData",
         "fis:ListExperimentTemplates",
@@ -81,6 +84,7 @@ Every account uses this one policy, production included. Roles in PulseGrid deci
 | Actions | Used for |
 |---|---|
 | `ecs:` list and describe, `ecs:ListTagsForResource`, `ecs:DescribeTaskDefinition` | Inventory, the map, Releases, and log settings |
+| `ecs:ListServiceDeployments`, `ecs:DescribeServiceDeployments`, `ecs:DescribeServiceRevisions` | Blue/green, canary and linear deployments on ECS service pages and Releases |
 | `rds:DescribeDBInstances`, `rds:DescribeDBClusters` | Inventory and capacity |
 | `rds:DescribeDBParameters` | The connection limit on [Load](#load), from each database's parameter group |
 | `elasticache:` describe and `ListTagsForResource` | Inventory, capacity and tag filters |
@@ -160,6 +164,17 @@ Figures come from AWS and can lag by up to a day, so they may differ slightly fr
 - Events usually take about 15 minutes to appear, so this isn't for real-time alerts.
 - AWS only knows the login used, so a shared IAM user or role shows that name.
 - Data access, such as reading S3 files, and changes from inside a server aren't included.
+## ECS deployments
+
+An ECS service that uses ECS's own **blue/green**, **canary** or **linear** deployments shows a deployment card on its page:
+
+- The **stages**: scale up green, test traffic to green, production traffic to green, bake time, and clean up blue. Stages where your lifecycle hooks run are marked.
+- **Blue** (live before the deployment) and **green** (the new revision) side by side, with their task definition, images, tasks running, and the share of test and production traffic each asked for.
+- How it ended: completed, stopped, or rolled back with ECS's reason.
+- Earlier deployments of the service.
+
+The card refreshes every 5 seconds while a deployment runs, and every 30 seconds otherwise. Everyone can see it, in every environment. Services with rolling deployments don't show it; their rollouts appear on Releases as before. Deployments managed by CodeDeploy aren't covered. See [Releases](pipelines.md#releases) for how these stages show there.
+
 ## Service logs
 
 ECS services show a **Logs** section. The dashboard finds the CloudWatch log group from the service's task definition, so services using another log driver show a message instead. Logs need the **View service logs** permission, and work in every environment, because reading them changes nothing. Opening a service's logs is recorded in Activity, once every 15 minutes per person and service while they keep reading. Lines are read when you look at them and are never stored. The longest range is 24 hours.

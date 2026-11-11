@@ -1,4 +1,4 @@
-import type { PipelineJob, PipelineRun } from '@pulsegrid/shared';
+import type { DeploymentStageId, PipelineJob, PipelineRun, TrafficDeploymentStatus } from '@pulsegrid/shared';
 import { describe, expect, it } from 'vitest';
 import type { Deployment } from '../inventory/providers/provider';
 import { matchRollout, releaseProgress } from './release-stages';
@@ -38,7 +38,15 @@ const deployment = (overrides: Partial<Deployment> = {}): Deployment => ({
   desiredTasks: 3,
   images: ['repo/api:abc1234'],
   targetLabel: 'ECS Fargate',
+  traffic: null,
   ...overrides,
+});
+const traffic = (stage: DeploymentStageId | null, status: TrafficDeploymentStatus, rollbackReason: string | null = null) => ({
+  stage,
+  status,
+  reason: null,
+  rollbackReason,
+  updatedAt: '2026-11-06T12:02:00Z',
 });
 const labels = (progress: ReturnType<typeof releaseProgress>) =>
   progress.stages.map(({ label, status }) => `${label}:${status}`);
@@ -181,5 +189,41 @@ describe('release progress', () => {
 
   it('handles a pipeline that has never run', () => {
     expect(releaseProgress(null, [], null, now).state).toBe('idle');
+  });
+});
+
+describe('blue/green releases', () => {
+  const bg = (stage: DeploymentStageId | null, status: TrafficDeploymentStatus, rollbackReason: string | null = null) =>
+    deployment({
+      targetLabel: 'ECS Fargate blue/green',
+      state: status === 'succeeded' ? 'succeeded' : status === 'rolled-back' ? 'failed' : 'running',
+      traffic: traffic(stage, status, rollbackReason),
+    });
+  const progressOf = (rollout: Deployment) => releaseProgress(run(), [], rollout, now);
+
+  it('is deploying while green scales up', () => {
+    const progress = progressOf(bg('scale-up', 'in-progress'));
+    expect(progress.state).toBe('deploying');
+    expect(labels(progress).slice(-3)).toEqual(['ECS Fargate blue/green:running', 'Ready:waiting', 'Live:waiting']);
+  });
+
+  it('is ready for testing once green has test traffic, before production moves', () => {
+    const progress = progressOf(bg('test-traffic', 'in-progress'));
+    expect(progress).toMatchObject({ state: 'ready', readyAt: '2026-11-06T12:02:00Z' });
+    expect(labels(progress).slice(-2)).toEqual(['Ready:success', 'Live:waiting']);
+    expect(progress.stages.at(-2)?.detail).toBe('Green has test traffic');
+  });
+
+  it('shows production moving and bake time on the way to live', () => {
+    expect(labels(progressOf(bg('bake-time', 'in-progress'))).at(-1)).toBe('Live:running');
+    expect(progressOf(bg('bake-time', 'in-progress')).stages.at(-1)?.detail).toBe('Bake time');
+    expect(labels(progressOf(bg('clean-up', 'succeeded', null))).slice(-2)).toEqual(['Ready:success', 'Live:success']);
+  });
+
+  it('shows a rollback with its reason', () => {
+    const progress = progressOf(bg('production-traffic', 'rolled-back', 'Alarm fired'));
+    expect(progress.state).toBe('failed');
+    expect(progress.stages.at(-3)).toMatchObject({ status: 'failure', detail: 'Rolled back: Alarm fired' });
+    expect(labels(progress).at(-1)).toBe('Live:failure');
   });
 });
