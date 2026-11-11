@@ -227,6 +227,15 @@ AWS limits how many FIS experiments an account can run at once in each region: 5
 
 PulseGrid starts the first wave straight away and marks the rest **Waiting**. The background worker checks every 15 seconds and starts the next waiting test as soon as one ends, never going past the chosen number or the account's quota. Tests started elsewhere in the account count too. If AWS still refuses a start because the quota is full, the test stays waiting rather than failing. **Stop all** stops the running tests and cancels the waiting ones, which show as **Cancelled**. Each group remembers its last choice.
 
+Tests never overlap on the same resource, and they wait for it to recover:
+
+- PulseGrid works out what each test acts on from its targets. Listed ARNs and tags are matched against the resources PulseGrid knows, and ECS tasks are matched by their cluster and service. When it can't tell which resource a target picks, it assumes any resource of that type, so possible clashes are kept apart.
+- A test waits while another test on the same resource runs. After that test ends, it also waits for the resource to settle for 2 minutes and to be healthy again in AWS: databases and caches *available*, ECS services with all tasks running and one deployment, servers passing both status checks.
+- If a resource isn't healthy 30 minutes after its test ended, the tests waiting for it are cancelled with that reason, rather than run against a broken resource.
+- **Zone-wide tests** run last, one at a time, with nothing else running. These are tests that cut a whole Availability Zone off, such as network disruption or tests that target subnets.
+
+The run dialog says how a run will be ordered, for example *Of 11 tests, 3 tests share a resource with another, so they take turns and wait for it to recover; 2 zone-wide tests run alone at the end.* The run report says why each waiting test is waiting. Checking recovery uses describe actions already in the PulseGrid policy.
+
 To run more tests at once, raise the quota in **Service Quotas > AWS Fault Injection Service** for the region. PulseGrid reads the new quota within an hour.
 
 Creating, changing, deleting and running groups need the same key and permission as single tests, staging or production depending on the account's environment. Group changes, runs and Stop all are recorded in Activity, along with each test they started or stopped. Reading the quota needs `servicequotas:ListServiceQuotas`, which is in the PulseGrid policy.

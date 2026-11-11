@@ -22,7 +22,9 @@ import {
 } from '@pulsegrid/shared';
 import type { ExperimentContext, ExperimentRecord, ExperimentSource } from '../provider';
 import { isAccessDenied } from './aws-error-messages';
+import { fisFootprint } from './aws-fis-footprint';
 import { fisConcurrencyLimit } from './aws-fis-quota';
+import { fisIsRecovered } from './aws-fis-recovery';
 import type { AwsKey } from './aws-key';
 
 const TEMPLATE_LIMIT = 25;
@@ -79,6 +81,8 @@ const targetsOf = (targets: Record<string, ExperimentTemplateTarget> | undefined
     resourceType: target.resourceType ?? '',
     selection: selectionOf(target),
     resourceIds: target.resourceArns ?? [],
+    tags: target.resourceTags ?? {},
+    parameters: target.parameters ?? {},
   }));
 
 const stepsOf = (
@@ -225,6 +229,10 @@ export const AWS_EXPERIMENT_SOURCE: ExperimentSource<AwsKey> = {
   concurrencyLimit: fisConcurrencyLimit,
 
   isQuotaFull: (error) => (error as { name?: string }).name === QUOTA_EXCEEDED,
+
+  footprint: fisFootprint,
+
+  isRecovered: fisIsRecovered,
 
   failureMessage: (error) => {
     if (isAccessDenied(error)) {

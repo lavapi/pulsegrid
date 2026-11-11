@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- Group runs and Run all never overlap tests on the same resource. A test waits for the other to finish and for the resource to recover in AWS, and tests waiting for a resource that doesn't recover within 30 minutes are cancelled. Zone-wide tests run last, one at a time, alone. The run dialog shows the order, and the run report says why each test is waiting.
+
 ### Changed
 
 - Blue/green cards and Releases say live traffic where ECS says production traffic, so it isn't mistaken for the production environment, and "1 of 1 task running" reads correctly.
