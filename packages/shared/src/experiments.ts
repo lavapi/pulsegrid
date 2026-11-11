@@ -269,7 +269,8 @@ export interface TestHistoryEntry {
 }
 
 export interface TestHistoryFilter {
-  environment?: string;
+  /** The cloud account whose history to show: history follows the account selected in the top bar. */
+  account: string;
   label?: string;
   result?: RunResult;
   from?: string;
@@ -278,7 +279,6 @@ export interface TestHistoryFilter {
 
 export interface TestHistory {
   entries: TestHistoryEntry[];
-  environments: string[];
   labels: string[];
 }
 

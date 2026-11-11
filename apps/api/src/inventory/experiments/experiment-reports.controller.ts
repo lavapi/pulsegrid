@@ -17,7 +17,7 @@ const day = z.iso.date().transform((value) => new Date(`${value}T00:00:00.000Z`)
 
 const historySchema = z
   .object({
-    environment: z.string().trim().min(1).max(100).optional(),
+    account: z.uuid(),
     label: z.string().trim().min(1).max(200).optional(),
     result: z.enum(RUN_RESULTS as [RunResult, ...RunResult[]]).optional(),
     from: day.optional(),

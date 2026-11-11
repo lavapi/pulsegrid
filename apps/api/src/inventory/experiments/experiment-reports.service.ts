@@ -37,7 +37,6 @@ export class ExperimentReportsService {
     const all = historyEntries(runs, reports, {});
     return {
       entries: historyEntries(runs, reports, query),
-      environments: distinct(all.map(({ environmentName }) => environmentName)),
       labels: distinct(all.map(({ label }) => label)),
     };
   }
@@ -95,7 +94,8 @@ export class ExperimentReportsService {
     });
   }
 
-  private async load(trx: TenantTransaction, { from, to }: HistoryQuery) {
+  /** One account's runs and reports: history follows the account selected in the top bar. */
+  private async load(trx: TenantTransaction, { account, from, to }: HistoryQuery) {
     let runs = trx
       .selectFrom('experiment_runs')
       .innerJoin('cloud_accounts', 'cloud_accounts.id', 'experiment_runs.cloud_account_id')
@@ -110,9 +110,15 @@ export class ExperimentReportsService {
         'cloud_accounts.name as account_name',
         'environments.name as environment_name',
       ])
+      .where('experiment_runs.cloud_account_id', '=', account)
       .orderBy('experiment_runs.started_at', 'desc')
       .limit(RUN_LIMIT);
-    let reports = trx.selectFrom('experiment_reports').selectAll().orderBy('started_at', 'desc').limit(REPORT_LIMIT);
+    let reports = trx
+      .selectFrom('experiment_reports')
+      .selectAll()
+      .where('cloud_account_id', '=', account)
+      .orderBy('started_at', 'desc')
+      .limit(REPORT_LIMIT);
     if (from) {
       runs = runs.where('experiment_runs.started_at', '>=', from);
       reports = reports.where('started_at', '>=', from);
