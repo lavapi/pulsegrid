@@ -1,4 +1,5 @@
 import type { ExperimentState, ExperimentSummary } from '@pulsegrid/shared';
+import { sql } from 'kysely';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CredentialVault } from '../src/inventory/connection/credential-vault';
@@ -59,6 +60,8 @@ const source = {
   stop: vi.fn<ExperimentSource['stop']>(),
   concurrencyLimit: vi.fn<ExperimentSource['concurrencyLimit']>(),
   isQuotaFull: (error: unknown) => (error as Error).name === 'ServiceQuotaExceededException',
+  footprint: vi.fn<ExperimentSource['footprint']>(),
+  isRecovered: vi.fn<ExperimentSource['isRecovered']>(),
   failureMessage: () => 'AWS refused this experiment.',
 };
 const provider: CloudProvider = { ...awsProvider, actions: [], experimentSource: source };
@@ -135,6 +138,8 @@ describe('failover tests', () => {
     source.start.mockResolvedValue('EXP2');
     source.stop.mockResolvedValue();
     source.concurrencyLimit.mockResolvedValue({ limit: 5, known: true });
+    source.footprint.mockReturnValue({ resources: [], zoneWide: false });
+    source.isRecovered.mockResolvedValue(true);
     await setExtraPermissions(context, context.acme, 'developer', ['experiment.run']);
   });
 
@@ -294,8 +299,8 @@ describe('failover tests', () => {
       const { body: detail } = await http().get(`${runs(id)}/${run.id}`).set('Cookie', viewer).expect(200);
       expect(detail).toMatchObject({ label: 'Data layer', startedBy: 'dev@example.test', error: null });
       expect(detail.items).toEqual([
-        { region: REGION, templateId: 'EXT1', label: 'Database failover', experimentId: 'RUNEXT1', error: null, waiting: false, state: 'running', report: null },
-        { region: REGION, templateId: 'EXT2', label: 'Cache reboot', experimentId: null, error: 'AWS refused this experiment.', waiting: false, state: null, report: null },
+        { region: REGION, templateId: 'EXT1', label: 'Database failover', experimentId: 'RUNEXT1', error: null, waiting: false, note: null, resources: [], zoneWide: false, state: 'running', report: null },
+        { region: REGION, templateId: 'EXT2', label: 'Cache reboot', experimentId: null, error: 'AWS refused this experiment.', waiting: false, note: null, resources: [], zoneWide: false, state: null, report: null },
         { region: REGION, templateId: 'GONE', label: 'GONE', experimentId: null, error: 'This template no longer exists in AWS.', state: null, report: null },
       ]);
       expect(await actions('RUNEXT1')).toEqual([{ action: 'cloud.experiment.started', actor_email: 'dev@example.test' }]);
@@ -569,6 +574,87 @@ describe('failover tests', () => {
       await http().post(runs(id)).set('Cookie', developer).send({ groupId: group.id, waveSize: 1 }).expect(201);
       const { body: view } = await http().get(`/api/cloud/accounts/${id}/experiments`).set('Cookie', viewer).expect(200);
       expect(view.groups.find(({ id: groupId }: { id: string }) => groupId === group.id)?.waveSize).toBe(1);
+    });
+  });
+  describe('tests on one resource', () => {
+    const runs = (accountId: string) => `/api/cloud/accounts/${accountId}/experiment-runs`;
+    const db = { key: 'rds-instance|db-1', name: 'staging-db' };
+    const detail = async (accountId: string, runId: string) =>
+      (await http().get(`${runs(accountId)}/${runId}`).set('Cookie', viewer).expect(200)).body;
+    const advance = (runId: string) => context.app.get(ExperimentWaves).advance(context.acme.tenant.id, runId);
+    const notes = (body: { items: { experimentId: string | null; note?: string | null }[] }) =>
+      body.items.map(({ experimentId, note }) => experimentId ?? note);
+    const endedMinutesAgo = (runId: string, minutes: number) =>
+      context.owner
+        .updateTable('experiment_runs')
+        .set({
+          items: sql`(select jsonb_agg(case when item ? 'endedAt' then item || jsonb_build_object('endedAt', ${new Date(Date.now() - minutes * 60_000).toISOString()}::text) else item end) from jsonb_array_elements(items) item)`,
+        })
+        .where('id', '=', runId)
+        .execute();
+
+    beforeEach(() => {
+      source.listTemplates.mockResolvedValue([TEMPLATE, SECOND, THIRD]);
+      source.listExperiments.mockResolvedValue([]);
+      source.getExperiment.mockResolvedValue(null);
+      source.start.mockImplementation(async (_context, templateId) => `RUN${templateId}`);
+      source.footprint.mockImplementation((template) =>
+        template.id === 'EXT3' ? { resources: [], zoneWide: true } : { resources: [db], zoneWide: false },
+      );
+    });
+
+    it('shows the order before a run starts', async () => {
+      const { id } = await addAccount('Staging');
+      const { body } = await http().get(`${runs(id)}/order`).set('Cookie', viewer).expect(200);
+      expect(body).toEqual({ tests: 3, sharing: 2, zoneWide: 1 });
+    });
+
+    it('runs tests on one database one after another, waits for it to recover, and the zone-wide test last', async () => {
+      const { id } = await addAccount('Staging');
+      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
+      expect(source.start).toHaveBeenCalledTimes(1);
+      source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running')]);
+      await advance(run.id);
+      expect(notes(await detail(id, run.id))).toEqual([
+        'RUNEXT1',
+        'Waiting for the test on staging-db to finish.',
+        'Zone-wide test: runs alone after the others finish and recover.',
+      ]);
+
+      source.listExperiments.mockResolvedValue([]);
+      await advance(run.id);
+      expect(notes(await detail(id, run.id))[1]).toBe('Waiting for staging-db to recover.');
+
+      await endedMinutesAgo(run.id, 3);
+      await advance(run.id);
+      expect(notes(await detail(id, run.id))).toEqual([
+        'RUNEXT1',
+        'RUNEXT2',
+        'Zone-wide test: runs alone after the others finish and recover.',
+      ]);
+
+      await advance(run.id);
+      await endedMinutesAgo(run.id, 3);
+      await advance(run.id);
+      expect(notes(await detail(id, run.id))).toEqual(['RUNEXT1', 'RUNEXT2', 'RUNEXT3']);
+    });
+
+    it('cancels tests waiting for a resource that does not recover within 30 minutes', async () => {
+      const { id } = await addAccount('Staging');
+      source.isRecovered.mockResolvedValue(false);
+      const resource = await context.owner
+        .selectFrom('resources')
+        .select('id')
+        .where('cloud_account_id', '=', id)
+        .executeTakeFirstOrThrow();
+      const known = { key: `rds-instance|${resource.id}`, name: 'staging-db' };
+      source.footprint.mockImplementation(() => ({ resources: [known], zoneWide: false }));
+      const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({ waveSize: 5 }).expect(201);
+      await advance(run.id);
+      await endedMinutesAgo(run.id, 31);
+      await advance(run.id);
+      const body = await detail(id, run.id);
+      expect(body.items[1]).toMatchObject({ cancelled: true, note: "Cancelled: staging-db didn't recover within 30 minutes." });
     });
   });
 });

@@ -168,8 +168,10 @@ Figures come from AWS and can lag by up to a day, so they may differ slightly fr
 
 An ECS service that uses ECS's own **blue/green**, **canary** or **linear** deployments shows a deployment card on its page:
 
-- The **stages**: scale up green, test traffic to green, production traffic to green, bake time, and clean up blue. Stages where your lifecycle hooks run are marked.
-- **Blue** (live before the deployment) and **green** (the new revision) side by side, with their task definition, images, tasks running, and the share of test and production traffic each asked for.
+- The **stages**: scale up green, test traffic to green, live traffic to green, bake time, and clean up blue. Stages where your lifecycle hooks run are marked.
+- **Blue** (live before the deployment) and **green** (the new revision) side by side, with their task definition, images, tasks running, and the share of test and live traffic each asked for.
+
+**Live traffic** is what your users send through the load balancer's main listener. ECS calls it "production traffic" in every environment, staging included, so PulseGrid says live traffic to avoid mixing it up with the production environment. **Test traffic** goes through the separate test listener, so you can try green before users reach it. After a deployment completes, ECS can still show the old side with all test traffic: the test listener's rule is left pointing at it, and nothing is sent there unless someone calls the test listener.
 - How it ended: completed, stopped, or rolled back with ECS's reason.
 - Earlier deployments of the service.
 
@@ -224,6 +226,15 @@ AWS limits how many FIS experiments an account can run at once in each region: 5
 - You type the group's name, or `All tests`, to confirm.
 
 PulseGrid starts the first wave straight away and marks the rest **Waiting**. The background worker checks every 15 seconds and starts the next waiting test as soon as one ends, never going past the chosen number or the account's quota. Tests started elsewhere in the account count too. If AWS still refuses a start because the quota is full, the test stays waiting rather than failing. **Stop all** stops the running tests and cancels the waiting ones, which show as **Cancelled**. Each group remembers its last choice.
+
+Tests never overlap on the same resource, and they wait for it to recover:
+
+- PulseGrid works out what each test acts on from its targets. Listed ARNs and tags are matched against the resources PulseGrid knows, and ECS tasks are matched by their cluster and service. When it can't tell which resource a target picks, it assumes any resource of that type, so possible clashes are kept apart.
+- A test waits while another test on the same resource runs. After that test ends, it also waits for the resource to settle for 2 minutes and to be healthy again in AWS: databases and caches *available*, ECS services with all tasks running and one deployment, servers passing both status checks.
+- If a resource isn't healthy 30 minutes after its test ended, the tests waiting for it are cancelled with that reason, rather than run against a broken resource.
+- **Zone-wide tests** run last, one at a time, with nothing else running. These are tests that cut a whole Availability Zone off, such as network disruption or tests that target subnets.
+
+The run dialog says how a run will be ordered, for example *Of 11 tests, 3 tests share a resource with another, so they take turns and wait for it to recover; 2 zone-wide tests run alone at the end.* The run report says why each waiting test is waiting. Checking recovery uses describe actions already in the PulseGrid policy.
 
 To run more tests at once, raise the quota in **Service Quotas > AWS Fault Injection Service** for the region. PulseGrid reads the new quota within an hour.
 

@@ -64,7 +64,7 @@ function Stages({ deployment }: { deployment: TrafficDeployment }) {
 
 const trafficText = ({ testTrafficPercent, productionTrafficPercent }: DeploymentSide): string | null => {
   const parts = [
-    productionTrafficPercent !== null && `${productionTrafficPercent}% of production traffic`,
+    productionTrafficPercent !== null && `${productionTrafficPercent}% of live traffic`,
     testTrafficPercent !== null && `${testTrafficPercent}% of test traffic`,
   ].filter(Boolean);
   return parts.length > 0 ? parts.join(' · ') : null;
@@ -80,7 +80,7 @@ function Side({ title, side }: { title: string; side: DeploymentSide | null }) {
       <h3 className="text-xs font-semibold text-faint">{title}</h3>
       <span className="font-medium">{side.taskDefinition ?? side.revision}</span>
       <span className="text-muted-foreground">
-        {side.runningTasks} of {side.requestedTasks} tasks running
+        {side.runningTasks} of {side.requestedTasks} {side.requestedTasks === 1 ? 'task' : 'tasks'} running
       </span>
       {traffic && <span className="text-muted-foreground">{traffic}</span>}
       {side.images.map((image) => (

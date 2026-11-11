@@ -1,5 +1,5 @@
-import type { ExperimentCapacity, ExperimentRunDetail, StartedExperimentRun } from '@pulsegrid/shared';
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
+import type { ExperimentCapacity, ExperimentRunDetail, RunOrder, StartedExperimentRun } from '@pulsegrid/shared';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
 import type { z } from 'zod';
@@ -9,7 +9,7 @@ import type { AuthContext } from '../../auth/session/auth-context';
 import { ZodPipe } from '../../common/zod.pipe';
 import { RUN_PERMISSION } from './experiment-access';
 import { ExperimentRunsService } from './experiment-runs.service';
-import { CHANGE_LIMIT, INVALID_REQUEST, READ_LIMIT, runSchema } from './experiment-schemas';
+import { CHANGE_LIMIT, INVALID_REQUEST, orderSchema, READ_LIMIT, runSchema } from './experiment-schemas';
 
 @Controller('cloud/accounts/:id/experiment-runs')
 @UseGuards(ThrottlerGuard)
@@ -26,6 +26,16 @@ export class ExperimentRunsController {
     @Req() request: Request,
   ): Promise<StartedExperimentRun> {
     return this.runs.start(auth, id, body, request.ip);
+  }
+
+  @Get('order')
+  @Throttle(READ_LIMIT)
+  order(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query(new ZodPipe(orderSchema, INVALID_REQUEST)) query: z.infer<typeof orderSchema>,
+  ): Promise<RunOrder> {
+    return this.runs.order(auth, id, query.groupId);
   }
 
   @Get('capacity')

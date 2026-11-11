@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { experimentPath, experimentRunPath, formatDuration, waveChoice, formatStepDuration, historyRunPath, reportWindow, stateLabel, stateTone } from './experiments';
+import { experimentPath, experimentRunPath, formatDuration, orderText, waveChoice, formatStepDuration, historyRunPath, reportWindow, stateLabel, stateTone } from './experiments';
 
 describe('experiment helpers', () => {
   it('colours states by what they mean', () => {
@@ -64,5 +64,14 @@ describe('waveChoice', () => {
   it('never suggests less than one, even when the account is full', () => {
     const full = [{ region: 'eu-central-1', quota: 5, quotaKnown: false, running: 5 }];
     expect(waveChoice(full, ['eu-central-1'], 4, null)).toEqual({ suggested: 1, max: 4, free: 0 });
+  });
+});
+
+describe('orderText', () => {
+  it('explains tests that take turns and zone-wide tests', () => {
+    expect(orderText({ tests: 11, sharing: 3, zoneWide: 2 })).toBe(
+      'Of 11 tests, 3 tests share a resource with another, so they take turns and wait for it to recover; 2 zone-wide tests run alone at the end.',
+    );
+    expect(orderText({ tests: 2, sharing: 0, zoneWide: 0 })).toBeNull();
   });
 });

@@ -1,8 +1,12 @@
-/** The stages of a deployment that shifts traffic from the live (blue) side to the new (green) side, in order. */
+/**
+ * The stages of a deployment that shifts traffic from the live (blue) side to the new (green) side, in order.
+ * ECS calls user traffic "production traffic" in every environment; it's shown as live traffic so it isn't
+ * mistaken for the production environment.
+ */
 export const DEPLOYMENT_STAGES = [
   { id: 'scale-up', label: 'Scale up green' },
   { id: 'test-traffic', label: 'Test traffic to green' },
-  { id: 'production-traffic', label: 'Production traffic to green' },
+  { id: 'production-traffic', label: 'Live traffic to green' },
   { id: 'bake-time', label: 'Bake time' },
   { id: 'clean-up', label: 'Clean up blue' },
 ] as const;
@@ -47,6 +51,7 @@ export interface DeploymentSide {
   requestedTasks: number;
   /** The share of test traffic this side asked for, 0 to 100, when ECS reports it. */
   testTrafficPercent: number | null;
+  /** The share of live (user) traffic, which ECS calls production traffic in every environment. */
   productionTrafficPercent: number | null;
 }
 

@@ -24,3 +24,5 @@ export const runSchema = z.object({
   groupId: z.uuid().optional(),
   waveSize: z.number().int().min(1).max(EXPERIMENT_RUN_LIMIT),
 });
+
+export const orderSchema = z.object({ groupId: z.uuid().optional() });

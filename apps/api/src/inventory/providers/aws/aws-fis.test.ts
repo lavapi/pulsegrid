@@ -43,12 +43,21 @@ describe('AWS_EXPERIMENT_SOURCE', () => {
       label: 'Database failover',
       description: 'Reboot staging database',
       targets: [
-        { name: 'Databases', resourceType: 'aws:rds:db', selection: 'tagged Env=staging, 1 of them', resourceIds: [] },
+        {
+          name: 'Databases',
+          resourceType: 'aws:rds:db',
+          selection: 'tagged Env=staging, 1 of them',
+          resourceIds: [],
+          tags: { Env: 'staging' },
+          parameters: {},
+        },
         {
           name: 'Listed',
           resourceType: 'aws:rds:db',
           selection: '1 listed resource',
           resourceIds: ['arn:aws:rds:eu-central-1:111111111111:db:db-1'],
+          tags: {},
+          parameters: {},
         },
       ],
       steps: [{ name: 'Reboot', actionId: 'aws:rds:reboot-db-instances', description: 'Reboot', duration: 'PT5M' }],
