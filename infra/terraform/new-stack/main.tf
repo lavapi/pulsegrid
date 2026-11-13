@@ -104,17 +104,18 @@ resource "aws_lb_listener_rule" "api" {
 }
 
 module "app" {
-  source                = "../modules/app"
-  name                  = local.name
-  region                = var.region
-  vpc_id                = module.network.vpc_id
-  subnet_ids            = module.network.public_subnet_ids
-  assign_public_ip      = true
-  alb_security_group_id = aws_security_group.alb.id
-  public_url            = "https://${var.hostname}"
-  image_repository      = var.image_repository
-  app_version           = var.app_version
-  desired_count         = var.service_desired_count
-  secret_arn            = module.data.secret_arn
-  listener_rules        = [aws_lb_listener.https.arn, aws_lb_listener_rule.api.arn]
+  source                   = "../modules/app"
+  name                     = local.name
+  region                   = var.region
+  vpc_id                   = module.network.vpc_id
+  subnet_ids               = module.network.public_subnet_ids
+  assign_public_ip         = true
+  alb_security_group_id    = aws_security_group.alb.id
+  public_url               = "https://${var.hostname}"
+  image_repository         = var.image_repository
+  app_version              = var.app_version
+  desired_count            = var.service_desired_count
+  secret_arn               = module.data.secret_arn
+  listener_rules           = [aws_lb_listener.https.arn, aws_lb_listener_rule.api.arn]
+  database_access_settings = var.database_access_settings
 }
