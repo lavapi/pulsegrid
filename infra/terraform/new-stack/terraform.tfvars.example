@@ -1,7 +1,7 @@
 region          = "eu-central-1"
 hostname        = "pulsegrid.example.com"
 certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/replace-me"
-app_version     = "0.21.0"
+app_version     = "0.22.0"
 
 # Production database access (docs/database-access.md). Leave out to keep the feature off.
 # database_access_settings = {
