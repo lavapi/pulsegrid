@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-11-13
+
+### Added
+
+- Database access grants have a step-by-step connect guide: click the person's name or **How to connect**. It covers installing the AWS CLI and Session Manager plugin, the `~/.aws/config` profile, signing in, the tunnel, the token and the DBeaver or Navicat settings, with a copy button on every command and value. **Copy for Slack**, **Copy as text** and **Share…** send it to the person. New optional settings `DB_ACCESS_SSO_REGION` and `DB_ACCESS_PROFILE`.
+
 ## [0.20.1] - 2026-11-13
 
 ### Added

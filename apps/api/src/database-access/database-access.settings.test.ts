@@ -21,7 +21,14 @@ describe('loadDatabaseAccessSetup', () => {
       region: 'eu-central-1',
       scheduleGroup: 'db-access',
       missingConnect: [],
-      connect: { roleName: 'ProductionDatabaseReadOnly', user: 'readonly_access', port: 5432, database: 'game' },
+      connect: {
+        roleName: 'ProductionDatabaseReadOnly',
+        user: 'readonly_access',
+        port: 5432,
+        database: 'game',
+        ssoRegion: 'eu-central-1',
+        profile: 'production-db',
+      },
     });
   });
 
@@ -42,6 +49,20 @@ describe('loadDatabaseAccessSetup', () => {
     expect(loadDatabaseAccessSetup({ ...REQUIRED, DB_ACCESS_REVOKE_STATE_MACHINE_ARN: elsewhere })).toEqual({
       ready: false,
       problems: ['DB_ACCESS_REVOKE_STATE_MACHINE_ARN'],
+    });
+  });
+
+  it('takes another Identity Center region and profile name', () => {
+    const setup = loadDatabaseAccessSetup({
+      ...REQUIRED,
+      ...CONNECT,
+      DB_ACCESS_SSO_REGION: 'us-east-1',
+      DB_ACCESS_PROFILE: 'prod-db',
+    });
+    expect(setup.ready && setup.settings.connect).toMatchObject({ ssoRegion: 'us-east-1', profile: 'prod-db' });
+    expect(loadDatabaseAccessSetup({ ...REQUIRED, DB_ACCESS_PROFILE: 'bad name!' })).toEqual({
+      ready: false,
+      problems: ['DB_ACCESS_PROFILE'],
     });
   });
 });

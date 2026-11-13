@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-11-13
+
+- Send people their database connect steps in one click: open a grant's guide and use **Copy for Slack**, **Copy as text** or **Share…**.
+
 ## [0.20.1] - 2026-11-13
 
 - Set database access up through Terraform: put the `DB_ACCESS_*` values in `database_access_settings` and run `terraform apply`.

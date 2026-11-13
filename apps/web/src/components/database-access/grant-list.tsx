@@ -20,7 +20,7 @@ import { Time } from '@/components/ui/time';
 import { apiSendForJson } from '@/lib/browser-api';
 import { progressOf, STATUS_LABELS, timeLeft } from '@/lib/database-access';
 import { CodeField } from './code-field';
-import { ConnectInstructions } from './connect-instructions';
+import { ConnectGuide } from './connect-guide';
 import { HoursSelect } from './hours-select';
 
 const TICK_MS = 30_000;
@@ -111,7 +111,6 @@ function GrantRow({
   now: number;
   connect: DatabaseAccessConnect | null;
 }) {
-  const [showSteps, setShowSteps] = useState(false);
   const left = timeLeft(grant.expiresAt, now);
   const progress = progressOf(grant);
   const changeable = grant.status === 'active' && !grant.change;
@@ -119,7 +118,19 @@ function GrantRow({
     <li className="flex flex-col gap-3 px-5 py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5 text-[13px]">
-          <span className="break-all text-sm font-medium">{grant.userName}</span>
+          {grant.status === 'active' && connect ? (
+            <ConnectGuide
+              grant={grant}
+              connect={connect}
+              trigger={
+                <button type="button" className="w-fit break-all text-left text-sm font-medium hover:underline">
+                  {grant.userName}
+                </button>
+              }
+            />
+          ) : (
+            <span className="break-all text-sm font-medium">{grant.userName}</span>
+          )}
           <span className="text-muted-foreground">
             Granted by {grant.grantedBy} · {grant.reason}
           </span>
@@ -133,9 +144,15 @@ function GrantRow({
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={grant.status === 'active' ? 'success' : 'warning'}>{STATUS_LABELS[grant.status]}</Badge>
           {grant.status === 'active' && connect && (
-            <Button size="sm" variant="ghost" onClick={() => setShowSteps(!showSteps)}>
-              {showSteps ? 'Hide steps' : 'How to connect'}
-            </Button>
+            <ConnectGuide
+              grant={grant}
+              connect={connect}
+              trigger={
+                <Button size="sm" variant="ghost">
+                  How to connect
+                </Button>
+              }
+            />
           )}
           {changeable && (
             <>
@@ -145,7 +162,6 @@ function GrantRow({
           )}
         </div>
       </div>
-      {showSteps && connect && <ConnectInstructions connect={connect} />}
     </li>
   );
 }

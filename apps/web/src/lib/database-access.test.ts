@@ -1,18 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { connectSteps, endingOf, progressOf, timeLeft } from './database-access';
-
-const connect = {
-  ssoStartUrl: 'https://example.awsapps.com/start',
-  accountId: '111111111111',
-  roleName: 'ProductionDatabaseReadOnly',
-  region: 'eu-central-1',
-  tunnelInstanceId: 'i-0abc',
-  readerEndpoint: 'db.cluster-ro-x.eu-central-1.rds.amazonaws.com',
-  port: 5432,
-  localPort: 15432,
-  database: 'game',
-  user: 'readonly_access',
-};
+import { canShare, endingOf, progressOf, timeLeft } from './database-access';
 
 describe('timeLeft', () => {
   const now = Date.parse('2026-11-13T10:00:00Z');
@@ -24,15 +11,14 @@ describe('timeLeft', () => {
   });
 });
 
-describe('connectSteps', () => {
-  it('builds the tunnel and token commands from the settings', () => {
-    const steps = connectSteps(connect);
-    expect(steps.map(({ title }) => title)).toHaveLength(4);
-    expect(steps[1]?.command).toContain(
-      '--target i-0abc --document-name AWS-StartPortForwardingSessionToRemoteHost --parameters host=db.cluster-ro-x.eu-central-1.rds.amazonaws.com,portNumber=5432,localPortNumber=15432',
-    );
-    expect(steps[2]?.command).toContain('--username readonly_access --region eu-central-1');
-    expect(steps[3]?.text).toContain('port 15432, database game, user readonly_access');
+describe('canShare', () => {
+  it('offers the share sheet only where the browser has one that takes text', () => {
+    const share = () => Promise.resolve();
+    expect(canShare({ share, canShare: () => true })).toBe(true);
+    expect(canShare({ share, canShare: () => false })).toBe(false);
+    expect(canShare({ share } as never)).toBe(true);
+    expect(canShare({} as never)).toBe(false);
+    expect(canShare(undefined)).toBe(false);
   });
 });
 

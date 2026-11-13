@@ -13,6 +13,16 @@ const schema = z.object({
   DB_ACCESS_REVOKE_STATE_MACHINE_ARN: stateMachine,
   DB_ACCESS_SCHEDULE_GROUP: z.string().regex(/^[\w.-]{1,64}$/),
   DB_ACCESS_SSO_START_URL: optional.pipe(z.url().optional()),
+  DB_ACCESS_SSO_REGION: optional.pipe(
+    z
+      .string()
+      .regex(/^[a-z]{2}-[a-z]+-\d$/)
+      .optional(),
+  ),
+  DB_ACCESS_PROFILE: z
+    .string()
+    .regex(/^[\w-]{1,64}$/)
+    .default('production-db'),
   DB_ACCESS_ROLE_NAME: z.string().min(1).default('ProductionDatabaseReadOnly'),
   DB_ACCESS_TUNNEL_INSTANCE_ID: optional.pipe(
     z
@@ -28,6 +38,8 @@ const schema = z.object({
 
 export interface DatabaseAccessConnectSettings {
   ssoStartUrl: string;
+  ssoRegion: string;
+  profile: string;
   roleName: string;
   tunnelInstanceId: string;
   readerEndpoint: string;
@@ -87,6 +99,8 @@ export const loadDatabaseAccessSetup = (env: NodeJS.ProcessEnv): DatabaseAccessS
           ? null
           : {
               ssoStartUrl: value.DB_ACCESS_SSO_START_URL ?? '',
+              ssoRegion: value.DB_ACCESS_SSO_REGION ?? region,
+              profile: value.DB_ACCESS_PROFILE,
               roleName: value.DB_ACCESS_ROLE_NAME,
               tunnelInstanceId: value.DB_ACCESS_TUNNEL_INSTANCE_ID ?? '',
               readerEndpoint: value.DB_ACCESS_READER_ENDPOINT ?? '',
