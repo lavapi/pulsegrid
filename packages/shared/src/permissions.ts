@@ -20,13 +20,20 @@ export const STAGING_PERMISSIONS = {
   'secret.write': { label: 'Write staging app secrets', production: 'Write production app secrets' },
 } as const;
 
+/** Permissions that exist only for production, with no staging twin. */
+export const PRODUCTION_ONLY_PERMISSIONS = {
+  'production.database_access.grant': { label: 'Grant production database access' },
+} as const;
+
 export type WorkspacePermission = keyof typeof WORKSPACE_PERMISSIONS;
+
+export type ProductionOnlyPermission = keyof typeof PRODUCTION_ONLY_PERMISSIONS;
 
 export type StagingPermission = keyof typeof STAGING_PERMISSIONS;
 
 export type ProductionPermission = `production.${StagingPermission}`;
 
-export type UserPermission = WorkspacePermission | StagingPermission | ProductionPermission;
+export type UserPermission = WorkspacePermission | StagingPermission | ProductionPermission | ProductionOnlyPermission;
 
 export const productionPermission = (permission: StagingPermission): ProductionPermission =>
   `production.${permission}`;
@@ -37,17 +44,19 @@ export const permissionFor = (permission: StagingPermission, production: boolean
 
 const STAGING_KEYS = Object.keys(STAGING_PERMISSIONS) as StagingPermission[];
 const WORKSPACE_KEYS = Object.keys(WORKSPACE_PERMISSIONS) as WorkspacePermission[];
+const PRODUCTION_ONLY_KEYS = Object.keys(PRODUCTION_ONLY_PERMISSIONS) as ProductionOnlyPermission[];
 
 const LABELS = new Map<UserPermission, string>([
   ...WORKSPACE_KEYS.map((key) => [key, WORKSPACE_PERMISSIONS[key].label] as const),
   ...STAGING_KEYS.map((key) => [key, STAGING_PERMISSIONS[key].label] as const),
   ...STAGING_KEYS.map((key) => [productionPermission(key), STAGING_PERMISSIONS[key].production] as const),
+  ...PRODUCTION_ONLY_KEYS.map((key) => [key, PRODUCTION_ONLY_PERMISSIONS[key].label] as const),
 ]);
 
 export const PERMISSION_GROUPS: readonly { title: string; permissions: readonly UserPermission[] }[] = [
   { title: 'Workspace', permissions: WORKSPACE_KEYS },
   { title: 'Staging', permissions: STAGING_KEYS },
-  { title: 'Production', permissions: STAGING_KEYS.map(productionPermission) },
+  { title: 'Production', permissions: [...STAGING_KEYS.map(productionPermission), ...PRODUCTION_ONLY_KEYS] },
 ];
 
 export const USER_PERMISSIONS: readonly UserPermission[] = PERMISSION_GROUPS.flatMap(

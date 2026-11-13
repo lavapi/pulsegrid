@@ -74,6 +74,8 @@ Each row is two permissions in **Roles**: the staging one shown here, and the sa
 | Read staging app secrets | Shows a secret's keys, and a value when you select **Show**. |
 | Write staging app secrets | Also adds, edits and deletes keys, and includes reading. |
 
+**Grant production database access** exists only for production. It gives people read-only access to the production database for a set time, from **Settings > Database access**. See [Production database access](database-access.md).
+
 The buttons appear on a resource's page in Infrastructure. Every action is recorded in the audit log with the person who ran it, because AWS only sees the shared key.
 
 ### Progress

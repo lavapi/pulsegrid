@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Give someone read-only access to the production database for a few hours, from **Settings > Database access**. It ends on its own and can be extended or revoked. It runs the database access workflows in AWS; see docs/database-access.md for the settings and the statement to add to the Production key. Run `pnpm db:migrate` and give the new **Grant production database access** permission.
 - When the dashboard shares a load balancer behind a CDN, it can require the CDN's secret header, so requests that skip the CDN never reach it.
 
 ## [0.19.0] - 2026-11-11
