@@ -31,6 +31,10 @@ export interface OutsideDatabaseAccess {
 
 export interface DatabaseAccessConnect {
   ssoStartUrl: string;
+  /** Where IAM Identity Center runs, for the SSO session in the person's AWS config. */
+  ssoRegion: string;
+  /** The AWS CLI profile name the steps use. */
+  profile: string;
   accountId: string;
   roleName: string;
   region: string;

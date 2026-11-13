@@ -33,13 +33,13 @@ A person can have one active grant at a time; to give more time, extend it.
 
 ## Connecting
 
-**How to connect** on an active grant shows the steps to send the person, with commands to copy:
+Click a person's name on an active grant, or **How to connect**, to see their step-by-step guide:
 
-1. `aws configure sso` for the Production account and the read-only role, then `aws sso login`.
-2. Open the tunnel and keep it running:
-   `aws ssm start-session --target <tunnel instance> --document-name AWS-StartPortForwardingSessionToRemoteHost --parameters host=<reader endpoint>,portNumber=5432,localPortNumber=15432`
-3. Get a password token: `aws rds generate-db-auth-token --hostname <reader endpoint> --port 5432 --username readonly_access --region <region>`
-4. In Navicat or DBeaver: host `localhost`, port `15432`, the database, user `readonly_access`, the token as the password, SSL mode `require`. A token opens connections for 15 minutes; connections already open last until the grant ends.
+1. **One-time setup:** install the AWS CLI and the Session Manager plugin, and add an SSO session and a profile for the read-only role to `~/.aws/config`.
+2. **Each time:** `aws sso login`, then open the Session Manager tunnel to the reader endpoint on `localhost:15432`, then get a password token with `aws rds generate-db-auth-token`.
+3. **The database client:** DBeaver or Navicat settings: `localhost`, port `15432`, the database, user `readonly_access`, the token as the password, SSL mode `require`.
+
+Every command and value has a copy button. To send the guide, use **Copy for Slack** (bold headings and code blocks that paste cleanly into a message), **Copy as text** for other messengers and email, or **Share…** to open the system share sheet where the browser has one. The guide has the person's end time in UTC, and no passwords, tokens or links.
 
 ## The Production key
 
@@ -89,6 +89,8 @@ Set these on the API and the worker. With PulseGrid's Terraform, put them in `da
 | `DB_ACCESS_TUNNEL_INSTANCE_ID` | The Session Manager tunnel server. |
 | `DB_ACCESS_READER_ENDPOINT` | The database reader endpoint. |
 | `DB_ACCESS_DATABASE` | The database name. |
+| `DB_ACCESS_SSO_REGION` | Optional. The region IAM Identity Center runs in, if it isn't the workflows' region. |
+| `DB_ACCESS_PROFILE` | Optional. The AWS CLI profile name the guide uses. Default `production-db`. |
 | `DB_ACCESS_ROLE_NAME` | Optional. The role people pick in `aws configure sso`. Default `ProductionDatabaseReadOnly`. |
 | `DB_ACCESS_DB_USER` | Optional. The shared database user. Default `readonly_access`. |
 | `DB_ACCESS_PORT` | Optional. The database port. Default `5432`. |

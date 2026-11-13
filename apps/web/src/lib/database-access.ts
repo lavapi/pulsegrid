@@ -1,4 +1,4 @@
-import type { DatabaseAccessConnect, DatabaseAccessGrant } from '@pulsegrid/shared';
+import type { DatabaseAccessGrant } from '@pulsegrid/shared';
 
 const MS_PER_MINUTE = 60_000;
 
@@ -40,30 +40,7 @@ export const endingOf = ({ status, endReason, revokedBy, failure }: DatabaseAcce
   return `${how}${revokedBy ? ` by ${revokedBy}` : ''}${failure ? `. ${failure}` : ''}`;
 };
 
-export interface ConnectStep {
-  title: string;
-  text?: string;
-  command?: string;
-}
-
-/** What the person runs to connect: sign in with SSO, open the tunnel, get a token, then point their client at it. */
-export const connectSteps = (connect: DatabaseAccessConnect, profile = 'production-db'): ConnectStep[] => [
-  {
-    title: 'Set up and sign in to AWS',
-    text: `Run once, choosing account ${connect.accountId} and role ${connect.roleName}, and name the profile ${profile}. SSO start URL: ${connect.ssoStartUrl}, region ${connect.region}.`,
-    command: `aws configure sso --profile ${profile}\naws sso login --profile ${profile}`,
-  },
-  {
-    title: 'Open the tunnel and keep it running',
-    command: `aws ssm start-session --profile ${profile} --region ${connect.region} --target ${connect.tunnelInstanceId} --document-name AWS-StartPortForwardingSessionToRemoteHost --parameters host=${connect.readerEndpoint},portNumber=${connect.port},localPortNumber=${connect.localPort}`,
-  },
-  {
-    title: 'Get a password token',
-    text: 'In a second terminal. A token opens connections for 15 minutes; connections already open stay up until access ends.',
-    command: `aws rds generate-db-auth-token --profile ${profile} --hostname ${connect.readerEndpoint} --port ${connect.port} --username ${connect.user} --region ${connect.region}`,
-  },
-  {
-    title: 'Connect with Navicat or DBeaver',
-    text: `Host localhost, port ${connect.localPort}, database ${connect.database}, user ${connect.user}, password: the token, SSL mode require.`,
-  },
-];
+/** Whether the browser can open the system share sheet with text. */
+export const canShare = (navigator: Pick<Navigator, 'share' | 'canShare'> | undefined): boolean =>
+  typeof navigator?.share === 'function' &&
+  (typeof navigator.canShare !== 'function' || navigator.canShare({ text: 'x' }));

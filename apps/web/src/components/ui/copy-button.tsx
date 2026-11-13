@@ -7,7 +7,8 @@ import { Button } from './button';
 
 const RESET_MS = 1500;
 
-export function CopyButton({ value, label }: { value: string; label: string }) {
+/** Copies the value. With `showLabel`, the label is shown beside the icon instead of only read out. */
+export function CopyButton({ value, label, showLabel = false }: { value: string; label: string; showLabel?: boolean }) {
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -20,9 +21,15 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
     }
   };
 
-  return (
+  const icon = copied ? <Check className="text-success" /> : <Copy />;
+  return showLabel ? (
+    <Button size="sm" onClick={copy}>
+      {icon}
+      {copied ? 'Copied' : label}
+    </Button>
+  ) : (
     <Button variant="ghost" size="sm" className="size-7 p-0" aria-label={label} onClick={copy}>
-      {copied ? <Check className="text-success" /> : <Copy />}
+      {icon}
     </Button>
   );
 }
