@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Give ECS, EC2 and RDS resources friendly names, such as **Frontend** for `jack-mike-one`, with **Rename** on the resource's page. Nothing changes in AWS. Run `pnpm db:migrate`.
+
 ## [0.21.0] - 2026-11-13
 
 - Send people their database connect steps in one click: open a grant's guide and use **Copy for Slack**, **Copy as text** or **Share…**.

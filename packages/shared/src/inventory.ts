@@ -35,6 +35,23 @@ export const resourceTypeLabel = (type: ResourceType): string => {
 export const resourcePath = (resource: { id: string; type: ResourceType }): string =>
   `/infrastructure/${categoryOf(resource.type)}/${resource.id}`;
 
+/** The resource types that can be given a display name. */
+export const RENAMABLE_TYPES: readonly ResourceType[] = [
+  'ecs-cluster',
+  'ecs-service',
+  'ec2-instance',
+  'rds-cluster',
+  'rds-instance',
+];
+
+export const isRenamable = (type: ResourceType): boolean => RENAMABLE_TYPES.includes(type);
+
+export const DISPLAY_NAME_MAX_LENGTH = 80;
+
+/** The name to show: the display name given in PulseGrid, or the cloud's name. */
+export const shownName = ({ name, displayName }: { name: string; displayName?: string | null }): string =>
+  displayName || name;
+
 export const isResourceType = (value: string): value is ResourceType => value in RESOURCE_TYPES;
 
 export const RESOURCE_HEALTH = ['healthy', 'degraded', 'stopped', 'unknown'] as const;
@@ -92,7 +109,10 @@ export interface Resource {
   id: string;
   type: ResourceType;
   nativeId: string;
+  /** The name in the cloud. */
   name: string;
+  /** A name given in PulseGrid, shown in its place; null when none was given. */
+  displayName: string | null;
   status: string;
   health: ResourceHealth;
   region: string;

@@ -69,6 +69,7 @@ export interface ExperimentStepState extends ExperimentStep {
 export interface ExperimentResource {
   id: string;
   name: string;
+  displayName: string | null;
   type: ResourceType;
   path: string;
 }

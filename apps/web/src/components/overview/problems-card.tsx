@@ -1,4 +1,4 @@
-import { type Resource, resourcePath, resourceTypeLabel } from '@pulsegrid/shared';
+import { type Resource, resourcePath, resourceTypeLabel, shownName } from '@pulsegrid/shared';
 import Link from 'next/link';
 import { HealthBadge } from '@/components/health-badge';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -15,8 +15,11 @@ export function ProblemsCard({ resources }: { resources: Resource[] }) {
               className="flex items-center justify-between gap-3 px-5 py-2.5 transition-colors hover:bg-muted"
             >
               <span className="min-w-0">
-                <span className="block truncate text-[13px] font-medium">{resource.name}</span>
-                <span className="block text-xs text-muted-foreground">{resourceTypeLabel(resource.type)}</span>
+                <span className="block truncate text-[13px] font-medium">{shownName(resource)}</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {resourceTypeLabel(resource.type)}
+                  {resource.displayName && ` · ${resource.name}`}
+                </span>
               </span>
               <HealthBadge health={resource.health} status={resource.status} />
             </Link>

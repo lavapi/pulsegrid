@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { ConfirmButton } from '@/components/ui/confirm-button';
 import { apiSend } from '@/lib/browser-api';
 
-export function RemoveLinkButton({ release: { id, appName, serviceName } }: { release: Release }) {
+export function RemoveLinkButton({ release: { id, appName, serviceName, serviceDisplayName } }: { release: Release }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -26,7 +26,7 @@ export function RemoveLinkButton({ release: { id, appName, serviceName } }: { re
   return (
     <ConfirmButton
       label="Remove"
-      title={`Remove ${appName} to ${serviceName}?`}
+      title={`Remove ${appName} to ${serviceDisplayName ?? serviceName}?`}
       description="This only removes it from Releases. Nothing changes on GitHub or AWS."
       confirmLabel="Remove"
       disabled={pending}

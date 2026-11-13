@@ -31,7 +31,7 @@ const toAuditEvent = (row: {
   ip_address: string | null;
   metadata: Record<string, unknown>;
   occurred_at: Date;
-}): AuditEvent => ({
+}, displayNames: ReadonlyMap<string, string>): AuditEvent => ({
   id: row.id,
   action: row.action,
   actorEmail: row.actor_email,
@@ -40,7 +40,39 @@ const toAuditEvent = (row: {
   ipAddress: row.ip_address,
   metadata: row.metadata,
   occurredAt: row.occurred_at.toISOString(),
+  targetDisplayName:
+    (row.target_type === RESOURCE_TARGET && row.target_id && displayNames.get(row.target_id)) || null,
 });
+
+const RESOURCE_TARGET = 'resource';
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+type TargetRow = { target_type: string | null; target_id: string | null };
+
+/** The current display names of the resources events are about, so old entries show today's names. */
+const displayNamesOf = async (trx: TenantTransaction, rows: readonly TargetRow[]) => {
+  const ids = [
+    ...new Set(
+      rows.flatMap(({ target_type: type, target_id: id }) =>
+        type === RESOURCE_TARGET && id && UUID.test(id) ? [id] : [],
+      ),
+    ),
+  ];
+  if (ids.length === 0) {
+    return new Map<string, string>();
+  }
+  const named = await trx
+    .selectFrom('resources')
+    .innerJoin('resource_display_names', (join) =>
+      join
+        .onRef('resource_display_names.cloud_account_id', '=', 'resources.cloud_account_id')
+        .onRef('resource_display_names.native_id', '=', 'resources.native_id'),
+    )
+    .select(['resources.id', 'resource_display_names.display_name'])
+    .where('resources.id', 'in', ids)
+    .execute();
+  return new Map(named.map(({ id, display_name: displayName }) => [id, displayName]));
+};
 
 @Injectable()
 export class AuditService {
@@ -98,8 +130,9 @@ export class AuditService {
 
     const rows = await query.execute();
     const page = rows.slice(0, limit);
+    const displayNames = await displayNamesOf(trx, page);
     return {
-      events: page.map(toAuditEvent),
+      events: page.map((row) => toAuditEvent(row, displayNames)),
       nextCursor: rows.length > limit ? (page.at(-1)?.id ?? null) : null,
     };
   }

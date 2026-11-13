@@ -1,4 +1,4 @@
-import { type ActionRun, type Resource, resourcePath } from '@pulsegrid/shared';
+import { type ActionRun, type Resource, resourcePath, shownName } from '@pulsegrid/shared';
 import Link from 'next/link';
 import { startedByLabel, STATUS_VIEWS } from '@/lib/action-status';
 import { RelativeTime } from '@/components/pipelines/relative-time';
@@ -23,7 +23,7 @@ export function WorkInProgressCard({ items }: { items: WorkInProgress[] }) {
             >
               <span className="min-w-0">
                 <span className="block truncate text-[13px] font-medium">
-                  {run.title}: {resource.name}
+                  {run.title}: {shownName(resource)}
                 </span>
                 <span className="block truncate text-xs text-muted-foreground">
                   {startedByLabel(run)} · <RelativeTime value={run.startedAt} />

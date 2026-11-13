@@ -12,10 +12,21 @@ export const knownResources = async (
   }
   const rows = await trx
     .selectFrom('resources')
-    .select(['id', 'name', 'type'])
-    .where('cloud_account_id', '=', accountId)
-    .where('native_id', 'in', [...new Set(nativeIds)])
-    .orderBy('name')
+    .leftJoin('resource_display_names', (join) =>
+      join
+        .onRef('resource_display_names.cloud_account_id', '=', 'resources.cloud_account_id')
+        .onRef('resource_display_names.native_id', '=', 'resources.native_id'),
+    )
+    .select(['resources.id', 'resources.name', 'resources.type', 'resource_display_names.display_name'])
+    .where('resources.cloud_account_id', '=', accountId)
+    .where('resources.native_id', 'in', [...new Set(nativeIds)])
+    .orderBy('resources.name')
     .execute();
-  return rows.map(({ id, name, type }) => ({ id, name, type, path: `/infrastructure/${categoryOf(type)}/${id}` }));
+  return rows.map(({ id, name, type, display_name: displayName }) => ({
+    id,
+    name,
+    displayName,
+    type,
+    path: `/infrastructure/${categoryOf(type)}/${id}`,
+  }));
 };

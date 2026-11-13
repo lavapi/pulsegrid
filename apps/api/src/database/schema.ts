@@ -246,6 +246,15 @@ export interface DatabaseAccessGrantsTable {
   updated_at: ColumnType<Date, Date | undefined, Date>;
 }
 
+export interface ResourceDisplayNamesTable {
+  tenant_id: string;
+  cloud_account_id: string;
+  native_id: string;
+  display_name: string;
+  updated_by_email: string | null;
+  updated_at: ColumnType<Date, Date | undefined, Date>;
+}
+
 export interface CloudAccountsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -297,6 +306,7 @@ export interface ResourcesTable {
 
 export interface Database {
   tenants: TenantsTable;
+  resource_display_names: ResourceDisplayNamesTable;
   database_access_grants: DatabaseAccessGrantsTable;
   accounts: AccountsTable;
   account_identities: AccountIdentitiesTable;
