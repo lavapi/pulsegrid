@@ -59,3 +59,14 @@ variable "service_desired_count" {
   type        = number
   default     = 1
 }
+
+variable "database_access_settings" {
+  description = "DB_ACCESS_* settings for production database access, passed to the API and worker. See docs/database-access.md."
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition     = alltrue([for name in keys(var.database_access_settings) : startswith(name, "DB_ACCESS_")])
+    error_message = "Every key in database_access_settings must start with DB_ACCESS_."
+  }
+}

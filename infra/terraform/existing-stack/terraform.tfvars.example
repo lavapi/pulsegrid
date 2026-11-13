@@ -9,3 +9,14 @@ listener_rule_priority  = 900
 
 # Require a secret header set by the CDN in front of the load balancer (value in Secrets Manager).
 # origin_header = { secret_id = "my-origin-auth" }
+
+# Production database access (docs/database-access.md). Leave out to keep the feature off.
+# database_access_settings = {
+#   DB_ACCESS_GRANT_STATE_MACHINE_ARN  = "arn:aws:states:<region>:<production-account>:stateMachine:<grant-workflow>"
+#   DB_ACCESS_REVOKE_STATE_MACHINE_ARN = "arn:aws:states:<region>:<production-account>:stateMachine:<revoke-workflow>"
+#   DB_ACCESS_SCHEDULE_GROUP           = "<schedule-group>"
+#   DB_ACCESS_DATABASE                 = "<database>"
+#   DB_ACCESS_SSO_START_URL            = "https://<your-org>.awsapps.com/start"
+#   DB_ACCESS_TUNNEL_INSTANCE_ID       = "i-..."
+#   DB_ACCESS_READER_ENDPOINT          = "<cluster>.cluster-ro-<id>.<region>.rds.amazonaws.com"
+# }

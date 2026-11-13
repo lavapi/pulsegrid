@@ -57,6 +57,17 @@ variable "redis_cluster" {
   default     = false
 }
 
+variable "database_access_settings" {
+  description = "DB_ACCESS_* settings for production database access, passed to the API and worker. See docs/database-access.md."
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition     = alltrue([for name in keys(var.database_access_settings) : startswith(name, "DB_ACCESS_")])
+    error_message = "Every key in database_access_settings must start with DB_ACCESS_."
+  }
+}
+
 resource "aws_security_group" "tasks" {
   name_prefix = "${var.name}-tasks-"
   vpc_id      = var.vpc_id
@@ -79,10 +90,10 @@ resource "aws_ecs_cluster" "main" {
 locals {
   api_image = "${var.image_repository}-api:${var.app_version}"
   web_image = "${var.image_repository}-web:${var.app_version}"
-  app_environment = {
+  app_environment = merge(var.database_access_settings, {
     PUBLIC_URL    = var.public_url
     REDIS_CLUSTER = tostring(var.redis_cluster)
-  }
+  })
   app_secrets = {
     DATABASE_URL         = "${var.secret_arn}:DATABASE_URL::"
     REDIS_URL            = "${var.secret_arn}:REDIS_URL::"

@@ -42,20 +42,21 @@ module "secrets" {
 }
 
 module "app" {
-  source                = "../modules/app"
-  name                  = var.name
-  region                = var.region
-  vpc_id                = data.aws_lb.existing.vpc_id
-  subnet_ids            = var.subnet_ids
-  alb_security_group_id = local.alb_security_group_id
-  public_url            = local.public_url
-  assign_public_ip      = false
-  image_repository      = var.image_repository
-  app_version           = var.app_version
-  desired_count         = var.desired_count
-  secret_arn            = module.secrets.secret_arn
-  listener_rules        = [aws_lb_listener_rule.api.arn, aws_lb_listener_rule.web.arn]
-  redis_cluster         = local.cache_cluster
+  source                   = "../modules/app"
+  name                     = var.name
+  region                   = var.region
+  vpc_id                   = data.aws_lb.existing.vpc_id
+  subnet_ids               = var.subnet_ids
+  alb_security_group_id    = local.alb_security_group_id
+  public_url               = local.public_url
+  assign_public_ip         = false
+  image_repository         = var.image_repository
+  app_version              = var.app_version
+  desired_count            = var.desired_count
+  secret_arn               = module.secrets.secret_arn
+  listener_rules           = [aws_lb_listener_rule.api.arn, aws_lb_listener_rule.web.arn]
+  redis_cluster            = local.cache_cluster
+  database_access_settings = var.database_access_settings
 }
 
 resource "aws_vpc_security_group_egress_rule" "alb_to_tasks" {

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Set database access up through Terraform: put the `DB_ACCESS_*` values in `database_access_settings` and run `terraform apply`.
+
 ## [0.20.0] - 2026-11-13
 
 - Give someone read-only access to the production database for a few hours, from **Settings > Database access**. It ends on its own and can be extended or revoked. It runs the database access workflows in AWS; see docs/database-access.md for the settings and the statement to add to the Production key. Run `pnpm db:migrate` and give the new **Grant production database access** permission.
