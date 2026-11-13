@@ -78,7 +78,7 @@ PulseGrid calls the workflows with the access key it already stores for the Prod
 
 ## Settings
 
-Set these on the API and the worker. Without the first three, the page lists which are missing to people with the permission, and nothing else changes. The account and region are read from the workflow ARNs.
+Set these on the API and the worker. With PulseGrid's Terraform, put them in `database_access_settings` in your tfvars and run `terraform apply`; the API and worker restart with them (see the commented example in `terraform.tfvars.example`). Only keys starting with `DB_ACCESS_` are accepted there. Without the first three, the page lists which are missing to people with the permission, and nothing else changes. The account and region are read from the workflow ARNs.
 
 | Setting | Value |
 |---|---|
