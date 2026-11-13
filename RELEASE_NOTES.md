@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- When the dashboard shares a load balancer behind a CDN, it can require the CDN's secret header, so requests that skip the CDN never reach it.
+
 ## [0.19.0] - 2026-11-11
 
 - Read load balancer requests and database query activity in PulseGrid. Load balancer pages have a Request log with filters and a summary of errors, response times and the busiest paths. Database pages show the busiest statements from Performance Insights, the PostgreSQL log and slow queries. Query strings and values in statements stay hidden unless you have the new **See query strings and values in logs** permission.

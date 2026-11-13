@@ -112,6 +112,24 @@ resource "aws_lb_listener_rule" "api" {
       }
     }
   }
+
+  dynamic "condition" {
+    for_each = local.origin_header_name == null ? [] : [local.origin_header_name]
+
+    content {
+      http_header {
+        http_header_name = condition.value
+        values           = local.origin_header_values
+      }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = 2 + length(var.allowed_cidrs) + local.origin_header_value_count <= 5
+      error_message = "The api rule would exceed the load balancer's five condition values: fewer allowed_cidrs or origin header values."
+    }
+  }
 }
 
 resource "aws_lb_listener_rule" "web" {
@@ -136,6 +154,24 @@ resource "aws_lb_listener_rule" "web" {
       source_ip {
         values = condition.value
       }
+    }
+  }
+
+  dynamic "condition" {
+    for_each = local.origin_header_name == null ? [] : [local.origin_header_name]
+
+    content {
+      http_header {
+        http_header_name = condition.value
+        values           = local.origin_header_values
+      }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = 1 + length(var.allowed_cidrs) + local.origin_header_value_count <= 5
+      error_message = "The web rule would exceed the load balancer's five condition values: fewer allowed_cidrs or origin header values."
     }
   }
 }
