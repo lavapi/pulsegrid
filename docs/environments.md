@@ -8,7 +8,7 @@ Environments and Compare work across accounts, so they do not follow the account
 
 Connected accounts are checked once by name. Names containing words like `prod`, `staging`, `dev` or `uat` are grouped into Production, Staging, Development or QA. Other accounts, such as Audit or Backup, are left out until an admin assigns them.
 
-Admins can rename, add or remove environments under **Manage environments**, and move accounts between them. A manual choice is kept. Removing an environment keeps its accounts and their data.
+Admins can rename, add or remove environments under **Manage environments**, and move accounts between them. The same permission gives ECS, EC2 and RDS resources display names; see [Display names](connect-aws-account.md#display-names). A manual choice is kept. Removing an environment keeps its accounts and their data.
 
 ## Production
 

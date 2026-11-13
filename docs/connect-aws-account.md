@@ -148,6 +148,14 @@ An account that already has data but no key shows **Needs credentials**. It keep
 
 Overview shows the health of the selected account: problems, resource counts, work in progress, running pipelines and failures from the last 24 hours. It refreshes itself. If an account hasn't synced recently, it warns you rather than showing healthy. A stopped resource isn't a problem, because it may be off on purpose. Status comes from AWS, so Overview can't tell whether an application is responding.
 
+## Display names
+
+ECS clusters and services, EC2 servers, and RDS clusters and instances can have a display name in PulseGrid, such as **Frontend** for a cluster called `jack-mike-one`. Select **Rename** under the name on the resource's page. The display name is shown everywhere PulseGrid shows the resource: lists and cards, search, the map, Overview, Environments, Releases, failover test reports and Activity. The AWS name stays visible beside it, and search finds either.
+
+Display names live only in PulseGrid; nothing changes in AWS, so they need no extra permission on the key. A display name follows the resource's ARN, so syncs, redeploys, and a resource being deleted and recreated with the same ARN keep it. Older entries, such as past Activity and test reports, show the current display name with the name the resource had at the time. Each project names resources on its own.
+
+Renaming needs **Manage environments**. **Reset to AWS name** removes a display name. Every change is recorded in Activity with the old and new names.
+
 ## Filter resources by tag
 
 When you add or edit an account, **Tag filters** choose which resources appear. Include rules keep only resources matching any rule, and exclude rules remove matching resources. Exclude always wins. A rule is a tag key with a value, or just a key to match any value. With no rules, everything appears.

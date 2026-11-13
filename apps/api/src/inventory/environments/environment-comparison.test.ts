@@ -8,6 +8,7 @@ const resource = (
   id: name,
   type: 'rds-instance',
   name,
+  displayName: null,
   status: 'available',
   health: 'healthy',
   details: { engine: 'postgres', engineVersion: '16.1', instanceClass: 'db.t4g.small' },

@@ -1,4 +1,4 @@
-import { type ExperimentResource, type LoadWindow, type RunResult, supportsLoad } from '@pulsegrid/shared';
+import { type ExperimentResource, type LoadWindow, type RunResult, shownName, supportsLoad } from '@pulsegrid/shared';
 import { ResourceLoad } from '@/components/infrastructure/load/resource-load';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Time } from '@/components/ui/time';
@@ -105,7 +105,7 @@ export function ReportLoads({
         <ResourceLoad
           key={resource.id}
           resourceId={resource.id}
-          title={`Load · ${resource.name}`}
+          title={`Load · ${shownName(resource)}`}
           timeWindow={timeWindow}
         />
       ))}

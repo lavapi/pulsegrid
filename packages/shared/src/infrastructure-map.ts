@@ -16,7 +16,10 @@ export interface MapNode {
   id: string;
   category: ServiceCategory | 'internet';
   typeLabel: string;
+  /** The name to show: the display name given in PulseGrid, or the cloud's name. */
   name: string;
+  /** The cloud's name, when a display name is shown instead. */
+  awsName: string | null;
   status: string;
   health: ResourceHealth;
   groupId: string | null;

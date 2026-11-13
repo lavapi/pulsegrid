@@ -55,6 +55,7 @@ const otherCloud: CloudProvider = defineProvider<{ token: string }>({
       category: 's3',
       typeLabel: 'Storage',
       name,
+      awsName: null,
       status,
       health,
       groupId: null,

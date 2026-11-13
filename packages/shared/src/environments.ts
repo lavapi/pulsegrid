@@ -47,7 +47,9 @@ export type ComparisonState = (typeof COMPARISON_STATES)[number];
 
 export interface ComparedResource {
   id: string;
+  /** The cloud name, which resources are matched across environments by. */
   name: string;
+  displayName: string | null;
   status: string;
   health: ResourceHealth;
 }

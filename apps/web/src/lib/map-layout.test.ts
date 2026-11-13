@@ -7,6 +7,7 @@ const node = (id: string, category: MapNode['category'], groupId: string | null)
   category,
   typeLabel: id,
   name: id,
+  awsName: null,
   status: '',
   health: 'healthy',
   groupId,

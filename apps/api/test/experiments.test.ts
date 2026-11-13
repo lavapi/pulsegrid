@@ -229,7 +229,7 @@ describe('failover tests', () => {
     const { body } = await http().get(`/api/cloud/accounts/${id}/experiments/${REGION}/EXP2`).set('Cookie', viewer).expect(200);
     expect(body).toMatchObject({ state: 'running', startedBy: 'dev@example.test' });
     expect(body.resources).toEqual([
-      { id: expect.any(String), name: 'staging-db', type: 'rds-instance', path: expect.stringMatching(/^\/infrastructure\/rds\//) },
+      { id: expect.any(String), name: 'staging-db', displayName: null, type: 'rds-instance', path: expect.stringMatching(/^\/infrastructure\/rds\//) },
     ]);
   });
 

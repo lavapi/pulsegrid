@@ -63,9 +63,10 @@ const differencesBetween = (
     return leftValue === rightValue ? [] : [{ field, left: leftValue, right: rightValue }];
   });
 
-const summary = ({ id, name, status, health }: ComparableResource): ComparedResource => ({
+const summary = ({ id, name, displayName, status, health }: ComparableResource): ComparedResource => ({
   id,
   name,
+  displayName,
   status,
   health,
 });

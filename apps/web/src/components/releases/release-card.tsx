@@ -24,7 +24,7 @@ function RunSummary({ release: { pipelineName, run } }: { release: Release }) {
 }
 
 export function ReleaseCard({ release, canManage }: { release: Release; canManage: boolean }) {
-  const { appId, appName, serviceName, environmentName, run, state, stages } = release;
+  const { appId, appName, serviceName, serviceDisplayName, environmentName, run, state, stages } = release;
   const { readyAt, matchedBy, issue, servicePath, appDomains } = release;
   const view = RELEASE_STATES[state];
   return (
@@ -33,7 +33,7 @@ export function ReleaseCard({ release, canManage }: { release: Release; canManag
         <Link href={appPath(appId)} className="text-[15px] font-semibold hover:underline">
           {appName}
         </Link>
-        <span className="text-[13px] text-muted-foreground">to {serviceName}</span>
+        <span className="text-[13px] text-muted-foreground">to {serviceDisplayName ?? serviceName}</span>
         {environmentName && <Badge>{environmentName}</Badge>}
         <Badge tone={view.tone} className="ml-auto">
           {view.label}

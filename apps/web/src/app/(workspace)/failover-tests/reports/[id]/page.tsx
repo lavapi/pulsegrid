@@ -1,4 +1,4 @@
-import { type ExperimentReport, hasPermission } from '@pulsegrid/shared';
+import { type ExperimentReport, hasPermission, shownName } from '@pulsegrid/shared';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Fact, ResultBadge, StepSummary, StopAlarms, TargetList } from '@/components/experiments/experiment-parts';
@@ -102,8 +102,9 @@ export default async function ExperimentReportPage({ params }: { params: Promise
             {report.resources.map((resource) => (
               <li key={resource.id} className="px-5 py-3">
                 <Link href={resource.path} className="font-medium hover:underline">
-                  {resource.name}
+                  {shownName(resource)}
                 </Link>
+                {resource.displayName && <span className="text-muted-foreground"> · {resource.name}</span>}
               </li>
             ))}
           </ul>

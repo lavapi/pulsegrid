@@ -33,6 +33,7 @@ import { RequestLogsService } from './logs/request-logs.service';
 import { ResourceInsightsController } from './logs/resource-insights.controller';
 import { ResourceLogsController } from './logs/resource-logs.controller';
 import { ResourceLogsService } from './logs/resource-logs.service';
+import { DisplayNamesService } from './resources/display-names.service';
 import { ResourceAccess } from './resources/resource-access';
 import { ResourcesController } from './resources/resources.controller';
 import { ResourcesService } from './resources/resources.service';
@@ -75,6 +76,7 @@ import { SyncProgressController } from './sync/sync-progress.controller';
     EnvironmentDomainsService,
     EnvironmentsService,
     ResourceAccess,
+    DisplayNamesService,
     ResourceActionsService,
     ResourceLoadService,
     ResourceLogsService,
