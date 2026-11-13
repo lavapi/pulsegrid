@@ -114,6 +114,17 @@ The services run in public subnets so that no NAT gateway is needed, and they on
 
 To limit who can reach the hostname, set `allowed_cidrs` to up to three addresses. The web app also calls the API through the hostname, so include the public addresses of the NAT gateways, or pages won't load.
 
+If a CDN such as Cloudflare sits in front of the load balancer and sets a secret header on every request, set `origin_header` so the dashboard's rules require it too. Requests that reach the load balancer directly, without the header, then never reach the dashboard:
+
+```hcl
+origin_header = {
+  secret_id = "my-origin-auth" # Secrets Manager secret holding the header value
+  # name      = "X-Origin-Auth"  # the default
+}
+```
+
+The secret holds one value, or two separated by a comma while you rotate it (`old,new`). `NA` in the secret means no check. The rules pick up a new value on the next `terraform apply`. Each rule takes at most five conditions, counting the host, the path, each `allowed_cidrs` address and each header value.
+
 ## Finish setup
 
 1. Open your hostname. The setup wizard asks for a one-time code.

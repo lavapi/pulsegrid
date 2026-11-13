@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- `existing-stack`: `origin_header` (`secret_id`, optional `name`, default `X-Origin-Auth`) makes both listener rules require a header that a CDN in front of the load balancer sets on every request. The value is read from a Secrets Manager secret when Terraform runs: one value, or `old,new` during a rotation; `NA` means no check. Each rule refuses to exceed the load balancer's five condition values (host, path, `allowed_cidrs`, header values).
+
 ## [0.19.0] - 2026-11-11
 
 ### Added
