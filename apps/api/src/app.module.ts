@@ -4,6 +4,7 @@ import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { SlowRequestInterceptor } from './common/slow-request.interceptor';
 import { ConfigModule } from './config/config.module';
+import { DatabaseAccessModule } from './database-access/database-access.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthController } from './health/health.controller';
 import { InventoryModule } from './inventory/inventory.module';
@@ -25,6 +26,7 @@ import { TeamModule } from './team/team.module';
     InventoryModule,
     PipelinesModule,
     ReleasesModule,
+    DatabaseAccessModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_INTERCEPTOR, useClass: SlowRequestInterceptor }],

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ProductionAccountProvider } from '@/lib/production-account';
 import { ProductionNotice, useProductionTarget } from './production-notice';
 
-const production = { name: 'Dreamzino Production' } as CloudAccount;
+const production = { name: 'Acme Production' } as CloudAccount;
 
 function Probe({ warn }: { warn: boolean | string | undefined }) {
   return createElement(ProductionNotice, { target: useProductionTarget(warn) });
@@ -16,7 +16,7 @@ const render = (account: CloudAccount | null, warn: boolean | string | undefined
 
 describe('ProductionNotice', () => {
   it('warns about the selected production account in dialogs that change it', () => {
-    expect(render(production, true)).toContain('Production · Dreamzino Production');
+    expect(render(production, true)).toContain('Production · Acme Production');
   });
 
   it('stays quiet on other accounts and in dialogs that change nothing in the cloud', () => {

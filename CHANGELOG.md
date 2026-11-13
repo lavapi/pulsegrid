@@ -7,6 +7,8 @@ All notable changes to this project are documented in this file. The format is b
 ### Added
 
 - `existing-stack`: `origin_header` (`secret_id`, optional `name`, default `X-Origin-Auth`) makes both listener rules require a header that a CDN in front of the load balancer sets on every request. The value is read from a Secrets Manager secret when Terraform runs: one value, or `old,new` during a rotation; `NA` means no check. Each rule refuses to exceed the load balancer's five condition values (host, path, `allowed_cidrs`, header values).
+- Time-limited, read-only access to the production database from **Settings > Database access**. Enter a person's IAM Identity Center user name, 1 to 8 hours and a reason; PulseGrid starts the grant workflow in the Production account with that account's key and follows the run. Extend runs it again with a new end time; Revoke runs the revoke workflow. Access ends on its own through AWS's own schedule, with a PulseGrid job at the end time as well. A reconcile every 5 minutes shows access granted outside PulseGrid and marks ended grants expired. Workflow errors become readable messages, and the page shows copyable connect steps for the Session Manager tunnel and IAM token.
+- A production-only **Grant production database access** permission. Granting, extending and revoking ask for a fresh authenticator code.
 
 ## [0.19.0] - 2026-11-11
 

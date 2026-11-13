@@ -13,6 +13,7 @@ import { AccountController } from './account.controller';
 import { AccountService } from './account.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { FreshCodeCheck } from './two-factor/fresh-code';
 import { GOOGLE_OAUTH, GoogleOAuthClient } from './google/google-oauth';
 import { GoogleSignInService } from './google/google-sign-in.service';
 import { PermissionGuard } from './guards/permission.guard';
@@ -43,6 +44,7 @@ import { BackupCodeHasher } from './two-factor/backup-code-hasher';
     GoogleSignInService,
     SessionService,
     SetupService,
+    FreshCodeCheck,
     {
       provide: TokenCipher,
       inject: [APP_CONFIG],
@@ -63,6 +65,6 @@ import { BackupCodeHasher } from './two-factor/backup-code-hasher';
     { provide: APP_GUARD, useClass: SessionGuard },
     { provide: APP_GUARD, useClass: PermissionGuard },
   ],
-  exports: [AccountStore, AuthService, SessionService],
+  exports: [AccountStore, AuthService, SessionService, FreshCodeCheck],
 })
 export class AuthModule {}
