@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-11-13
+
 ### Added
 
 - Terraform: `database_access_settings` passes the `DB_ACCESS_*` settings to the API and worker in both stacks. Only keys starting with `DB_ACCESS_` are accepted.
