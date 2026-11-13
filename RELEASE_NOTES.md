@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-13
+
 - Give ECS, EC2 and RDS resources friendly names, such as **Frontend** for `jack-mike-one`, with **Rename** on the resource's page. Nothing changes in AWS. Run `pnpm db:migrate`.
 
 ## [0.21.0] - 2026-11-13
