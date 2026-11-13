@@ -80,3 +80,13 @@ variable "desired_count" {
   type        = number
   default     = 1
 }
+
+variable "origin_header" {
+  description = "Header a CDN in front of the load balancer sets on every request, with its value in a Secrets Manager secret: one value, or two separated by a comma during a rotation. The placeholder value means no check. When a value is set, both listener rules require the header, so requests that bypass the CDN never reach the dashboard. Null: no check."
+  type = object({
+    secret_id   = string
+    name        = optional(string, "X-Origin-Auth")
+    placeholder = optional(string, "NA")
+  })
+  default = null
+}

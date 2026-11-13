@@ -1,8 +1,11 @@
 region                  = "eu-central-1"
 hostname                = "pulsegrid.example.com"
-app_version             = "0.19.0"
+app_version             = "0.20.0"
 load_balancer_name      = "my-load-balancer"
 database_cluster        = "my-aurora-cluster"
 cache_replication_group = "my-cache"
 subnet_ids              = ["subnet-11111111", "subnet-22222222"]
 listener_rule_priority  = 900
+
+# Require a secret header set by the CDN in front of the load balancer (value in Secrets Manager).
+# origin_header = { secret_id = "my-origin-auth" }

@@ -1,6 +1,7 @@
 import type { CurrentUser, UserPermission } from '@pulsegrid/shared';
 import {
   CircleDollarSign,
+  DatabaseZap,
   FlaskConical,
   FolderCog,
   History,
@@ -50,6 +51,12 @@ export const SETTINGS_NAV: NavItem[] = [
   { href: '/settings/team', label: 'Members', icon: Users, permission: 'team.view' },
   { href: '/settings/people', label: 'People', icon: UserRoundCog, superAdminOnly: true },
   { href: '/settings/roles', label: 'Roles', icon: ShieldCheck, permission: 'team.view' },
+  {
+    href: '/settings/database-access',
+    label: 'Database access',
+    icon: DatabaseZap,
+    permission: 'production.database_access.grant',
+  },
 ];
 
 export const allowedNav = (items: NavItem[], { permissions, isOwner }: NavAccess): NavItem[] =>

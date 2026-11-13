@@ -85,6 +85,7 @@ Demo data only goes into a project with no cloud accounts yet. The made-up accou
 - [Sign-in, projects, people and roles](docs/sign-in.md)
 - [Environments](docs/environments.md)
 - [Pipelines](docs/pipelines.md)
+- [Production database access](docs/database-access.md)
 
 ## Contributing and security
 

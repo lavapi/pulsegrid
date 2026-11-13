@@ -216,6 +216,36 @@ export interface GitConnectionsTable {
   created_at: Generated<Date>;
 }
 
+export type DatabaseAccessStatus = 'granting' | 'active' | 'revoked' | 'expired' | 'failed';
+export type DatabaseAccessChange = 'extending' | 'revoking';
+export type DatabaseAccessEndReason = 'manual' | 'expired';
+
+export interface DatabaseAccessGrantsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  granted_by_user_id: string | null;
+  granted_by_email: string;
+  user_name: string;
+  user_id: string | null;
+  reason: string;
+  status: DatabaseAccessStatus;
+  /** A change running in AWS on an active grant. */
+  change: DatabaseAccessChange | null;
+  change_by_email: string | null;
+  /** The workflow run being followed: the grant, or the change. */
+  execution_arn: string | null;
+  /** The end time a grant or extension asked for, until AWS confirms it. */
+  requested_expires_at: Date | null;
+  failure: string | null;
+  starts_at: ColumnType<Date, Date | undefined, Date>;
+  expires_at: Date;
+  revoked_at: Date | null;
+  revoked_by_email: string | null;
+  end_reason: DatabaseAccessEndReason | null;
+  created_at: CreatedAt;
+  updated_at: ColumnType<Date, Date | undefined, Date>;
+}
+
 export interface CloudAccountsTable {
   id: Generated<string>;
   tenant_id: string;
@@ -267,6 +297,7 @@ export interface ResourcesTable {
 
 export interface Database {
   tenants: TenantsTable;
+  database_access_grants: DatabaseAccessGrantsTable;
   accounts: AccountsTable;
   account_identities: AccountIdentitiesTable;
   users: UsersTable;

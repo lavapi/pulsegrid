@@ -34,6 +34,7 @@ import * as experimentReports from './migrations/0032_experiment_reports';
 import * as experimentWaves from './migrations/0033_experiment_waves';
 import * as sequentialRuns from './migrations/0034_sequential_runs';
 import * as sensitiveLogs from './migrations/0035_sensitive_logs';
+import * as databaseAccessGrants from './migrations/0036_database_access_grants';
 
 const MIGRATIONS: Record<string, Migration> = {
   '0001_foundation': foundation,
@@ -71,6 +72,7 @@ const MIGRATIONS: Record<string, Migration> = {
   '0033_experiment_waves': experimentWaves,
   '0034_sequential_runs': sequentialRuns,
   '0035_sensitive_logs': sensitiveLogs,
+  '0036_database_access_grants': databaseAccessGrants,
 };
 
 const ensureAppRole = async (db: Kysely<unknown>, password: string): Promise<void> => {
