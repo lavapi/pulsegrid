@@ -7,6 +7,8 @@ import {
   type ResourceActionOption,
   resourceTypeLabel,
   hasPermission,
+  isRenamable,
+  shownName,
   type SecretView,
   SERVICE_CATEGORIES,
   supportsLoad,
@@ -17,6 +19,7 @@ import { type ReactNode, Suspense } from 'react';
 import { ActivityTable } from '@/components/activity/activity-table';
 import { CloudActivityTable } from '@/components/activity/cloud-activity-table';
 import { HealthBadge } from '@/components/health-badge';
+import { RenameResource } from '@/components/infrastructure/rename-resource';
 import { ResourceActionPanel } from '@/components/infrastructure/resource-action-panel';
 import { SecretPanel } from '@/components/infrastructure/secret-panel';
 import { ServiceDeployments } from '@/components/infrastructure/deployments/service-deployments';
@@ -125,6 +128,7 @@ export default async function ResourceDetailPage({
     )
     .map(([key, value]): [string, ReactNode] => [humanizeKey(key), detailValue(key, value)]);
   const tags = Object.entries(resource.tags);
+  const canRename = isRenamable(resource.type) && hasPermission(user, 'environments.manage');
   const tabs = resourceTabs(resource.type);
   const active = activeTab(resource.type, tab);
 
@@ -139,7 +143,19 @@ export default async function ResourceDetailPage({
       </Link>
       <PageHeader
         leading={<ServiceIcon category={category} size={48} />}
-        title={resource.name}
+        title={shownName(resource)}
+        description={
+          (resource.displayName || canRename) && (
+            <span className="flex flex-wrap items-center gap-2">
+              {resource.displayName && (
+                <span>
+                  AWS name <code className="text-foreground">{resource.name}</code>
+                </span>
+              )}
+              {canRename && <RenameResource resource={resource} />}
+            </span>
+          )
+        }
         action={<HealthBadge health={resource.health} status={resource.status} />}
       />
       {tabs.length > 0 && (

@@ -31,6 +31,8 @@ export interface Release {
   workflowId: string;
   pipelineName: string;
   serviceName: string;
+  /** The service's display name in PulseGrid, when it has one. */
+  serviceDisplayName: string | null;
   servicePath: string | null;
   environmentName: string | null;
   appDomains: EnvironmentDomain[];

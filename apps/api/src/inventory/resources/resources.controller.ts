@@ -2,17 +2,21 @@ import {
   type InfrastructureMap,
   isResourceType,
   isServiceCategory,
+  DISPLAY_NAME_MAX_LENGTH,
   RESOURCE_HEALTH,
   type Resource,
   type ResourcePage,
   type ResourceTypeCount,
   type ServiceCategorySummary,
 } from '@pulsegrid/shared';
-import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Put, Query, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { z } from 'zod';
 import { CurrentAuth } from '../../auth/guards/current-auth.decorator';
+import { RequirePermission } from '../../auth/guards/require-permission.decorator';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { ZodPipe } from '../../common/zod.pipe';
+import { DisplayNamesService } from './display-names.service';
 import { decodeResourceCursor, type ResourceCursor } from './resource-cursor';
 import { ResourcesService } from './resources.service';
 
@@ -25,6 +29,8 @@ const filterSchema = z.object({
   q: z.string().trim().max(200).optional(),
   health: z.enum(RESOURCE_HEALTH).optional(),
 });
+
+const displayNameSchema = z.object({ displayName: z.string().max(DISPLAY_NAME_MAX_LENGTH * 2) });
 
 const pageSchema = filterSchema.extend({
   limit: z.coerce.number().int().min(1).max(100).default(50),
@@ -61,7 +67,10 @@ const toFilter = (query: z.infer<typeof filterSchema>) => ({
 
 @Controller('resources')
 export class ResourcesController {
-  constructor(private readonly resources: ResourcesService) {}
+  constructor(
+    private readonly resources: ResourcesService,
+    private readonly displayNames: DisplayNamesService,
+  ) {}
 
   @Get()
   list(
@@ -105,5 +114,18 @@ export class ResourcesController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<Resource> {
     return this.resources.get(auth, id);
+  }
+
+  /** Gives the resource a display name in PulseGrid, or removes it with an empty one. Nothing changes in the cloud. */
+  @Put(':id/display-name')
+  @RequirePermission('environments.manage')
+  rename(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodPipe(displayNameSchema, 'Enter a display name.'))
+    { displayName }: z.infer<typeof displayNameSchema>,
+    @Req() request: Request,
+  ): Promise<Resource> {
+    return this.displayNames.rename(auth, id, displayName, request.ip);
   }
 }

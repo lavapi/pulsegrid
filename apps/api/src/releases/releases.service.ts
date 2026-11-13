@@ -47,6 +47,7 @@ interface TargetRow {
   cloud_account_id: string;
   native_id: string;
   service_name: string;
+  display_name: string | null;
   environment_id: string | null;
   environment_name: string | null;
 }
@@ -97,10 +98,10 @@ export class ReleasesService {
     ]);
     return {
       pipelines,
-      services: services.map(({ accountId, nativeId, name, cluster, environment }) => ({
+      services: services.map(({ accountId, nativeId, name, displayName, cluster, environment }) => ({
         accountId,
         nativeId,
-        label: name,
+        label: displayName ?? name,
         description: `${environment} · ${cluster}`,
       })),
     };
@@ -182,6 +183,11 @@ export class ReleasesService {
         .innerJoin('pipeline_apps', 'pipeline_apps.id', 'release_targets.app_id')
         .innerJoin('cloud_accounts', 'cloud_accounts.id', 'release_targets.cloud_account_id')
         .leftJoin('environments', 'environments.id', 'cloud_accounts.environment_id')
+        .leftJoin('resource_display_names', (join) =>
+          join
+            .onRef('resource_display_names.cloud_account_id', '=', 'release_targets.cloud_account_id')
+            .onRef('resource_display_names.native_id', '=', 'release_targets.native_id'),
+        )
         .select([
           'release_targets.id',
           'release_targets.app_id',
@@ -189,6 +195,7 @@ export class ReleasesService {
           'release_targets.cloud_account_id',
           'release_targets.native_id',
           'release_targets.service_name',
+          'resource_display_names.display_name',
           'pipeline_apps.name as app_name',
           'environments.id as environment_id',
           'environments.name as environment_name',
@@ -203,10 +210,16 @@ export class ReleasesService {
         .selectFrom('resources')
         .innerJoin('cloud_accounts', 'cloud_accounts.id', 'resources.cloud_account_id')
         .innerJoin('environments', 'environments.id', 'cloud_accounts.environment_id')
+        .leftJoin('resource_display_names', (join) =>
+          join
+            .onRef('resource_display_names.cloud_account_id', '=', 'resources.cloud_account_id')
+            .onRef('resource_display_names.native_id', '=', 'resources.native_id'),
+        )
         .select([
           'resources.cloud_account_id',
           'resources.native_id',
           'resources.name',
+          'resource_display_names.display_name',
           'resources.details',
           'environments.name as environment_name',
         ])
@@ -215,13 +228,23 @@ export class ReleasesService {
         .orderBy('resources.name')
         .execute(),
     );
-    return rows.map(({ cloud_account_id: accountId, native_id: nativeId, name, details, environment_name: environment }) => ({
+    return rows.map(
+      ({
+        cloud_account_id: accountId,
+        native_id: nativeId,
+        name,
+        display_name: displayName,
+        details,
+        environment_name: environment,
+      }) => ({
         accountId,
         nativeId,
         name,
+        displayName,
         environment,
         cluster: String(details['cluster'] ?? ''),
-      }));
+      }),
+    );
   }
 
   private async release(tenantId: string, target: TargetRow, appDomains: EnvironmentDomain[]): Promise<Release> {
@@ -236,6 +259,7 @@ export class ReleasesService {
       workflowId: target.workflow_id,
       pipelineName: pipeline.name,
       serviceName: target.service_name,
+      serviceDisplayName: target.display_name,
       servicePath: rollout.path,
       environmentName: target.environment_name,
       appDomains,

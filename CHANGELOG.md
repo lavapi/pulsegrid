@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-13
+
+### Added
+
+- Display names for ECS clusters and services, EC2 servers, and RDS clusters and instances: **Rename** on the resource's page shows, for example, **Frontend** in place of `jack-mike-one` across lists, search, the map, Overview, Environments, Releases, failover test reports and Activity, with the AWS name beside it. Names live only in PulseGrid, follow the ARN, apply to older entries too, and need **Manage environments**.
+
 ## [0.21.0] - 2026-11-13
 
 ### Added

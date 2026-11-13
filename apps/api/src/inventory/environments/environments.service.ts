@@ -373,10 +373,16 @@ export class EnvironmentsService {
     return trx
       .selectFrom('resources')
       .innerJoin('cloud_accounts', 'cloud_accounts.id', 'resources.cloud_account_id')
+      .leftJoin('resource_display_names', (join) =>
+        join
+          .onRef('resource_display_names.cloud_account_id', '=', 'resources.cloud_account_id')
+          .onRef('resource_display_names.native_id', '=', 'resources.native_id'),
+      )
       .select([
         'resources.id',
         'resources.type',
         'resources.name',
+        'resource_display_names.display_name as displayName',
         'resources.status',
         'resources.health',
         'resources.details',

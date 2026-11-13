@@ -121,6 +121,8 @@ export interface AuditEvent {
   ipAddress: string | null;
   metadata: Record<string, unknown>;
   occurredAt: string;
+  /** The current display name of the resource the event is about, when it has one. */
+  targetDisplayName: string | null;
 }
 
 export const ACTIVITY_CATEGORIES = {

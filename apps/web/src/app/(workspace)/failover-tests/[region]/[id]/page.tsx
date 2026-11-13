@@ -1,4 +1,4 @@
-import { type ExperimentDetail, isActiveExperiment, supportsLoad } from '@pulsegrid/shared';
+import { type ExperimentDetail, isActiveExperiment, shownName, supportsLoad } from '@pulsegrid/shared';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -98,7 +98,7 @@ export default async function ExperimentPage({ params }: { params: Promise<{ reg
             {experiment.resources.map((resource) => (
               <li key={resource.id}>
                 <Link href={resource.path} className="block px-5 py-3 text-[13px] hover:bg-muted">
-                  <span className="font-medium">{resource.name}</span>
+                  <span className="font-medium">{shownName(resource)}</span>
                   <span className="text-muted-foreground"> · {resource.type}</span>
                 </Link>
               </li>
@@ -107,8 +107,8 @@ export default async function ExperimentPage({ params }: { params: Promise<{ reg
         </Card>
       )}
       {withLoad.map((resource) => (
-        <section className="flex flex-col gap-2" key={resource.id} aria-label={`Load of ${resource.name}`}>
-          <h2 className="text-sm font-semibold">Load of {resource.name}</h2>
+        <section className="flex flex-col gap-2" key={resource.id} aria-label={`Load of ${shownName(resource)}`}>
+          <h2 className="text-sm font-semibold">Load of {shownName(resource)}</h2>
           <ResourceLoad resourceId={resource.id} />
         </section>
       ))}

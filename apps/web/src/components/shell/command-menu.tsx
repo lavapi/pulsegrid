@@ -7,6 +7,7 @@ import {
   resourceTypeLabel,
   SERVICE_CATEGORIES,
   type ServiceCategory,
+  shownName,
 } from '@pulsegrid/shared';
 import { Command } from 'cmdk';
 import { Search } from 'lucide-react';
@@ -106,7 +107,12 @@ export function CommandMenu({
                     onSelect={() => go(resourcePath(resource))}
                     className={ITEM}
                   >
-                    <span className="min-w-0 flex-1 truncate">{resource.name}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {shownName(resource)}
+                      {resource.displayName && (
+                        <span className="text-xs text-muted-foreground"> · {resource.name}</span>
+                      )}
+                    </span>
                     <span className="text-xs text-muted-foreground">
                       {resourceTypeLabel(resource.type)}
                     </span>

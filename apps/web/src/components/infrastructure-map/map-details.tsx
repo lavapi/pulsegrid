@@ -19,7 +19,10 @@ export function MapDetails({ map, node, onClose }: MapDetailsProps) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold">{node.name}</h2>
-          <p className="text-[13px] text-muted-foreground">{node.typeLabel}</p>
+          <p className="text-[13px] text-muted-foreground">
+            {node.typeLabel}
+            {node.awsName && ` · ${node.awsName}`}
+          </p>
         </div>
         <Button size="sm" variant="ghost" aria-label="Close details" onClick={onClose}>
           <X />

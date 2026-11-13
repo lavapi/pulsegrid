@@ -4,6 +4,7 @@ import {
   type EnvironmentSummary,
   resourcePath,
   resourceTypeLabel,
+  shownName,
 } from '@pulsegrid/shared';
 import { ArrowLeft, ArrowRight, ChevronDown, GitCompareArrows } from 'lucide-react';
 import Link from 'next/link';
@@ -38,8 +39,11 @@ function Side({ row, side }: { row: ComparisonRow; side: 'left' | 'right' }) {
         href={resourcePath({ id: resource.id, type: row.type })}
         className="max-w-[280px] truncate font-medium hover:text-primary"
       >
-        {resource.name}
+        {shownName(resource)}
       </Link>
+      {resource.displayName && (
+        <span className="text-xs text-muted-foreground">{resource.name}</span>
+      )}
       <HealthBadge health={resource.health} status={resource.status} />
     </span>
   );

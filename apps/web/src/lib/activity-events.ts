@@ -52,6 +52,8 @@ const ACTION_LABELS: Record<string, string> = {
   'pipeline.run_started': 'Pipeline started',
   'pipeline.rerun': 'Pipeline re-run',
   'pipeline.cancelled': 'Pipeline cancelled',
+  'resource.renamed': 'Display name changed',
+  'resource.name_reset': 'Display name removed',
   'pipeline.action_denied': 'Pipeline action refused',
   'pipeline.environment_linked': 'Pipeline linked to environment',
   'pipeline.app_created': 'App created',
@@ -91,14 +93,21 @@ const keyDetails = ({ key, previousKey, added, changed, removed }: AuditEvent['m
     .join(', ');
 };
 
-const targetOf = ({ label, role, path }: AuditEvent['metadata']): string => {
+/** What an event is about. A resource with a display name shows it, with the name it had in the event beside it. */
+const targetOf = ({ metadata: { label, role, path }, targetDisplayName }: AuditEvent): string => {
   if (typeof label === 'string') {
-    return typeof role === 'string' ? `${label} (${role})` : label;
+    const named =
+      targetDisplayName && targetDisplayName !== label ? `${targetDisplayName} (${label})` : label;
+    return typeof role === 'string' ? `${named} (${role})` : named;
   }
   return typeof path === 'string' ? path : '';
 };
 
+/** A rename's old and new display names. */
+const renamed = ({ from, to }: AuditEvent['metadata']): string | null =>
+  typeof from === 'string' && typeof to === 'string' ? `${from} → ${to}` : null;
+
 export const activityLabel = ({ action }: AuditEvent): string => ACTION_LABELS[action] ?? action;
 
-export const activityDetails = ({ metadata }: AuditEvent): string =>
-  [targetOf(metadata), keyDetails(metadata)].filter(Boolean).join(': ');
+export const activityDetails = (event: AuditEvent): string =>
+  [targetOf(event), renamed(event.metadata) ?? keyDetails(event.metadata)].filter(Boolean).join(': ');

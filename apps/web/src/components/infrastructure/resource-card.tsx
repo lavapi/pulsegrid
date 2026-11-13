@@ -1,4 +1,4 @@
-import { type ActionRun, type Resource, resourcePath } from '@pulsegrid/shared';
+import { type ActionRun, type Resource, resourcePath, shownName } from '@pulsegrid/shared';
 import Link from 'next/link';
 import { HealthBadge } from '@/components/health-badge';
 import { Badge } from '@/components/ui/badge';
@@ -37,7 +37,12 @@ export function ResourceCard({ resource, run }: { resource: Resource; run: Actio
       >
         <div className="flex flex-1 flex-col gap-3 p-4">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="min-w-0 break-words text-sm font-medium">{resource.name}</h3>
+            <h3 className="min-w-0 break-words text-sm font-medium">
+              {shownName(resource)}
+              {resource.displayName && (
+                <span className="block text-xs font-normal text-muted-foreground">{resource.name}</span>
+              )}
+            </h3>
             <span className="shrink-0">
               <HealthBadge health={resource.health} status={resource.status} />
             </span>

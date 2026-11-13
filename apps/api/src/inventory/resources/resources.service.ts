@@ -46,7 +46,12 @@ const escapeLike = (value: string): string => value.replace(/[\\%_]/g, (match) =
 const baseQuery = (trx: TenantTransaction, filter: ResourceFilter) => {
   let query = trx
     .selectFrom('resources')
-    .innerJoin('cloud_accounts', 'cloud_accounts.id', 'resources.cloud_account_id');
+    .innerJoin('cloud_accounts', 'cloud_accounts.id', 'resources.cloud_account_id')
+    .leftJoin('resource_display_names', (join) =>
+      join
+        .onRef('resource_display_names.cloud_account_id', '=', 'resources.cloud_account_id')
+        .onRef('resource_display_names.native_id', '=', 'resources.native_id'),
+    );
   if (filter.type) {
     query = query.where('resources.type', '=', filter.type);
   }
@@ -71,6 +76,7 @@ const baseQuery = (trx: TenantTransaction, filter: ResourceFilter) => {
       eb.or([
         eb('resources.name', 'ilike', pattern),
         eb('resources.native_id', 'ilike', pattern),
+        eb('resource_display_names.display_name', 'ilike', pattern),
       ]),
     );
   }
@@ -83,6 +89,7 @@ const selectResource = (query: ReturnType<typeof baseQuery>) =>
     'resources.type',
     'resources.native_id',
     'resources.name',
+    'resource_display_names.display_name',
     'resources.status',
     'resources.health',
     'resources.region',
@@ -101,6 +108,7 @@ const toResource = (row: ResourceRow): Resource => ({
   type: row.type,
   nativeId: row.native_id,
   name: row.name,
+  displayName: row.display_name,
   status: row.status,
   health: row.health,
   region: row.region,
@@ -109,6 +117,18 @@ const toResource = (row: ResourceRow): Resource => ({
   details: row.details,
   lastSeenAt: row.last_seen_at.toISOString(),
 });
+
+/** Map nodes show display names; the provider builds the map from cloud names, which it matches by. */
+const withDisplayNames = (
+  nodes: InfrastructureMap['nodes'],
+  resources: readonly Resource[],
+): InfrastructureMap['nodes'] => {
+  const byId = new Map(resources.map((resource) => [resource.id, resource]));
+  return nodes.map((node) => {
+    const displayName = byId.get(node.id)?.displayName;
+    return displayName ? { ...node, name: displayName, awsName: node.name } : node;
+  });
+};
 
 interface CategoryCount {
   type: ResourceType;
@@ -201,8 +221,10 @@ export class ResourcesService {
         .limit(MAX_MAP_RESOURCES + 1)
         .execute();
       const resources = rows.slice(0, MAX_MAP_RESOURCES).map(toResource);
+      const map = this.providers.get(account.provider).buildMap(resources);
       return {
-        ...this.providers.get(account.provider).buildMap(resources),
+        ...map,
+        nodes: withDisplayNames(map.nodes, resources),
         truncated: rows.length > MAX_MAP_RESOURCES,
       };
     });
