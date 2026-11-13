@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-11-13
+
 - Set database access up through Terraform: put the `DB_ACCESS_*` values in `database_access_settings` and run `terraform apply`.
 
 ## [0.20.0] - 2026-11-13
