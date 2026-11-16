@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-11-16
+
 ### Added
 
 - Security Hub check: every 10 minutes, the worker reads Security Hub in the Audit account through a read-only role, storing GuardDuty findings and failed critical checks that push missed, and updating open alerts whose check now passes or whose finding was archived or downgraded. Updates never notify. Settings `SECURITY_ALERTS_POLL_ROLE_ARN`, `SECURITY_ALERTS_POLL_REGIONS` and `SECURITY_ALERTS_POLL_MINUTES`; the check is off without a role.
