@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-11-16
+
 ### Fixed
 
 - The account switcher no longer shows on pages it doesn't affect: Security alerts (which shows "Across your AWS organization" instead), Your account, and the Dashboard tab of Activity. It stays on Activity's AWS tab, which shows the selected account's AWS events.
