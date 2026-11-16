@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Lock your AWS keys to PulseGrid: Integrations shows the address PulseGrid calls AWS from, and the docs give the IAM statement that makes a copied key useless anywhere else. Account cards show each key's age and ask to rotate keys from 90 days. Run `pnpm db:migrate`.
+
 ## [0.22.0] - 2026-11-13
 
 - Give ECS, EC2 and RDS resources friendly names, such as **Frontend** for `jack-mike-one`, with **Rename** on the resource's page. Nothing changes in AWS. Run `pnpm db:migrate`.

@@ -5,6 +5,8 @@ import {
   ElastiCacheClient,
 } from '@aws-sdk/client-elasticache';
 import {
+  type ContextEntry,
+  ContextKeyTypeEnum,
   IAMClient,
   PolicyEvaluationDecisionType,
   SimulatePrincipalPolicyCommand,
@@ -58,16 +60,44 @@ const canRead = async (service: AwsServiceId, target: ProbeTarget): Promise<bool
 };
 
 /** The actions the simulator allows, or null when the credentials can't run the simulator. */
+interface Simulation {
+  /** The region PulseGrid calls, which organization policies often limit. */
+  region: string;
+  /** Where PulseGrid calls from, which a key can be locked to. */
+  sourceAddress: string | null;
+}
+
+/**
+ * The simulator only knows what a request carries when told. PulseGrid's calls name their region, come from its
+ * outbound address and not through another AWS service, so keys and organization policies that depend on these
+ * check out as they really work.
+ */
+const requestContext = ({ region, sourceAddress }: Simulation): ContextEntry[] => [
+  { ContextKeyName: 'aws:RequestedRegion', ContextKeyValues: [region], ContextKeyType: ContextKeyTypeEnum.STRING },
+  ...(sourceAddress
+    ? [
+        { ContextKeyName: 'aws:SourceIp', ContextKeyValues: [sourceAddress], ContextKeyType: ContextKeyTypeEnum.IP },
+        { ContextKeyName: 'aws:ViaAWSService', ContextKeyValues: ['false'], ContextKeyType: ContextKeyTypeEnum.BOOLEAN },
+      ]
+    : []),
+];
+
 const allowedActions = async (
   credentials: AwsKey,
   arn: string,
+  simulation: Simulation,
   actions: readonly string[],
   resourceArns?: string[],
 ) => {
   const client = new IAMClient({ region: IAM_REGION, credentials });
   try {
     const { EvaluationResults: results } = await client.send(
-      new SimulatePrincipalPolicyCommand({ PolicySourceArn: arn, ActionNames: [...actions], ResourceArns: resourceArns }),
+      new SimulatePrincipalPolicyCommand({
+        PolicySourceArn: arn,
+        ActionNames: [...actions],
+        ResourceArns: resourceArns,
+        ContextEntries: requestContext(simulation),
+      }),
     );
     return new Set(
       (results ?? [])
@@ -79,10 +109,11 @@ const allowedActions = async (
   }
 };
 
-const canWrite = async (credentials: AwsKey, arn: string): Promise<boolean | null> => {
+const canWrite = async (credentials: AwsKey, arn: string, simulation: Simulation): Promise<boolean | null> => {
   const allowed = await allowedActions(
     credentials,
     arn,
+    simulation,
     SERVICE_PERMISSIONS.map(({ manageAction }) => manageAction),
   );
   return allowed && allowed.size > 0;
@@ -91,11 +122,11 @@ const canWrite = async (credentials: AwsKey, arn: string): Promise<boolean | nul
 /** A bucket and file named like load balancer logs, to test the policy's statement that is limited to them. */
 const SAMPLE_LOG_BUCKET = 'arn:aws:s3:::example-alb-logs-000000000000';
 
-const missingActions = async (credentials: AwsKey, arn: string): Promise<string[] | null> => {
+const missingActions = async (credentials: AwsKey, arn: string, simulation: Simulation): Promise<string[] | null> => {
   const [allowed, bucket, file] = await Promise.all([
-    allowedActions(credentials, arn, AWS_ACTIONS),
-    allowedActions(credentials, arn, ['s3:ListBucket'], [SAMPLE_LOG_BUCKET]),
-    allowedActions(credentials, arn, ['s3:GetObject'], [`${SAMPLE_LOG_BUCKET}/AWSLogs/example.log.gz`]),
+    allowedActions(credentials, arn, simulation, AWS_ACTIONS),
+    allowedActions(credentials, arn, simulation, ['s3:ListBucket'], [SAMPLE_LOG_BUCKET]),
+    allowedActions(credentials, arn, simulation, ['s3:GetObject'], [`${SAMPLE_LOG_BUCKET}/AWSLogs/example.log.gz`]),
   ]);
   if (!allowed || !bucket || !file) {
     return null;
@@ -117,7 +148,11 @@ const identityOf = async (credentials: AwsKey) => {
   }
 };
 
-export const checkAwsKey = async (key: AwsKey, region: string): Promise<CredentialCheck> => {
+export const checkAwsKey = async (
+  key: AwsKey,
+  region: string,
+  sourceAddress: string | null = null,
+): Promise<CredentialCheck> => {
   const identity = await identityOf(key);
   const arn = identity.Arn ?? '';
   if (isRootArn(arn)) {
@@ -133,7 +168,7 @@ export const checkAwsKey = async (key: AwsKey, region: string): Promise<Credenti
   return {
     accountId: identity.Account ?? '',
     services,
-    canWrite: await canWrite(key, arn),
-    missingActions: await missingActions(key, arn),
+    canWrite: await canWrite(key, arn, { region, sourceAddress }),
+    missingActions: await missingActions(key, arn, { region, sourceAddress }),
   };
 };

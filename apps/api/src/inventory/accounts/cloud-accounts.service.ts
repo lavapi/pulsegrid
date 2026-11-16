@@ -18,6 +18,7 @@ import type { CloudAccountRow } from '../../database/schema';
 import type { TenantTransaction } from '../../database/tenant-context';
 import { TenantDatabase } from '../../database/tenant-database';
 import { CredentialVault } from '../connection/credential-vault';
+import { OutboundAddress } from '../connection/outbound-address';
 import { type AccountEnvironment, toAccountEnvironment } from '../environments/account-environment';
 import { checkAccountMove, findEnvironment } from '../environments/account-moves';
 import {
@@ -67,6 +68,7 @@ const toCloudAccount = (row: CloudAccountRow, environment: AccountEnvironment | 
   isProduction: environment?.isProduction ?? false,
   hasCredentials: row.encrypted_credentials !== null,
   credentialHint: row.credential_hint,
+  credentialsUpdatedAt: row.credentials_updated_at?.toISOString() ?? null,
   canWrite: row.can_write,
   tagFilter: row.tag_filter,
 });
@@ -88,7 +90,13 @@ export class CloudAccountsService {
     private readonly progress: SyncProgressStore,
     private readonly vault: CredentialVault,
     private readonly providers: ProviderRegistry,
+    private readonly outbound: OutboundAddress,
   ) {}
+
+  /** Where PulseGrid calls the cloud from, to lock access keys to it. */
+  async outboundAddress(): Promise<{ address: string | null }> {
+    return { address: await this.outbound.current() };
+  }
 
   list(tenantId: string): Promise<CloudAccount[]> {
     return this.database.run(tenantId, async (trx) => {
@@ -296,7 +304,7 @@ export class CloudAccountsService {
     region: string,
   ): Promise<CredentialCheck> {
     try {
-      return await provider.checkCredentials(credentials, region);
+      return await provider.checkCredentials(credentials, region, await this.outbound.current());
     } catch (error) {
       throw new BadRequestException(
         error instanceof CredentialsRejected ? error.message : CHECK_FAILED,
@@ -318,6 +326,7 @@ export class CloudAccountsService {
     return {
       encrypted_credentials: this.vault.seal(identity, credentials),
       credential_hint: provider.credentialHint(credentials),
+      credentials_updated_at: new Date(),
       can_write: check.canWrite,
     };
   }

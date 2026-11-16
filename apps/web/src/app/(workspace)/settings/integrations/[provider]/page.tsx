@@ -12,8 +12,9 @@ import { CloudAccountCard } from '@/components/integrations/cloud-account-card';
 import { SyncProgressCards } from '@/components/sync/sync-progress-card';
 import { Card, CardHeader } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
+import { OutboundAddressCard } from '@/components/integrations/outbound-address-card';
 import { ProviderSetupCard } from '@/components/integrations/provider-setup-card';
-import { apiGet, getCurrentUser } from '@/lib/server-api';
+import { apiGet, apiGetOptional, getCurrentUser } from '@/lib/server-api';
 
 export default async function ProviderIntegrationPage({
   params,
@@ -28,9 +29,10 @@ export default async function ProviderIntegrationPage({
   if (!hasPermission(user, 'integrations.manage')) {
     redirect('/');
   }
-  const [accounts, { environments }] = await Promise.all([
+  const [accounts, { environments }, outbound] = await Promise.all([
     apiGet<CloudAccount[]>('/cloud/accounts'),
     apiGet<EnvironmentAdminView>('/environments/manage'),
+    apiGetOptional<{ address: string | null }>('/cloud/accounts/outbound-address'),
   ]);
   const own = accounts.filter((account) => account.provider === provider.id);
 
@@ -61,6 +63,7 @@ export default async function ProviderIntegrationPage({
         <AddCloudAccountForm provider={provider} environments={environments} />
       </Card>
       <ProviderSetupCard setup={provider.setup} />
+      {provider.id === 'aws' && <OutboundAddressCard address={outbound?.address ?? null} />}
     </>
   );
 }
