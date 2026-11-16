@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-11-16
+
 - Lock your AWS keys to PulseGrid: Integrations shows the address PulseGrid calls AWS from, and the docs give the IAM statement that makes a copied key useless anywhere else. Account cards show each key's age and ask to rotate keys from 90 days. Run `pnpm db:migrate`.
 
 ## [0.22.0] - 2026-11-13

@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-11-16
+
 ### Added
 
 - Account cards on Integrations show how old each key is, and ask to rotate keys from 90 days. Keys set before this release are dated from their last replacement, or when the account was added.
