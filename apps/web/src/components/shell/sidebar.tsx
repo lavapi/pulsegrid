@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { ProjectSwitcher } from '@/components/projects/project-switcher';
 import { allowedNav, isActivePath, MAIN_NAV, type NavItem, SETTINGS_NAV } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
+import { NavCount } from './nav-count';
 
 const APP_VERSION = process.env.APP_VERSION;
 
@@ -28,7 +29,7 @@ function NavLink({
       aria-current={active ? 'page' : undefined}
       onClick={onNavigate}
       className={cn(
-        'flex h-9 items-center gap-2.5 rounded-lg px-2.5 font-medium transition-colors',
+        'relative flex h-9 items-center gap-2.5 rounded-lg px-2.5 font-medium transition-colors',
         collapsed && 'justify-center px-0',
         active
           ? 'bg-ring text-foreground'
@@ -37,6 +38,7 @@ function NavLink({
     >
       <Icon className={cn('size-[17px] shrink-0', active && 'text-primary')} aria-hidden="true" />
       {!collapsed && <span className="truncate">{item.label}</span>}
+      {item.countPath && <NavCount path={item.countPath} collapsed={collapsed} />}
     </Link>
   );
 }

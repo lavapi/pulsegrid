@@ -10,6 +10,8 @@ export const WORKSPACE_PERMISSIONS = {
   'environments.manage': { label: 'Manage environments' },
   'logs.read': { label: 'View logs' },
   'logs.sensitive': { label: 'See query strings and values in logs' },
+  'security.view': { label: 'View security alerts' },
+  'security.manage': { label: 'Acknowledge and resolve security alerts' },
 } as const;
 
 /** Permissions that act on an environment. Each is granted separately for staging and for production. */

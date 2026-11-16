@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- Security alerts: AWS pushes GuardDuty findings, failed Security Hub checks and root activity to `POST /api/webhooks/aws-security` through SNS. PulseGrid verifies each message (signature, topic allowlist, age), stores one alert per finding or event, and updates a finding when AWS sends it again.
+- A Security alerts page with filters, an alert page with the raw event and a New, Acknowledged and Resolved workflow that records who changed it, and a count of new critical and high alerts in the menu.
+- Slack under Integrations: new critical and high alerts are posted once to a channel.
+- Settings `SECURITY_ALERTS_PROJECT`, `SECURITY_ALERTS_TOPIC_ARNS` and `SECURITY_ALERTS_ACCOUNT_NAMES`, and permissions to view and to acknowledge and resolve security alerts, given to the Admin role. Run `pnpm db:migrate`.
+
 ## [0.23.0] - 2026-11-16
 
 ### Added

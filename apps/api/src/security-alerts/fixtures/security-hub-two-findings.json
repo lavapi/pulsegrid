@@ -1,0 +1,87 @@
+{
+  "version": "0",
+  "id": "8e5622f9-d81c-4d81-612a-9319e7ee2506",
+  "detail-type": "Security Hub Findings - Imported",
+  "source": "aws.securityhub",
+  "account": "040496249361",
+  "time": "2026-11-16T09:15:42Z",
+  "region": "eu-central-1",
+  "resources": [
+    "arn:aws:securityhub:eu-central-1::product/aws/guardduty/arn:aws:guardduty:eu-central-1:860922939595:detector/b2c6d5e1f0a94c3d8e7f6a5b4c3d2e1f/finding/34c6d5e1f0a94c3d8e7f6a5b4c3d2e10",
+    "arn:aws:securityhub:eu-central-1:121017505984:subscription/aws-foundational-security-best-practices/v/1.0.0/IAM.6/finding/5d1f8d2e-1c7a-4b8e-9f3a-2e6b0c4d7a91"
+  ],
+  "detail": {
+    "findings": [
+      {
+        "SchemaVersion": "2018-10-08",
+        "Id": "arn:aws:guardduty:eu-central-1:860922939595:detector/b2c6d5e1f0a94c3d8e7f6a5b4c3d2e1f/finding/34c6d5e1f0a94c3d8e7f6a5b4c3d2e10",
+        "ProductArn": "arn:aws:securityhub:eu-central-1::product/aws/guardduty",
+        "ProductName": "GuardDuty",
+        "CompanyName": "Amazon",
+        "Region": "eu-central-1",
+        "GeneratorId": "arn:aws:guardduty:eu-central-1:860922939595:detector/b2c6d5e1f0a94c3d8e7f6a5b4c3d2e1f",
+        "AwsAccountId": "860922939595",
+        "Types": ["TTPs/Command and Control/Backdoor:EC2-C&CActivity.B!DNS"],
+        "FirstObservedAt": "2026-11-16T09:01:12.000Z",
+        "LastObservedAt": "2026-11-16T09:12:30.000Z",
+        "CreatedAt": "2026-11-16T09:02:05.512Z",
+        "UpdatedAt": "2026-11-16T09:13:01.004Z",
+        "Severity": { "Product": 8, "Label": "HIGH", "Normalized": 60 },
+        "Title": "EC2 instance i-0a1b2c3d4e5f60718 is querying a domain name associated with a known command and control server.",
+        "Description": "EC2 instance i-0a1b2c3d4e5f60718 is querying a domain name associated with a known command and control server.",
+        "ProductFields": {
+          "aws/guardduty/service/action/actionType": "DNS_REQUEST",
+          "aws/guardduty/service/count": "3",
+          "aws/securityhub/FindingId": "arn:aws:securityhub:eu-central-1::product/aws/guardduty/arn:aws:guardduty:eu-central-1:860922939595:detector/b2c6d5e1f0a94c3d8e7f6a5b4c3d2e1f/finding/34c6d5e1f0a94c3d8e7f6a5b4c3d2e10",
+          "aws/securityhub/ProductName": "GuardDuty",
+          "aws/securityhub/CompanyName": "Amazon"
+        },
+        "Resources": [
+          {
+            "Type": "AwsEc2Instance",
+            "Id": "arn:aws:ec2:eu-central-1:860922939595:instance/i-0a1b2c3d4e5f60718",
+            "Partition": "aws",
+            "Region": "eu-central-1"
+          }
+        ],
+        "WorkflowState": "NEW",
+        "Workflow": { "Status": "NEW" },
+        "RecordState": "ACTIVE",
+        "FindingProviderFields": { "Severity": { "Label": "HIGH" }, "Types": ["TTPs/Command and Control/Backdoor:EC2-C&CActivity.B!DNS"] }
+      },
+      {
+        "SchemaVersion": "2018-10-08",
+        "Id": "arn:aws:securityhub:eu-central-1:121017505984:subscription/aws-foundational-security-best-practices/v/1.0.0/IAM.6/finding/5d1f8d2e-1c7a-4b8e-9f3a-2e6b0c4d7a91",
+        "ProductArn": "arn:aws:securityhub:eu-central-1::product/aws/securityhub",
+        "ProductName": "Security Hub",
+        "CompanyName": "AWS",
+        "Region": "eu-central-1",
+        "GeneratorId": "aws-foundational-security-best-practices/v/1.0.0/IAM.6",
+        "AwsAccountId": "121017505984",
+        "Types": ["Software and Configuration Checks/Industry and Regulatory Standards/AWS-Foundational-Security-Best-Practices"],
+        "FirstObservedAt": "2026-11-16T08:44:19.871Z",
+        "LastObservedAt": "2026-11-16T09:14:58.320Z",
+        "CreatedAt": "2026-11-16T08:44:19.871Z",
+        "UpdatedAt": "2026-11-16T09:14:58.320Z",
+        "Severity": { "Product": 90, "Label": "CRITICAL", "Normalized": 90, "Original": "CRITICAL" },
+        "Title": "IAM.6 Hardware MFA should be enabled for the root user",
+        "Description": "This AWS control checks whether your AWS account is enabled to use a hardware multi-factor authentication (MFA) device to sign in with root user credentials.",
+        "Remediation": { "Recommendation": { "Text": "For information on how to correct this issue, consult the AWS Security Hub controls documentation.", "Url": "https://docs.aws.amazon.com/console/securityhub/IAM.6/remediation" } },
+        "ProductFields": {
+          "StandardsArn": "arn:aws:securityhub:::standards/aws-foundational-security-best-practices/v/1.0.0",
+          "ControlId": "IAM.6",
+          "aws/securityhub/ProductName": "Security Hub",
+          "aws/securityhub/CompanyName": "AWS"
+        },
+        "Resources": [
+          { "Type": "AwsAccount", "Id": "AWS::::Account:121017505984", "Partition": "aws", "Region": "eu-central-1" }
+        ],
+        "Compliance": { "Status": "FAILED", "SecurityControlId": "IAM.6", "AssociatedStandards": [{ "StandardsId": "standards/aws-foundational-security-best-practices/v/1.0.0" }] },
+        "WorkflowState": "NEW",
+        "Workflow": { "Status": "NEW" },
+        "RecordState": "ACTIVE",
+        "FindingProviderFields": { "Severity": { "Label": "CRITICAL", "Original": "CRITICAL" }, "Types": ["Software and Configuration Checks/Industry and Regulatory Standards/AWS-Foundational-Security-Best-Practices"] }
+      }
+    ]
+  }
+}

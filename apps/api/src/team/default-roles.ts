@@ -20,6 +20,8 @@ export const DEFAULT_ROLES: readonly RoleInput[] = [
       'integrations.manage',
       'environments.manage',
       'logs.sensitive',
+      'security.view',
+      'security.manage',
     ],
   },
   { name: 'Developer', permissions: DEVELOPER_PERMISSIONS },
