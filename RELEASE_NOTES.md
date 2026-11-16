@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-11-16
+
 - The account switcher now shows only where it changes what you see: it's gone from Security alerts, Your account and Activity's Dashboard tab.
 
 ## [0.24.0] - 2026-11-16
