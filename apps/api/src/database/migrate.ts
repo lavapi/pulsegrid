@@ -37,6 +37,7 @@ import * as sensitiveLogs from './migrations/0035_sensitive_logs';
 import * as databaseAccessGrants from './migrations/0036_database_access_grants';
 import * as resourceDisplayNames from './migrations/0037_resource_display_names';
 import * as credentialsUpdatedAt from './migrations/0038_credentials_updated_at';
+import * as securityAlerts from './migrations/0039_security_alerts';
 
 const MIGRATIONS: Record<string, Migration> = {
   '0001_foundation': foundation,
@@ -77,6 +78,7 @@ const MIGRATIONS: Record<string, Migration> = {
   '0036_database_access_grants': databaseAccessGrants,
   '0037_resource_display_names': resourceDisplayNames,
   '0038_credentials_updated_at': credentialsUpdatedAt,
+  '0039_security_alerts': securityAlerts,
 };
 
 const ensureAppRole = async (db: Kysely<unknown>, password: string): Promise<void> => {

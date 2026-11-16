@@ -4,8 +4,10 @@ import {
   GIT_PROVIDERS,
   type GitConnection,
   hasPermission,
+  type SlackIntegration,
 } from '@pulsegrid/shared';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, MessageSquare } from 'lucide-react';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { ProviderIcon } from '@/components/provider-icon';
@@ -15,27 +17,34 @@ import { apiGet, getCurrentUser } from '@/lib/server-api';
 
 interface IntegrationLinkProps {
   href: string;
-  provider: { id: string; label: string; description: string };
-  count: number;
-  unit: string;
+  icon: ReactNode;
+  label: string;
+  description: string;
+  status: ReactNode;
 }
 
-function IntegrationLink({ href, provider, count, unit }: IntegrationLinkProps) {
+function IntegrationLink({ href, icon, label, description, status }: IntegrationLinkProps) {
   return (
     <Link
       href={href}
       className="flex items-center gap-4 rounded-xl border bg-card p-5 transition-colors hover:bg-muted/40"
     >
-      <ProviderIcon provider={provider.id} size={44} />
+      {icon}
       <span className="min-w-0 flex-1">
-        <span className="block font-semibold">{provider.label}</span>
-        <span className="block text-[13px] text-muted-foreground">{provider.description}</span>
+        <span className="block font-semibold">{label}</span>
+        <span className="block text-[13px] text-muted-foreground">{description}</span>
       </span>
-      <Badge tone={count > 0 ? 'success' : 'neutral'}>
-        {count} {count === 1 ? unit : `${unit}s`}
-      </Badge>
+      {status}
       <ChevronRight className="size-4 text-faint" aria-hidden="true" />
     </Link>
+  );
+}
+
+function CountBadge({ count, unit }: { count: number; unit: string }) {
+  return (
+    <Badge tone={count > 0 ? 'success' : 'neutral'}>
+      {count} {count === 1 ? unit : `${unit}s`}
+    </Badge>
   );
 }
 
@@ -44,9 +53,10 @@ export default async function IntegrationsPage() {
   if (!hasPermission(user, 'integrations.manage')) {
     redirect('/');
   }
-  const [accounts, connections] = await Promise.all([
+  const [accounts, connections, slack] = await Promise.all([
     apiGet<CloudAccount[]>('/cloud/accounts'),
     apiGet<GitConnection[]>('/git/connections'),
+    apiGet<SlackIntegration>('/integrations/slack'),
   ]);
 
   return (
@@ -60,11 +70,15 @@ export default async function IntegrationsPage() {
           <IntegrationLink
             key={provider.id}
             href={`/settings/integrations/${provider.id}`}
-            provider={provider}
-            count={
-              accounts.filter((item) => item.provider === provider.id && item.hasCredentials).length
+            icon={<ProviderIcon provider={provider.id} size={44} />}
+            label={provider.label}
+            description={provider.description}
+            status={
+              <CountBadge
+                count={accounts.filter((item) => item.provider === provider.id && item.hasCredentials).length}
+                unit="account"
+              />
             }
-            unit="account"
           />
         ))}
       </section>
@@ -76,11 +90,30 @@ export default async function IntegrationsPage() {
           <IntegrationLink
             key={provider.id}
             href={`/settings/integrations/git/${provider.id}`}
-            provider={provider}
-            count={connections.filter((item) => item.provider === provider.id).length}
-            unit="connection"
+            icon={<ProviderIcon provider={provider.id} size={44} />}
+            label={provider.label}
+            description={provider.description}
+            status={
+              <CountBadge count={connections.filter((item) => item.provider === provider.id).length} unit="connection" />
+            }
           />
         ))}
+      </section>
+      <section className="flex flex-col gap-3" aria-labelledby="notification-integrations">
+        <h2 className="text-sm font-semibold" id="notification-integrations">
+          Notifications
+        </h2>
+        <IntegrationLink
+          href="/settings/integrations/slack"
+          icon={
+            <span className="grid size-11 shrink-0 place-items-center rounded bg-muted">
+              <MessageSquare className="size-5" aria-hidden="true" />
+            </span>
+          }
+          label="Slack"
+          description="Post new critical and high AWS security alerts to a channel"
+          status={<Badge tone={slack.connected ? 'success' : 'neutral'}>{slack.connected ? 'Connected' : 'Not connected'}</Badge>}
+        />
       </section>
     </>
   );
