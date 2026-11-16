@@ -4,17 +4,16 @@ import type { CloudAccount } from '@pulsegrid/shared';
 import * as Popover from '@radix-ui/react-popover';
 import { Command } from 'cmdk';
 import { Check, ChevronsUpDown, Globe2, Loader2 } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useOptimistic, useState, useTransition } from 'react';
 import { selectAccount } from '@/app/actions/select-account';
 import { EnvironmentBadge } from '@/components/environment-badge';
 import { ProviderIcon } from '@/components/provider-icon';
 import { environmentLabel } from '@/lib/account-environment';
-import { followsAccountSwitcher, pathAfterSwitch, selectedFirst } from '@/lib/account-selection';
+import { followsAccountSwitcher, pathAfterSwitch, scopeLabel, selectedFirst } from '@/lib/account-selection';
 import { cn } from '@/lib/utils';
 
 const SEARCH_THRESHOLD = 6;
-const ALL_ACCOUNT_PATHS = ['/costs', '/environments', '/releases'];
 
 interface SwitcherProps {
   accounts: CloudAccount[];
@@ -24,15 +23,14 @@ interface SwitcherProps {
 export function AccountSwitcher({ accounts, selectedId }: SwitcherProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const view = useSearchParams().get('view');
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [shownId, showAccount] = useOptimistic(selectedId);
   const selected = accounts.find(({ id }) => id === shownId);
 
-  if (!followsAccountSwitcher(pathname)) {
-    const scope = ALL_ACCOUNT_PATHS.some((path) => pathname.startsWith(path))
-      ? 'Across all your accounts'
-      : null;
+  if (!followsAccountSwitcher(pathname, view)) {
+    const scope = scopeLabel(pathname);
     return (
       scope && (
         <span className="inline-flex h-9 items-center gap-2 rounded-lg border bg-card px-3 text-[13px] text-muted-foreground">

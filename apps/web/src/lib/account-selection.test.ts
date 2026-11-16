@@ -2,6 +2,7 @@ import type { CloudAccount } from '@pulsegrid/shared';
 import { describe, expect, it } from 'vitest';
 import {
   followsAccountSwitcher,
+  scopeLabel,
   pathAfterSwitch,
   pickAccount,
   pipelineScope,
@@ -57,8 +58,33 @@ describe('followsAccountSwitcher', () => {
     expect(followsAccountSwitcher(path)).toBe(true);
   });
 
-  it.each(['/environments', '/environments/compare', '/settings/access'])('excludes %s', (path) => {
+  it.each([
+    '/environments',
+    '/environments/compare',
+    '/settings/access',
+    '/security-alerts',
+    '/security-alerts/7d1f2c3a-0000-4000-8000-000000000001',
+    '/account',
+  ])('excludes %s', (path) => {
     expect(followsAccountSwitcher(path)).toBe(false);
+  });
+
+  it('follows the switcher only on the AWS tab of Activity', () => {
+    expect(followsAccountSwitcher('/activity')).toBe(false);
+    expect(followsAccountSwitcher('/activity', 'dashboard')).toBe(false);
+    expect(followsAccountSwitcher('/activity', 'aws')).toBe(true);
+  });
+
+  it('does not mistake a page whose name starts the same', () => {
+    expect(followsAccountSwitcher('/accounts-overview')).toBe(true);
+  });
+});
+
+describe('scopeLabel', () => {
+  it('says what pages without the switcher cover', () => {
+    expect(scopeLabel('/costs')).toBe('Across all your accounts');
+    expect(scopeLabel('/security-alerts/7d1f2c3a')).toBe('Across your AWS organization');
+    expect(scopeLabel('/account')).toBeNull();
   });
 });
 
