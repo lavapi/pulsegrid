@@ -1,6 +1,6 @@
 # AWS security alerts
 
-PulseGrid receives security alerts from the AWS organization, stores them, shows them under **Security alerts**, and posts new critical and high alerts to Slack. AWS pushes the alerts to PulseGrid through SNS. PulseGrid never calls AWS for this feature and needs no AWS key for it.
+PulseGrid receives security alerts from the AWS organization, stores them, shows them under **Security alerts**, and posts new critical and high alerts to Slack. AWS pushes the alerts to PulseGrid through SNS, and a check every 10 minutes reads Security Hub for anything push missed. Neither needs an AWS key: the check uses a read-only role.
 
 ## What arrives
 
@@ -23,6 +23,10 @@ Each Security Hub finding becomes one alert, keyed by the finding ID. When AWS s
 | `SECURITY_ALERTS_PROJECT` | The slug of the project that receives the alerts. Until it is set, the endpoint answers 503. |
 | `SECURITY_ALERTS_TOPIC_ARNS` | The SNS topics PulseGrid accepts, separated by commas. Default: `arn:aws:sns:eu-central-1:040496249361:security-events`. |
 | `SECURITY_ALERTS_ACCOUNT_NAMES` | Names for account IDs, as `123456789012=Production,210987654321=Staging`. Renaming an account here renames it on every alert. |
+
+| `SECURITY_ALERTS_POLL_ROLE_ARN` | The read-only role in the Audit account the Security Hub check uses. Leave it empty to turn the check off. |
+| `SECURITY_ALERTS_POLL_REGIONS` | The Security Hub regions to check, separated by commas. Default: `eu-central-1`, enough when Security Hub gathers every region there. |
+| `SECURITY_ALERTS_POLL_MINUTES` | How often the check runs. Default: `10`. |
 
 Set them on both the API and the worker, then run `pnpm db:migrate`.
 
@@ -54,6 +58,41 @@ The endpoint answers within a few seconds. Notifications are sent from the backg
 - Use SignatureVersion 2 if you can; version 1 also works.
 - Keep the delivery retry policy under an hour, because PulseGrid refuses older messages. The default policy is.
 - Create the subscription once PulseGrid is running with these settings, so it confirms itself. If it shows as pending, use **Request confirmation** in the SNS console.
+
+## The Security Hub check
+
+Push brings alerts in within seconds, but the EventBridge rules only forward high and critical GuardDuty findings and failed critical checks. A check that later passes, or a finding that is archived or downgraded, never reaches PulseGrid by push. Every 10 minutes, the worker asks Security Hub in the Audit account:
+
+1. For GuardDuty findings of high or critical severity and failed critical checks that changed recently. It looks back three runs, and at least 30 minutes, so a slow or missed run loses nothing. Any that push missed become alerts, and new critical and high ones notify Slack, once.
+2. For the current state of every alert not yet resolved in PulseGrid. These only update existing alerts, never create new ones, and never notify. The alert page then shows a check that now passes, or a finding that was archived.
+
+Root activity is not in Security Hub, so it arrives by push only.
+
+The check reads findings and changes nothing in AWS. It runs as PulseGrid's ECS task role, which may only assume the role in `SECURITY_ALERTS_POLL_ROLE_ARN`. That role, in the Audit account, needs this permission:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{ "Effect": "Allow", "Action": "securityhub:GetFindings", "Resource": "*" }]
+}
+```
+
+and a trust policy that lets only PulseGrid's task role assume it:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::<PulseGrid account>:role/<PulseGrid task role>" },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+```
+
+PulseGrid's task role needs `sts:AssumeRole` on that role only. Each run logs how many findings it read and how many alerts it created or updated.
 
 ## Working with alerts
 
