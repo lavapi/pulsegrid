@@ -12,6 +12,7 @@ import { PipelinesModule } from './pipelines/pipelines.module';
 import { RedisModule } from './redis/redis.module';
 import { ReleasesModule } from './releases/releases.module';
 import { ProjectsModule } from './projects/projects.module';
+import { SecurityAlertsModule } from './security-alerts/security-alerts.module';
 import { TeamModule } from './team/team.module';
 
 @Module({
@@ -27,6 +28,7 @@ import { TeamModule } from './team/team.module';
     PipelinesModule,
     ReleasesModule,
     DatabaseAccessModule,
+    SecurityAlertsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_INTERCEPTOR, useClass: SlowRequestInterceptor }],

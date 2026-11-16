@@ -9,9 +9,12 @@ import { ExperimentWaveWorker } from './inventory/experiments/experiment-wave-wo
 import { InventoryCoreModule } from './inventory/inventory-core.module';
 import { SyncWorker } from './inventory/sync/sync-worker';
 import { RedisModule } from './redis/redis.module';
+import { SecurityAlertsCoreModule } from './security-alerts/security-alerts-core.module';
+import { SecurityAlertsNotifier } from './security-alerts/security-alerts.notifier';
+import { SecurityAlertsWorker } from './security-alerts/security-alerts.worker';
 
 @Module({
-  imports: [ConfigModule, DatabaseModule, RedisModule, InventoryCoreModule, DatabaseAccessCoreModule],
-  providers: [ActionWorker, CostWorker, DatabaseAccessWorker, ExperimentWaveWorker, SyncWorker],
+  imports: [ConfigModule, DatabaseModule, RedisModule, InventoryCoreModule, DatabaseAccessCoreModule, SecurityAlertsCoreModule],
+  providers: [ActionWorker, CostWorker, DatabaseAccessWorker, ExperimentWaveWorker, SecurityAlertsNotifier, SecurityAlertsWorker, SyncWorker],
 })
 export class WorkerModule {}

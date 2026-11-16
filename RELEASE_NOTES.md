@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-16
+
+- AWS security alerts in PulseGrid: GuardDuty findings, failed Security Hub checks and root sign-ins or changes arrive through SNS, show under Security alerts with filters and a New, Acknowledged and Resolved workflow, and new critical and high ones post to Slack. See `docs/security-alerts.md`. Run `pnpm db:migrate`.
+
 ## [0.23.0] - 2026-11-16
 
 - Lock your AWS keys to PulseGrid: Integrations shows the address PulseGrid calls AWS from, and the docs give the IAM statement that makes a copied key useless anywhere else. Account cards show each key's age and ask to rotate keys from 90 days. Run `pnpm db:migrate`.

@@ -1,0 +1,40 @@
+{
+  "version": "0",
+  "id": "c2a5f6e1-7d3b-48a9-b0f4-91e2d7c6a3b8",
+  "detail-type": "AWS Console Sign In via CloudTrail",
+  "source": "aws.signin",
+  "account": "768807471283",
+  "time": "2026-11-16T10:04:11Z",
+  "region": "us-east-1",
+  "resources": [],
+  "detail": {
+    "eventVersion": "1.09",
+    "userIdentity": {
+      "type": "Root",
+      "principalId": "768807471283",
+      "arn": "arn:aws:iam::768807471283:root",
+      "accountId": "768807471283"
+    },
+    "eventTime": "2026-11-16T10:04:09Z",
+    "eventSource": "signin.amazonaws.com",
+    "eventName": "ConsoleLogin",
+    "awsRegion": "us-east-1",
+    "sourceIPAddress": "198.51.100.23",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
+    "requestParameters": null,
+    "responseElements": { "ConsoleLogin": "Success" },
+    "additionalEventData": {
+      "LoginTo": "https://console.aws.amazon.com/console/home?state=hashArgs%23&isauthcode=true",
+      "MobileVersion": "No",
+      "MFAIdentifier": "arn:aws:iam::768807471283:mfa/root-account-mfa-device",
+      "MFAUsed": "Yes"
+    },
+    "eventID": "3f0b1c2d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+    "readOnly": false,
+    "eventType": "AwsConsoleSignIn",
+    "managementEvent": true,
+    "recipientAccountId": "768807471283",
+    "eventCategory": "Management",
+    "tlsDetails": { "tlsVersion": "TLSv1.3", "cipherSuite": "TLS_AES_128_GCM_SHA256", "clientProvidedHostHeader": "signin.aws.amazon.com" }
+  }
+}
