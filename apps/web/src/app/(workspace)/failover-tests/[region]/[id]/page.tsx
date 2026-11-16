@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { StopExperimentButton } from '@/components/experiments/experiment-buttons';
 import { Fact, StateBadge, StepSummary, StopAlarms, TargetList } from '@/components/experiments/experiment-parts';
 import { ResourceLoad } from '@/components/infrastructure/load/resource-load';
-import { LiveRefresh } from '@/components/pipelines/live-refresh';
+import { LiveRefresh } from '@/components/ui/live-refresh';
 import { Card, CardHeader } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { Time } from '@/components/ui/time';

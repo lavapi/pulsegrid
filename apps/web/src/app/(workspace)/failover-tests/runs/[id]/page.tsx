@@ -6,7 +6,7 @@ import { StopRunButton } from '@/components/experiments/experiment-buttons';
 import { Fact, ResultBadge, StateBadge } from '@/components/experiments/experiment-parts';
 import { DeleteReportButton, DownloadPdfButton } from '@/components/experiments/report-buttons';
 import { ReportLoads, RunTimeline, type TimelineRow } from '@/components/experiments/report-parts';
-import { LiveRefresh } from '@/components/pipelines/live-refresh';
+import { LiveRefresh } from '@/components/ui/live-refresh';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';

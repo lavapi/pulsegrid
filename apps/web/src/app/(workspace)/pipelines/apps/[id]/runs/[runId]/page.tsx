@@ -5,7 +5,7 @@ import {
 } from '@pulsegrid/shared';
 import { ArrowLeft, ExternalLink, Info } from 'lucide-react';
 import Link from 'next/link';
-import { LiveRefresh } from '@/components/pipelines/live-refresh';
+import { LiveRefresh } from '@/components/ui/live-refresh';
 import {
   PipelineStatusBadge,
   PipelineStatusIcon,

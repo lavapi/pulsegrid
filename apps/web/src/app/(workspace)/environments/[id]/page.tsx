@@ -9,7 +9,7 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { QuickLinks } from '@/components/domain-links';
 import { HealthSummaryBadge } from '@/components/health-badge';
-import { LiveRefresh } from '@/components/pipelines/live-refresh';
+import { LiveRefresh } from '@/components/ui/live-refresh';
 import { PipelineTable } from '@/components/pipelines/pipeline-table';
 import { ResourceTable } from '@/components/resource-table';
 import { HealthTiles } from '@/components/service-summary';

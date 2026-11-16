@@ -14,7 +14,7 @@ import { PipelineActivityCard } from '@/components/overview/pipeline-activity-ca
 import { ProblemsCard } from '@/components/overview/problems-card';
 import { SystemStatusBanner } from '@/components/overview/system-status-banner';
 import { type WorkInProgress, WorkInProgressCard } from '@/components/overview/work-in-progress-card';
-import { LiveRefresh } from '@/components/pipelines/live-refresh';
+import { LiveRefresh } from '@/components/ui/live-refresh';
 import { PipelineIssues } from '@/components/pipelines/pipeline-issues';
 import { ServiceGrid } from '@/components/service-grid';
 import { Skeleton } from '@/components/ui/skeleton';

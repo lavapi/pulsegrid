@@ -6,6 +6,7 @@ import { AlertFilters } from '@/components/security-alerts/alert-filters';
 import { AlertTable } from '@/components/security-alerts/alert-table';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
+import { LiveRefresh } from '@/components/ui/live-refresh';
 import { PageHeader } from '@/components/ui/page-header';
 import { alertQuery } from '@/lib/security-alerts';
 import { apiGet, getCurrentUser } from '@/lib/server-api';
@@ -28,6 +29,7 @@ export default async function SecurityAlertsPage({ searchParams }: { searchParam
   return (
     <>
       <PageHeader title="Security alerts" description="GuardDuty, Security Hub and root activity across the AWS organization" />
+      <LiveRefresh active={false} />
       <AlertFilters
         accounts={options.accounts.map(({ id, name }) => ({ value: id, label: name ? `${name} (${id})` : id }))}
         regions={options.regions.map((region) => ({ value: region, label: region }))}
