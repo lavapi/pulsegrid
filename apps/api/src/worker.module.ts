@@ -12,9 +12,19 @@ import { RedisModule } from './redis/redis.module';
 import { SecurityAlertsCoreModule } from './security-alerts/security-alerts-core.module';
 import { SecurityAlertsNotifier } from './security-alerts/security-alerts.notifier';
 import { SecurityAlertsWorker } from './security-alerts/security-alerts.worker';
+import { SecurityHubCheck } from './security-alerts/security-hub-check';
 
 @Module({
   imports: [ConfigModule, DatabaseModule, RedisModule, InventoryCoreModule, DatabaseAccessCoreModule, SecurityAlertsCoreModule],
-  providers: [ActionWorker, CostWorker, DatabaseAccessWorker, ExperimentWaveWorker, SecurityAlertsNotifier, SecurityAlertsWorker, SyncWorker],
+  providers: [
+    ActionWorker,
+    CostWorker,
+    DatabaseAccessWorker,
+    ExperimentWaveWorker,
+    SecurityAlertsNotifier,
+    SecurityAlertsWorker,
+    SecurityHubCheck,
+    SyncWorker,
+  ],
 })
 export class WorkerModule {}

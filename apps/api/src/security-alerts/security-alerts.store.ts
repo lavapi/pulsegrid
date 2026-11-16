@@ -94,6 +94,37 @@ export class SecurityAlertsStore {
     return row?.inserted ? { id: row.id, severity: row.severity } : null;
   }
 
+  /** Updates an alert that already exists, when AWS's version is newer; never creates one. */
+  async updateExisting(trx: TenantTransaction, alert: NormalizedAlert): Promise<boolean> {
+    const result = await trx
+      .updateTable('security_alerts')
+      .set({
+        severity: alert.severity,
+        title: alert.title,
+        region: alert.region,
+        aws_updated_at: alert.updatedAt,
+        console_url: alert.consoleUrl,
+        facts: JSON.stringify(alert.facts),
+        raw_event: JSON.stringify(alert.rawEvent),
+        last_seen_at: sql<Date>`now()`,
+      })
+      .where('alert_key', '=', alert.key)
+      .where('aws_updated_at', '<', alert.updatedAt)
+      .executeTakeFirst();
+    return result.numUpdatedRows > 0n;
+  }
+
+  /** The finding IDs of alerts not yet resolved, whose state in AWS the check follows. */
+  async openFindingKeys(trx: TenantTransaction): Promise<string[]> {
+    const rows = await trx
+      .selectFrom('security_alerts')
+      .select('alert_key')
+      .where('status', '!=', 'resolved')
+      .where('source', 'in', ['guardduty', 'securityhub'])
+      .execute();
+    return rows.map(({ alert_key }) => alert_key);
+  }
+
   async list(trx: TenantTransaction, filter: AlertFilter, limit: number) {
     let query = trx
       .selectFrom('security_alerts')

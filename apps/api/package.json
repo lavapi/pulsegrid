@@ -1,6 +1,6 @@
 {
   "name": "@pulsegrid/api",
-  "version": "0.24.1",
+  "version": "0.25.0",
   "private": true,
   "license": "Apache-2.0",
   "scripts": {
@@ -29,6 +29,7 @@
     "@aws-sdk/client-s3": "^3.1165.0",
     "@aws-sdk/client-scheduler": "^3.1165.0",
     "@aws-sdk/client-secrets-manager": "^3.1165.0",
+    "@aws-sdk/client-securityhub": "^3.1165.0",
     "@aws-sdk/client-sfn": "^3.1165.0",
     "@aws-sdk/client-sts": "^3.1165.0",
     "@nestjs/common": "^11.2.9",

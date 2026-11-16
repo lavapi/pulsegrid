@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-11-16
+
+- Security alerts stay up to date: every 10 minutes PulseGrid checks Security Hub for findings push missed, and shows when a failed check now passes or a finding was archived. It needs a read-only role in the Audit account; see `docs/security-alerts.md`.
+
 ## [0.24.1] - 2026-11-16
 
 - The account switcher now shows only where it changes what you see: it's gone from Security alerts, Your account and Activity's Dashboard tab.

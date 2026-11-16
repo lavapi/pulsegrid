@@ -83,6 +83,20 @@ describe('security alert settings', () => {
     expect(settings.accountNames.get('078212790620')).toBe('Log Archive');
   });
 
+  it('turns the Security Hub check on with a role, every 10 minutes in eu-central-1 by default', () => {
+    expect(loadSecurityAlertsSettings({}).check).toBeNull();
+    expect(
+      loadSecurityAlertsSettings({ SECURITY_ALERTS_POLL_ROLE_ARN: 'arn:aws:iam::040496249361:role/PulseGridSecurityHubReader' }).check,
+    ).toEqual({
+      roleArn: 'arn:aws:iam::040496249361:role/PulseGridSecurityHubReader',
+      regions: ['eu-central-1'],
+      everyMinutes: 10,
+    });
+    expect(() => loadSecurityAlertsSettings({ SECURITY_ALERTS_POLL_ROLE_ARN: 'not-a-role' })).toThrow(
+      'SECURITY_ALERTS_POLL_ROLE_ARN',
+    );
+  });
+
   it('names the setting that is wrong', () => {
     expect(() => loadSecurityAlertsSettings({ SECURITY_ALERTS_TOPIC_ARNS: 'not-an-arn' })).toThrow(
       'Check these settings: SECURITY_ALERTS_TOPIC_ARNS',
