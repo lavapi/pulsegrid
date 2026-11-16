@@ -1,13 +1,9 @@
-import { NOTIFYING_SEVERITIES } from '@pulsegrid/shared';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { Kysely } from 'kysely';
-import { DATABASE } from '../database/database.module';
-import type { Database } from '../database/schema';
 import { TenantDatabase } from '../database/tenant-database';
-import { type NormalizedAlert, normalizeEvent } from './alert-normalizer';
-import { SECURITY_ALERTS_SETTINGS, type SecurityAlertsSettings } from './security-alerts.settings';
-import { SecurityAlertsQueue } from './security-alerts.queue';
-import { type CreatedAlert, SecurityAlertsStore } from './security-alerts.store';
+import { normalizeEvent } from './alert-normalizer';
+import { ReceivingProject } from './receiving-project';
+import { SecurityAlertsIntake } from './security-alerts.intake';
+import { SecurityAlertsStore } from './security-alerts.store';
 import type { SnsMessage } from './sns-message';
 import { isSnsUrl } from './sns-signature';
 
@@ -32,11 +28,10 @@ export class SecurityAlertsInbox {
   private readonly logger = new Logger(SecurityAlertsInbox.name);
 
   constructor(
-    @Inject(DATABASE) private readonly db: Kysely<Database>,
     private readonly database: TenantDatabase,
     private readonly store: SecurityAlertsStore,
-    private readonly queue: SecurityAlertsQueue,
-    @Inject(SECURITY_ALERTS_SETTINGS) private readonly settings: SecurityAlertsSettings,
+    private readonly intake: SecurityAlertsIntake,
+    private readonly project: ReceivingProject,
     @Inject(CONFIRM_SUBSCRIPTION) private readonly confirm: ConfirmSubscription,
   ) {}
 
@@ -64,7 +59,7 @@ export class SecurityAlertsInbox {
   }
 
   private async storeAlerts(messageId: string, text: string, from: string): Promise<InboxResult> {
-    const tenantId = await this.tenantId();
+    const tenantId = await this.project.id();
     if (!tenantId) {
       this.logger.warn(`Dropped ${from}: SECURITY_ALERTS_PROJECT does not name a project`);
       return 'not-set-up';
@@ -74,47 +69,15 @@ export class SecurityAlertsInbox {
       this.logger.warn(`Dropped ${from}: the message is not an EventBridge event`);
       return 'rejected';
     }
-    const created = await this.database.run(tenantId, async (trx) => {
-      if (!(await this.store.firstDelivery(trx, tenantId, messageId))) {
-        return null;
-      }
-      const stored: CreatedAlert[] = [];
-      for (const alert of alerts) {
-        const row = await this.store.upsert(trx, tenantId, alert);
-        if (row) stored.push(row);
-      }
-      await this.queueNotifications(tenantId, stored);
-      return stored;
-    });
-    if (!created) {
+    const result = await this.database.run(tenantId, async (trx) =>
+      (await this.store.firstDelivery(trx, tenantId, messageId)) ? this.intake.save(trx, tenantId, alerts) : null,
+    );
+    if (!result) {
       this.logger.log(`Skipped ${from}: already handled`);
       return 'duplicate';
     }
-    this.logReceived(from, alerts, created.length);
-    return 'handled';
-  }
-
-  /** Queued before the alerts are committed, so a failure here leaves SNS to retry the whole message. */
-  private async queueNotifications(tenantId: string, created: CreatedAlert[]): Promise<void> {
-    for (const alert of created.filter(({ severity }) => NOTIFYING_SEVERITIES.includes(severity))) {
-      await this.queue.notify({ tenantId, alertId: alert.id });
-    }
-  }
-
-  private logReceived(from: string, alerts: NormalizedAlert[], createdCount: number): void {
     const keys = alerts.map(({ accountId, key }) => `${accountId}:${key}`).join(', ');
-    this.logger.log(`Stored ${alerts.length} alert(s), ${createdCount} new, from ${from}: ${keys}`);
-  }
-
-  private async tenantId(): Promise<string | null> {
-    if (!this.settings.projectSlug) {
-      return null;
-    }
-    const tenant = await this.db
-      .selectFrom('tenants')
-      .select('id')
-      .where('slug', '=', this.settings.projectSlug)
-      .executeTakeFirst();
-    return tenant?.id ?? null;
+    this.logger.log(`Stored ${alerts.length} alert(s), ${result.created} new, from ${from}: ${keys}`);
+    return 'handled';
   }
 }

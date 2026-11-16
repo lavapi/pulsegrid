@@ -96,16 +96,23 @@ const findingUrl = (finding: Finding, guardDuty: boolean, region: string | null)
   return `${consoleHome('securityhub', region)}#/findings?search=${encodeURIComponent(search)}`;
 };
 
-const fromFinding = (event: EventBridgeEvent, finding: Finding, receivedAt: Date): NormalizedAlert => {
+/** Where a finding came from: the event that carried it, or the 10-minute check that fetched it. */
+interface FindingOrigin {
+  account: string;
+  region?: string | undefined;
+  raw: unknown;
+}
+
+const fromFinding = (origin: FindingOrigin, finding: Finding, receivedAt: Date): NormalizedAlert => {
   const guardDuty = isGuardDuty(finding);
-  const region = finding.Region ?? event.region ?? null;
+  const region = finding.Region ?? origin.region ?? null;
   const occurredAt = dateOr(finding.CreatedAt, receivedAt);
   return {
     key: finding.Id,
     source: guardDuty ? 'guardduty' : 'securityhub',
     severity: severityOf(finding.Severity?.Label),
     title: short(finding.Title ?? 'Security Hub finding'),
-    accountId: finding.AwsAccountId ?? event.account,
+    accountId: finding.AwsAccountId ?? origin.account,
     region,
     occurredAt,
     updatedAt: dateOr(finding.UpdatedAt, occurredAt),
@@ -118,7 +125,7 @@ const fromFinding = (event: EventBridgeEvent, finding: Finding, receivedAt: Date
       complianceStatus: finding.Compliance?.Status,
       resourceIds: finding.Resources?.map(({ Id }) => Id) ?? [],
     },
-    rawEvent: event.raw,
+    rawEvent: origin.raw,
   };
 };
 
@@ -128,6 +135,21 @@ const fromFindings = (event: EventBridgeEvent, receivedAt: Date): NormalizedAler
     const finding = findingSchema.safeParse(item);
     return finding.success ? [fromFinding(event, finding.data, receivedAt)] : [];
   });
+};
+
+/** What a finding fetched by the check is stored as, so its page shows where it came from. */
+export const CHECKED_FINDING_SOURCE = 'pulsegrid.security-hub-check';
+
+/** Turns a finding fetched from Security Hub into an alert, or null when it isn't a finding. */
+export const normalizeFinding = (item: unknown, receivedAt = new Date()): NormalizedAlert | null => {
+  const finding = findingSchema.safeParse(item);
+  return finding.success
+    ? fromFinding(
+        { account: '', region: undefined, raw: { source: CHECKED_FINDING_SOURCE, finding: item } },
+        finding.data,
+        receivedAt,
+      )
+    : null;
 };
 
 const rootTitle = (detail: z.infer<typeof rootSchema>): string => {

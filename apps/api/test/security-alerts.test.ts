@@ -12,7 +12,12 @@ import {
   TEST_CERTIFICATE,
 } from '../src/security-alerts/fixtures/sns-fixtures';
 import { CONFIRM_SUBSCRIPTION } from '../src/security-alerts/security-alerts.inbox';
+import { ReceivingProject } from '../src/security-alerts/receiving-project';
+import { SecurityAlertsIntake } from '../src/security-alerts/security-alerts.intake';
 import { SecurityAlertsNotifier } from '../src/security-alerts/security-alerts.notifier';
+import { loadSecurityAlertsSettings } from '../src/security-alerts/security-alerts.settings';
+import { SecurityHubCheck } from '../src/security-alerts/security-hub-check';
+import type { SecurityHubReader } from '../src/security-alerts/security-hub-reader';
 import { SecurityAlertsQueue } from '../src/security-alerts/security-alerts.queue';
 import { SecurityAlertsStore } from '../src/security-alerts/security-alerts.store';
 import { FETCH_CERTIFICATE } from '../src/security-alerts/signing-certificates';
@@ -304,6 +309,113 @@ describe('AWS security alerts', () => {
       await deliver(notification(fixtureEvent('root-console-login'))).expect(200);
       await notifier().notify({ tenantId: context.acme.tenant.id, alertId: notified[0] ?? '' });
       expect(slackPosts).toEqual([]);
+    });
+  });
+
+  describe('Security Hub check', () => {
+    const findings = () => (fixtureEvent('security-hub-two-findings').detail as { findings: Finding[] }).findings;
+    const [guardDutyFinding, controlFinding] = [() => findings()[0] as Finding, () => findings()[1] as Finding];
+    const CONTROL_ID = String(controlFinding()['Id']);
+
+    const check = (
+      reader: Partial<Record<'updatedSince' | 'byIds', (input: never) => Promise<unknown[]>>>,
+      env: NodeJS.ProcessEnv = { SECURITY_ALERTS_PROJECT: 'acme', SECURITY_ALERTS_POLL_ROLE_ARN: 'arn:aws:iam::040496249361:role/Reader' },
+    ) => {
+      const fake = { updatedSince: async () => [], byIds: async () => [], ...reader };
+      return new SecurityHubCheck(
+        fake as unknown as SecurityHubReader,
+        context.app.get(TenantDatabase),
+        context.app.get(SecurityAlertsStore, { strict: false }),
+        context.app.get(SecurityAlertsIntake, { strict: false }),
+        context.app.get(ReceivingProject, { strict: false }),
+        loadSecurityAlertsSettings(env),
+      );
+    };
+
+    it('stores a finding push missed, notifies once, and marks where it came from', async () => {
+      const result = await check({ updatedSince: async () => [guardDutyFinding()] }).run();
+      expect(result).toEqual({ created: 1, updated: 0, refreshed: 0 });
+      const [row] = await alertRows();
+      expect(row).toMatchObject({ source: 'guardduty', severity: 'HIGH', alert_key: GUARDDUTY_ID });
+      expect(row?.raw_event).toMatchObject({ source: 'pulsegrid.security-hub-check', finding: { Id: GUARDDUTY_ID } });
+      expect(notified).toEqual([row?.id]);
+
+      await check({ updatedSince: async () => [guardDutyFinding()] }).run();
+      expect(await alertRows()).toHaveLength(1);
+      expect(notified).toHaveLength(1);
+    });
+
+    it('adds nothing for a finding push already delivered', async () => {
+      await deliver(notification(fixtureEvent('security-hub-two-findings'))).expect(200);
+      notified.length = 0;
+      const result = await check({ updatedSince: async () => findings() }).run();
+      expect(result).toMatchObject({ created: 0 });
+      expect(await alertRows()).toHaveLength(2);
+      expect(notified).toEqual([]);
+    });
+
+    it('updates an open alert whose check now passes, without notifying', async () => {
+      await deliver(notification(fixtureEvent('security-hub-two-findings'))).expect(200);
+      notified.length = 0;
+      let askedFor: string[] = [];
+      const passed = {
+        ...controlFinding(),
+        UpdatedAt: '2026-11-17T08:00:00.000Z',
+        Compliance: { Status: 'PASSED' },
+        Workflow: { Status: 'RESOLVED' },
+      };
+      const result = await check({
+        byIds: async (ids: never) => {
+          askedFor = ids;
+          return [passed];
+        },
+      }).run();
+
+      expect(askedFor.sort()).toEqual([CONTROL_ID, GUARDDUTY_ID].sort());
+      expect(result).toMatchObject({ refreshed: 1 });
+      const control = (await alertRows()).find(({ alert_key }) => alert_key === CONTROL_ID);
+      expect(control?.facts).toMatchObject({ complianceStatus: 'PASSED', workflowStatus: 'RESOLVED' });
+      expect(control?.status).toBe('new');
+      expect(notified).toEqual([]);
+    });
+
+    it('never creates an alert from an open-alert lookup, such as an archived finding', async () => {
+      const archived = { ...guardDutyFinding(), RecordState: 'ARCHIVED', UpdatedAt: '2026-11-17T08:00:00.000Z' };
+      expect(await check({ byIds: async () => [archived] }).run()).toMatchObject({ created: 0, refreshed: 0 });
+      expect(await alertRows()).toEqual([]);
+    });
+
+    it('stops following alerts once they are resolved in PulseGrid', async () => {
+      await deliver(notification(fixtureEvent('security-hub-two-findings'))).expect(200);
+      await context.owner.updateTable('security_alerts').set({ status: 'resolved' }).where('alert_key', '=', GUARDDUTY_ID).execute();
+      let askedFor: string[] = [];
+      await check({
+        byIds: async (ids: never) => {
+          askedFor = ids;
+          return [];
+        },
+      }).run();
+      expect(askedFor).toEqual([CONTROL_ID]);
+    });
+
+    it('does nothing while the check is off', async () => {
+      const updatedSince = vi.fn(async () => [guardDutyFinding()]);
+      expect(await check({ updatedSince }, { SECURITY_ALERTS_PROJECT: 'acme' }).run()).toBeNull();
+      expect(updatedSince).not.toHaveBeenCalled();
+    });
+
+    it('leaves stored alerts as they were when Security Hub fails', async () => {
+      await deliver(notification(fixtureEvent('security-hub-two-findings'))).expect(200);
+      const before = await alertRows();
+      await expect(
+        check({
+          updatedSince: async () => [guardDutyFinding()],
+          byIds: async () => {
+            throw new Error('AccessDenied');
+          },
+        }).run(),
+      ).rejects.toThrow('AccessDenied');
+      expect(await alertRows()).toEqual(before);
     });
   });
 });
