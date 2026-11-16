@@ -18,11 +18,32 @@ export const selectedFirst = (
   ...accounts.filter(({ id }) => id !== selectedId),
 ];
 
-const UNSCOPED_PATHS = ['/costs', '/environments', '/releases', '/settings'];
+const UNSCOPED_PATHS = ['/account', '/costs', '/environments', '/releases', '/security-alerts', '/settings'];
+
+/** What pages without the switcher cover instead, where it helps to say so. */
+const SCOPE_LABELS: [path: string, label: string][] = [
+  ['/costs', 'Across all your accounts'],
+  ['/environments', 'Across all your accounts'],
+  ['/releases', 'Across all your accounts'],
+  ['/security-alerts', 'Across your AWS organization'],
+];
+
+/** Activity follows the switcher only on its AWS tab; the Dashboard tab is PulseGrid's own log. */
+const ACTIVITY_PATH = '/activity';
+const AWS_ACTIVITY_VIEW = 'aws';
+
+const isUnder = (pathname: string, path: string): boolean => pathname === path || pathname.startsWith(`${path}/`);
 const SHARED_PIPELINES_ONLY = 'none';
 
-export const followsAccountSwitcher = (pathname: string): boolean =>
-  !UNSCOPED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+export const followsAccountSwitcher = (pathname: string, view: string | null = null): boolean => {
+  if (isUnder(pathname, ACTIVITY_PATH)) {
+    return view === AWS_ACTIVITY_VIEW;
+  }
+  return !UNSCOPED_PATHS.some((path) => isUnder(pathname, path));
+};
+
+export const scopeLabel = (pathname: string): string | null =>
+  SCOPE_LABELS.find(([path]) => isUnder(pathname, path))?.[1] ?? null;
 
 export const pathAfterSwitch = (pathname: string): string | null => {
   const segments = pathname.split('/');

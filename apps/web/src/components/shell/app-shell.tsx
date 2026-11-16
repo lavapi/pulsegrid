@@ -3,7 +3,7 @@
 import type { CloudAccount, CurrentUser, Project } from '@pulsegrid/shared';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Menu, PanelLeft, Search } from 'lucide-react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
 import { AccountSwitcher } from '@/components/account-switcher';
 import { Button } from '@/components/ui/button';
@@ -44,12 +44,13 @@ interface AppShellProps {
 
 export function AppShell({ user, projects, accounts, selectedId, children }: AppShellProps) {
   const pathname = usePathname();
+  const view = useSearchParams().get('view');
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
   const selected = accounts.find(({ id }) => id === selectedId);
-  const production = selected?.isProduction && followsAccountSwitcher(pathname) ? selected : null;
+  const production = selected?.isProduction && followsAccountSwitcher(pathname, view) ? selected : null;
 
   useEffect(() => setCollapsed(readCollapsed()), []);
 
