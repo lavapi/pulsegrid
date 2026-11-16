@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- The account switcher now shows only where it changes what you see: it's gone from Security alerts, Your account and Activity's Dashboard tab.
+
 ## [0.24.0] - 2026-11-16
 
 - AWS security alerts in PulseGrid: GuardDuty findings, failed Security Hub checks and root sign-ins or changes arrive through SNS, show under Security alerts with filters and a New, Acknowledged and Resolved workflow, and new critical and high ones post to Slack. See `docs/security-alerts.md`. Run `pnpm db:migrate`.
