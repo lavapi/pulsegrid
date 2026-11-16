@@ -7,6 +7,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Time } from '@/components/ui/time';
+import { isKeyOld, keyAgeDays, keyAgeText } from '@/lib/key-age';
 import { WriteAccessWarning } from './credential-result';
 import { EditAccountButton } from './edit-account-button';
 import { ReplaceCredentialsButton } from './replace-credentials-button';
@@ -28,6 +29,7 @@ interface CloudAccountCardProps {
 
 export function CloudAccountCard({ account, fields, regions }: CloudAccountCardProps) {
   const { label, tone } = statusOf(account);
+  const keyAge = account.hasCredentials ? keyAgeDays(account.credentialsUpdatedAt, Date.now()) : null;
   const details = [account.accountId, account.credentialHint, account.regions.join(', ')].filter(
     Boolean,
   );
@@ -49,9 +51,21 @@ export function CloudAccountCard({ account, fields, regions }: CloudAccountCardP
           </p>
         )}
         {account.canWrite && <WriteAccessWarning />}
-        {account.lastSyncedAt && (
+        {isKeyOld(keyAge) && (
+          <p className="text-[13px] text-warning" role="status">
+            This key is {keyAge} days old. Rotate it: create a new key in IAM, use Replace credentials, then delete
+            the old key.
+          </p>
+        )}
+        {(account.lastSyncedAt || keyAge !== null) && (
           <p className="text-[13px] text-muted-foreground">
-            Last synced <Time value={account.lastSyncedAt} withZone />
+            {account.lastSyncedAt && (
+              <>
+                Last synced <Time value={account.lastSyncedAt} withZone />
+              </>
+            )}
+            {account.lastSyncedAt && keyAge !== null && ' · '}
+            {keyAgeText(keyAge)}
           </p>
         )}
         <div className="flex flex-wrap items-center gap-2">

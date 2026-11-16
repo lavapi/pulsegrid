@@ -269,6 +269,8 @@ export interface CloudAccountsTable {
   provider: string;
   encrypted_credentials: string | null;
   credential_hint: string | null;
+  /** When the key was last set, to remind people to rotate it. */
+  credentials_updated_at: Date | null;
   can_write: boolean | null;
   environment_id: string | null;
   environment_reviewed: ColumnType<boolean, boolean | undefined, boolean>;
