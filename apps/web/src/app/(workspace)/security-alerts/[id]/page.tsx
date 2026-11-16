@@ -7,6 +7,7 @@ import { SeverityBadge, StatusBadge } from '@/components/security-alerts/alert-b
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
 import { CopyButton } from '@/components/ui/copy-button';
+import { LiveRefresh } from '@/components/ui/live-refresh';
 import { PageHeader } from '@/components/ui/page-header';
 import { Time } from '@/components/ui/time';
 import { accountLabel, alertFacts } from '@/lib/security-alerts';
@@ -49,6 +50,7 @@ export default async function SecurityAlertPage({ params }: { params: Promise<{ 
           hasPermission(user, 'security.manage') ? <AlertStatusActions alertId={alert.id} status={alert.status} /> : null
         }
       />
+      <LiveRefresh active={false} />
       <Card>
         <CardHeader title="Details" />
         <dl className="flex flex-col gap-3 p-5 text-[13px]">

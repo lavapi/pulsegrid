@@ -7,7 +7,7 @@ import {
 import { GitBranch, Rocket } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { LiveRefresh } from '@/components/pipelines/live-refresh';
+import { LiveRefresh } from '@/components/ui/live-refresh';
 import { LinkServiceButton } from '@/components/releases/link-service-button';
 import { ReleaseCard } from '@/components/releases/release-card';
 import { CardGridSkeleton, HeaderSkeleton } from '@/components/skeletons';

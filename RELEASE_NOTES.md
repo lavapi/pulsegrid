@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Security alerts update on their own: an open list or alert page shows new alerts and changes within 30 seconds, without reloading.
+
 ## [0.25.0] - 2026-11-16
 
 - Security alerts stay up to date: every 10 minutes PulseGrid checks Security Hub for findings push missed, and shows when a failed check now passes or a finding was archived. It needs a read-only role in the Audit account; see `docs/security-alerts.md`.

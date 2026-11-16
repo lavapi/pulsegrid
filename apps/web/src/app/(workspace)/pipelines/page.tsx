@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { AppCard } from '@/components/pipelines/app-card';
 import { CreateAppButton } from '@/components/pipelines/create-app-button';
-import { LiveRefresh } from '@/components/pipelines/live-refresh';
+import { LiveRefresh } from '@/components/ui/live-refresh';
 import { PipelineIssues } from '@/components/pipelines/pipeline-issues';
 import { CardGridSkeleton, HeaderSkeleton } from '@/components/skeletons';
 import { Button } from '@/components/ui/button';
