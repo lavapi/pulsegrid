@@ -75,4 +75,26 @@ describe('checkAwsKey', () => {
     const check = await checkAwsKey(KEY, 'eu-central-1');
     expect(check).toMatchObject({ missingActions: null, canWrite: null });
   });
+
+  it('simulates calls from PulseGrid\'s address, so keys locked to it check out', async () => {
+    iam.on(SimulatePrincipalPolicyCommand).callsFake(decisions(() => true));
+    await checkAwsKey(KEY, 'eu-central-1', '3.120.255.207');
+    const inputs = iam.commandCalls(SimulatePrincipalPolicyCommand).map(({ args }) => args[0].input);
+    expect(inputs.length).toBeGreaterThan(0);
+    for (const input of inputs) {
+      expect(input.ContextEntries).toEqual([
+        { ContextKeyName: 'aws:RequestedRegion', ContextKeyValues: ['eu-central-1'], ContextKeyType: 'string' },
+        { ContextKeyName: 'aws:SourceIp', ContextKeyValues: ['3.120.255.207'], ContextKeyType: 'ip' },
+        { ContextKeyName: 'aws:ViaAWSService', ContextKeyValues: ['false'], ContextKeyType: 'boolean' },
+      ]);
+    }
+  });
+
+  it('simulates with the region alone when PulseGrid doesn\'t know its address', async () => {
+    iam.on(SimulatePrincipalPolicyCommand).callsFake(decisions(() => true));
+    await checkAwsKey(KEY, 'eu-central-1');
+    expect(iam.commandCalls(SimulatePrincipalPolicyCommand)[0]?.args[0].input.ContextEntries).toEqual([
+      { ContextKeyName: 'aws:RequestedRegion', ContextKeyValues: ['eu-central-1'], ContextKeyType: 'string' },
+    ]);
+  });
 });

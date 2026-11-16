@@ -394,7 +394,8 @@ export interface CloudProvider<Credentials extends CloudCredentials = CloudCrede
   parseCredentials(input: unknown): Credentials | null;
   credentialHint(credentials: Credentials): string;
   isValidRegion(region: string): boolean;
-  checkCredentials(credentials: Credentials, region: string): Promise<CredentialCheck>;
+  /** Checks a key; `sourceAddress` is where PulseGrid calls the cloud from, for policies locked to it. */
+  checkCredentials(credentials: Credentials, region: string, sourceAddress?: string | null): Promise<CredentialCheck>;
   failureMessage(error: unknown, label: string): string;
   actionFailureMessage(error: unknown): string;
   buildMap(resources: readonly MapResource[]): InfrastructureMap;

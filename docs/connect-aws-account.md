@@ -357,7 +357,32 @@ If you lose `TOKEN_ENCRYPTION_KEY`, stored keys can't be read, and you'll need t
 2. Select **Replace credentials** on the account, and enter the new key. It must belong to the same AWS account.
 3. Delete the old key in AWS. The dashboard can't do this for you.
 
-Rotate keys regularly, for example every 90 days.
+Each account's card shows how old its key is. From 90 days, the card asks you to rotate it.
+
+## Lock keys to PulseGrid
+
+An access key works from anywhere until it's deleted. Lock each key to PulseGrid, so a copied key is useless anywhere else. The AWS page under **Integrations** shows the address PulseGrid calls AWS from, usually its NAT gateway's public IP. Add this statement to each key's IAM policy:
+
+```json
+{
+  "Sid": "OnlyFromPulseGrid",
+  "Effect": "Deny",
+  "Action": "*",
+  "Resource": "*",
+  "Condition": {
+    "NotIpAddress": { "aws:SourceIp": "<PulseGrid's address>/32" },
+    "StringNotEqualsIfExists": { "aws:SourceVpc": "<PulseGrid's VPC>" },
+    "BoolIfExists": { "aws:ViaAWSService": "false" }
+  }
+}
+```
+
+- `aws:SourceVpc` is needed when PulseGrid reaches some services, such as S3, through VPC endpoints: those calls come from the VPC, not the public address. Leave the line out if PulseGrid uses no VPC endpoints.
+- `aws:ViaAWSService` lets AWS services act on the key's behalf, such as KMS decrypting a secret PulseGrid reads.
+- The key check simulates calls from PulseGrid's address, so a locked key checks out as it really works.
+- If PulseGrid's address changes, for example a new NAT gateway or Elastic IP, update the statement, or PulseGrid loses access to the account.
+
+Before locking a key, make sure nothing else uses it: CloudTrail shows the source address of every call it made.
 
 ## Sync progress
 

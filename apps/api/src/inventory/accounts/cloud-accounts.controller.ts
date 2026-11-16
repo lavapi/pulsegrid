@@ -65,6 +65,12 @@ export class CloudAccountsController {
     return this.accounts.list(auth.tenantId);
   }
 
+  @Get('outbound-address')
+  @RequirePermission('integrations.manage')
+  outboundAddress(): Promise<{ address: string | null }> {
+    return this.accounts.outboundAddress();
+  }
+
   @Post('check')
   @RequirePermission('integrations.manage')
   @UseGuards(ThrottlerGuard)
