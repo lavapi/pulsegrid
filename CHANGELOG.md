@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-11-16
+
 ### Changed
 
 - The Security alerts list and each alert's page refresh themselves every 30 seconds while open, so new alerts and changes from the Security Hub check show without reloading.
