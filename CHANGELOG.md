@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-16
+
 ### Added
 
 - Security alerts: AWS pushes GuardDuty findings, failed Security Hub checks and root activity to `POST /api/webhooks/aws-security` through SNS. PulseGrid verifies each message (signature, topic allowlist, age), stores one alert per finding or event, and updates a finding when AWS sends it again.
