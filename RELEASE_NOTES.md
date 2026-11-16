@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-11-16
+
 - Security alerts update on their own: an open list or alert page shows new alerts and changes within 30 seconds, without reloading.
 
 ## [0.25.0] - 2026-11-16
