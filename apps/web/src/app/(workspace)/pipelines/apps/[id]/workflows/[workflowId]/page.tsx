@@ -7,7 +7,7 @@ import {
 import { ArrowLeft, ExternalLink, Info } from 'lucide-react';
 import Link from 'next/link';
 import { EnvironmentLink } from '@/components/pipelines/environment-link';
-import { LiveRefresh } from '@/components/pipelines/live-refresh';
+import { LiveRefresh } from '@/components/ui/live-refresh';
 import { PipelineStatusBadge } from '@/components/pipelines/pipeline-status';
 import { RunPipelineButton } from '@/components/pipelines/run-pipeline-button';
 import { RelativeTime } from '@/components/pipelines/relative-time';

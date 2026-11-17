@@ -4,7 +4,7 @@ import type { DatabaseAccessConnect, DatabaseAccessGrant, OutsideDatabaseAccess 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 import { toast } from 'sonner';
-import { LiveRefresh } from '@/components/pipelines/live-refresh';
+import { LiveRefresh } from '@/components/ui/live-refresh';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';

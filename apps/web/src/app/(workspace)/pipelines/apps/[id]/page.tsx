@@ -7,7 +7,7 @@ import { ArrowLeft, GitBranch } from 'lucide-react';
 import Link from 'next/link';
 import { DeleteAppButton } from '@/components/pipelines/delete-app-button';
 import { DeploymentTimeTiles } from '@/components/pipelines/deployment-times';
-import { LiveRefresh } from '@/components/pipelines/live-refresh';
+import { LiveRefresh } from '@/components/ui/live-refresh';
 import { PipelineIssues } from '@/components/pipelines/pipeline-issues';
 import { PipelineTable } from '@/components/pipelines/pipeline-table';
 import { Card, CardHeader } from '@/components/ui/card';
