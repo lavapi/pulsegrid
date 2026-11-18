@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-11-18
+
+- Finish or roll back production releases from PulseGrid: the new Production releases page shows the release waiting for a decision, how long until it rolls back by itself, and the two buttons, plus recent releases. Give people the new permission under Roles. See `docs/production-releases.md`.
+
 ## [0.25.1] - 2026-11-16
 
 - Security alerts update on their own: an open list or alert page shows new alerts and changes within 30 seconds, without reloading.

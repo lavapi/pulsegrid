@@ -1,6 +1,6 @@
 'use client';
 
-import { type ComponentProps, useState } from 'react';
+import { type ComponentProps, type ReactNode, useState } from 'react';
 import { Button } from './button';
 import {
   Dialog,
@@ -17,7 +17,10 @@ interface ConfirmButtonProps {
   label: string;
   title: string;
   description: string;
+  /** More to read before confirming, such as what exactly will change. */
+  details?: ReactNode;
   confirmLabel: string;
+  confirmVariant?: 'danger' | 'primary';
   disabled?: boolean;
   /** When set, the person has to type this before confirming. */
   typeToConfirm?: string;
@@ -31,7 +34,9 @@ export function ConfirmButton({
   label,
   title,
   description,
+  details,
   confirmLabel,
+  confirmVariant = 'danger',
   disabled,
   typeToConfirm,
   triggerVariant = 'dangerGhost',
@@ -60,6 +65,7 @@ export function ConfirmButton({
         <DialogDescription className="mt-1.5 text-sm text-muted-foreground">
           {description}
         </DialogDescription>
+        {details && <div className="mt-3 text-sm">{details}</div>}
         <div className="mt-4 empty:hidden">
           <ProductionNotice target={production} />
         </div>
@@ -73,7 +79,7 @@ export function ConfirmButton({
             <Button>Cancel</Button>
           </DialogClose>
           <Button
-            variant="danger"
+            variant={confirmVariant}
             disabled={!confirmed}
             onClick={() => {
               changeOpen(false);

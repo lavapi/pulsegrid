@@ -18,7 +18,15 @@ export const selectedFirst = (
   ...accounts.filter(({ id }) => id !== selectedId),
 ];
 
-const UNSCOPED_PATHS = ['/account', '/costs', '/environments', '/releases', '/security-alerts', '/settings'];
+const UNSCOPED_PATHS = [
+  '/account',
+  '/costs',
+  '/environments',
+  '/production-releases',
+  '/releases',
+  '/security-alerts',
+  '/settings',
+];
 
 /** What pages without the switcher cover instead, where it helps to say so. */
 const SCOPE_LABELS: [path: string, label: string][] = [
@@ -26,6 +34,7 @@ const SCOPE_LABELS: [path: string, label: string][] = [
   ['/environments', 'Across all your accounts'],
   ['/releases', 'Across all your accounts'],
   ['/security-alerts', 'Across your AWS organization'],
+  ['/production-releases', 'Production account'],
 ];
 
 /** Activity follows the switcher only on its AWS tab; the Dashboard tab is PulseGrid's own log. */
