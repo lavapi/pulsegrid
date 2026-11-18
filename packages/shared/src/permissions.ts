@@ -25,6 +25,7 @@ export const STAGING_PERMISSIONS = {
 /** Permissions that exist only for production, with no staging twin. */
 export const PRODUCTION_ONLY_PERMISSIONS = {
   'production.database_access.grant': { label: 'Grant production database access' },
+  'production.release.decide': { label: 'Finish or roll back production releases' },
 } as const;
 
 export type WorkspacePermission = keyof typeof WORKSPACE_PERMISSIONS;

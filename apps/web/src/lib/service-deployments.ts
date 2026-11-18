@@ -4,8 +4,7 @@ import {
   type TrafficDeployment,
   type TrafficDeploymentStatus,
 } from '@pulsegrid/shared';
-
-type Tone = 'success' | 'warning' | 'danger' | 'neutral';
+import type { Tone } from './tone';
 
 const STATUSES: Record<TrafficDeploymentStatus, { label: string; tone: Tone }> = {
   pending: { label: 'Pending', tone: 'warning' },

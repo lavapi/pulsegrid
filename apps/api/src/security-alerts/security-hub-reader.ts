@@ -4,8 +4,8 @@ import {
   type GetFindingsCommandOutput,
   SecurityHubClient,
 } from '@aws-sdk/client-securityhub';
-import { AssumeRoleCommand, STSClient } from '@aws-sdk/client-sts';
 import { Inject, Injectable } from '@nestjs/common';
+import { assumedRoleCredentials } from '../common/assumed-role';
 import { SECURITY_ALERTS_SETTINGS, type SecurityAlertsSettings } from './security-alerts.settings';
 
 const PAGE_SIZE = 100;
@@ -35,26 +35,11 @@ export const SECURITY_HUB_CLIENTS = Symbol('SECURITY_HUB_CLIENTS');
 /** Security Hub clients that act as the read-only role in the Audit account, through PulseGrid's task role. */
 export const securityHubClients =
   (settings: SecurityAlertsSettings): ClientFactory =>
-  (region) => {
-    const sts = new STSClient({ region });
-    return new SecurityHubClient({
+  (region) =>
+    new SecurityHubClient({
       region,
-      credentials: async () => {
-        const { Credentials: credentials } = await sts.send(
-          new AssumeRoleCommand({ RoleArn: settings.check?.roleArn, RoleSessionName: SESSION_NAME }),
-        );
-        if (!credentials?.AccessKeyId || !credentials.SecretAccessKey) {
-          throw new Error('AssumeRole returned no credentials');
-        }
-        return {
-          accessKeyId: credentials.AccessKeyId,
-          secretAccessKey: credentials.SecretAccessKey,
-          sessionToken: credentials.SessionToken,
-          expiration: credentials.Expiration,
-        };
-      },
+      credentials: assumedRoleCredentials(settings.check?.roleArn ?? '', region, SESSION_NAME),
     });
-  };
 
 const chunks = <T>(items: readonly T[], size: number): T[][] =>
   Array.from({ length: Math.ceil(items.length / size) }, (_, index) => items.slice(index * size, (index + 1) * size));

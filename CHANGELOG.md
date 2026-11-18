@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- Production releases page: shows the release in progress, its components and tags, and while it holds, a countdown to the automatic rollback with **Finish release** and **Roll back** buttons that confirm first. It refreshes every 10 seconds until the release ends, lists the last 20 releases, and puts a dot in the menu while a release waits. Decisions invoke the release's decide function as the signed-in person, refuse in plain words when the release isn't waiting, and are recorded in Activity.
+- Permission **Finish or roll back production releases**, given to no role by default.
+- Settings `PRODUCTION_RELEASES_ROLE_ARN`, `PRODUCTION_RELEASES_PROJECT`, `PRODUCTION_RELEASES_REGION`, `PRODUCTION_RELEASES_TABLE` and `PRODUCTION_RELEASES_DECIDE_FUNCTION`. PulseGrid assumes the production role with its API task role; no access key.
+
 ## [0.25.1] - 2026-11-16
 
 ### Changed

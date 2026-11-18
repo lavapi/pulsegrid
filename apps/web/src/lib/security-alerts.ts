@@ -9,8 +9,7 @@ import {
   type SecurityAlert,
   type SecurityAlertFacts,
 } from '@pulsegrid/shared';
-
-export type Tone = 'danger' | 'warning' | 'neutral' | 'success' | 'primary';
+import type { Tone } from './tone';
 
 export const SEVERITY_TONES: Record<AlertSeverity, Tone> = {
   CRITICAL: 'danger',
