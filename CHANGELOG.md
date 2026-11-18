@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-11-18
+
 ### Added
 
 - Production releases page: shows the release in progress, its components and tags, and while it holds, a countdown to the automatic rollback with **Finish release** and **Roll back** buttons that confirm first. It refreshes every 10 seconds until the release ends, lists the last 20 releases, and puts a dot in the menu while a release waits. Decisions invoke the release's decide function as the signed-in person, refuse in plain words when the release isn't waiting, and are recorded in Activity.
