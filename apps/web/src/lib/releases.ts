@@ -1,7 +1,6 @@
 import type { Release, ReleaseState } from '@pulsegrid/shared';
 import { isActiveRelease } from '@pulsegrid/shared';
-
-type Tone = 'success' | 'danger' | 'neutral' | 'primary' | 'warning';
+import type { Tone } from './tone';
 
 export const RELEASE_STATES: Record<ReleaseState, { label: string; tone: Tone }> = {
   idle: { label: 'Not run yet', tone: 'neutral' },

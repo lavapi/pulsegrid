@@ -87,6 +87,7 @@ Demo data only goes into a project with no cloud accounts yet. The made-up accou
 - [Pipelines](docs/pipelines.md)
 - [Production database access](docs/database-access.md)
 - [AWS security alerts](docs/security-alerts.md)
+- [Production releases](docs/production-releases.md)
 
 ## Contributing and security
 

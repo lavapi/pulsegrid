@@ -11,6 +11,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { PipelinesModule } from './pipelines/pipelines.module';
 import { RedisModule } from './redis/redis.module';
 import { ReleasesModule } from './releases/releases.module';
+import { ProductionReleasesModule } from './production-releases/production-releases.module';
 import { ProjectsModule } from './projects/projects.module';
 import { SecurityAlertsModule } from './security-alerts/security-alerts.module';
 import { TeamModule } from './team/team.module';
@@ -29,6 +30,7 @@ import { TeamModule } from './team/team.module';
     ReleasesModule,
     DatabaseAccessModule,
     SecurityAlertsModule,
+    ProductionReleasesModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_INTERCEPTOR, useClass: SlowRequestInterceptor }],
