@@ -1,8 +1,5 @@
 import type {
   ActionRunStatus,
-  AlertSeverity,
-  AlertSource,
-  AlertStatus,
   CloudAccountStatus,
   DomainKind,
   ExperimentReportDetails,
@@ -11,7 +8,6 @@ import type {
   ExperimentTemplateRef,
   ResourceHealth,
   ResourceType,
-  SecurityAlertFacts,
   SyncIssue,
   TagFilter,
 } from '@pulsegrid/shared';
@@ -310,57 +306,9 @@ export interface ResourcesTable {
   last_seen_at: Date;
 }
 
-export interface SecurityAlertsTable {
-  id: Generated<string>;
-  tenant_id: string;
-  alert_key: string;
-  source: AlertSource;
-  severity: AlertSeverity;
-  title: string;
-  account_id: string;
-  region: string | null;
-  occurred_at: Date;
-  aws_updated_at: Date;
-  console_url: string | null;
-  facts: JsonColumn<SecurityAlertFacts>;
-  raw_event: JsonColumn<unknown>;
-  status: Generated<AlertStatus>;
-  status_changed_by: string | null;
-  status_changed_at: Date | null;
-  first_seen_at: Generated<Date>;
-  last_seen_at: Generated<Date>;
-}
-
-export interface SecurityAlertStatusChangesTable {
-  id: Generated<string>;
-  tenant_id: string;
-  alert_id: string;
-  from_status: AlertStatus;
-  to_status: AlertStatus;
-  changed_by: string;
-  changed_at: Generated<Date>;
-}
-
-export interface SecurityAlertMessagesTable {
-  tenant_id: string;
-  message_id: string;
-  received_at: Generated<Date>;
-}
-
-export interface SlackIntegrationsTable {
-  tenant_id: string;
-  encrypted_webhook_url: string;
-  updated_by_email: string | null;
-  updated_at: ColumnType<Date, Date | undefined, Date>;
-}
-
 export interface Database {
   tenants: TenantsTable;
   resource_display_names: ResourceDisplayNamesTable;
-  security_alerts: SecurityAlertsTable;
-  security_alert_status_changes: SecurityAlertStatusChangesTable;
-  security_alert_messages: SecurityAlertMessagesTable;
-  slack_integrations: SlackIntegrationsTable;
   database_access_grants: DatabaseAccessGrantsTable;
   accounts: AccountsTable;
   account_identities: AccountIdentitiesTable;
