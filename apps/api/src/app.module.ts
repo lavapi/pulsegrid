@@ -28,10 +28,6 @@ import { TeamModule } from './team/team.module';
     PipelinesModule,
     ReleasesModule,
     DatabaseAccessModule,
-<<<<<<< HEAD
-=======
-    SecurityAlertsModule,
->>>>>>> origin/main
     ProductionReleasesModule,
   ],
   controllers: [HealthController],

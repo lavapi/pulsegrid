@@ -13,10 +13,6 @@ import {
   Rocket,
   Server,
   Ship,
-<<<<<<< HEAD
-=======
-  ShieldAlert,
->>>>>>> origin/main
   ShieldCheck,
   SlidersHorizontal,
   UserRoundCog,
