@@ -62,8 +62,6 @@ describe('followsAccountSwitcher', () => {
     '/environments',
     '/environments/compare',
     '/settings/access',
-    '/security-alerts',
-    '/security-alerts/7d1f2c3a-0000-4000-8000-000000000001',
     '/account',
   ])('excludes %s', (path) => {
     expect(followsAccountSwitcher(path)).toBe(false);
@@ -83,7 +81,7 @@ describe('followsAccountSwitcher', () => {
 describe('scopeLabel', () => {
   it('says what pages without the switcher cover', () => {
     expect(scopeLabel('/costs')).toBe('Across all your accounts');
-    expect(scopeLabel('/security-alerts/7d1f2c3a')).toBe('Across your AWS organization');
+    expect(scopeLabel('/production-releases')).toBe('Production account');
     expect(scopeLabel('/account')).toBeNull();
   });
 });

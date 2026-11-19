@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-11-19
+
+- AWS security alerts are removed, with Slack, which only posted them. Stored alerts are deleted. Run `pnpm db:migrate`, and remove the SNS subscription to `/api/webhooks/aws-security` on the AWS side.
+
 ## [0.26.0] - 2026-11-18
 
 - Finish or roll back production releases from PulseGrid: the new Production releases page shows the release waiting for a decision, how long until it rolls back by itself, and the two buttons, plus recent releases. Give people the new permission under Roles. See `docs/production-releases.md`.
