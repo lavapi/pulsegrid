@@ -124,6 +124,78 @@ describe('AWS_METRIC_SOURCE', () => {
     expect(result.capacity).toContainEqual({ label: 'Max connections', value: '500' });
   });
 
+  describe('Aurora working memory', () => {
+    const aurora = (engine: string, parameterGroup: string) =>
+      read('rds-instance', { instanceClass: 'db.r7g.large', engine, engineVersion: '16.4', parameterGroup, cluster: 'app' });
+    const parameters = (group: string, values: Record<string, string>) =>
+      rds.on(DescribeDBParametersCommand, { DBParameterGroupName: group }).resolves({
+        Parameters: Object.entries(values).map(([ParameterName, ParameterValue]) => ({ ParameterName, ParameterValue })),
+      });
+    const memoryOf = (result: Awaited<ReturnType<typeof read>>) => result.charts.find(({ id }) => id === 'memory');
+
+    it('leaves the data cache Aurora PostgreSQL reserves out of the memory in use', async () => {
+      answerAll();
+      instanceType('r7g.large', 2, 16_384);
+      parameters('aurora-pg-default', {
+        max_connections: 'LEAST({DBInstanceClassMemory/9531392},5000)',
+        shared_buffers: 'SUM({DBInstanceClassMemory/12038},-50003)',
+      });
+      const result = await aurora('aurora-postgresql', 'aurora-pg-default');
+
+      const cache = (16 * GIB / 12038 - 50003) * 8192;
+      const working = 16 * GIB - cache;
+      const memory = memoryOf(result);
+      expect(memory).toMatchObject({ label: 'Working memory', unit: 'bytes', note: 'Aurora keeps about 11 GB of 16 GB as its data cache' });
+      expect(memory?.total).toBeCloseTo(working, -3);
+      expect(memory?.warnAbove).toBeCloseTo(working * 0.9, -3);
+      expect(memory?.series[0]?.points[0]?.value).toBeCloseTo(working - 1 * GIB, -3);
+      expect(result.capacity).toContainEqual({ label: 'Data cache', value: '≈ 11 GB' });
+      expect(result.charts.find(({ id }) => id === 'connections')).toMatchObject({ total: 1802 });
+      expect(rds.commandCalls(DescribeDBParametersCommand)).toHaveLength(1);
+    });
+
+    it('uses a shared_buffers set by hand as exact', async () => {
+      answerAll();
+      instanceType('r7g.large', 2, 16_384);
+      parameters('aurora-pg-custom', { shared_buffers: '524288' });
+      const result = await aurora('aurora-postgresql', 'aurora-pg-custom');
+      expect(memoryOf(result)).toMatchObject({ total: 12 * GIB, note: 'Aurora keeps 4 GB of 16 GB as its data cache' });
+      expect(result.capacity).toContainEqual({ label: 'Data cache', value: '4 GB' });
+    });
+
+    it('leaves the Aurora MySQL buffer pool out', async () => {
+      answerAll();
+      instanceType('r7g.large', 2, 16_384);
+      parameters('aurora-mysql-default', { innodb_buffer_pool_size: '{DBInstanceClassMemory*3/4}' });
+      const result = await aurora('aurora-mysql', 'aurora-mysql-default');
+      expect(memoryOf(result)).toMatchObject({ label: 'Working memory', total: 4 * GIB });
+      expect(memoryOf(result)?.series[0]?.points[0]?.value).toBe(3 * GIB);
+    });
+
+    it('shows free memory instead when the cache size is unknown', async () => {
+      answerAll();
+      instanceType('r7g.large', 2, 16_384);
+      rds.on(DescribeDBParametersCommand, { DBParameterGroupName: 'aurora-unreadable' }).rejects(new Error('AccessDenied'));
+      parameters('aurora-odd-formula', { shared_buffers: 'IF(x,1,2)' });
+      for (const group of ['aurora-unreadable', 'aurora-odd-formula']) {
+        const result = await aurora('aurora-postgresql', group);
+        expect(result.charts.find(({ id }) => id === 'free-memory')).toMatchObject({ label: 'Free memory' });
+        expect(memoryOf(result)).toBeUndefined();
+        expect(result.capacity.map(({ label }) => label)).not.toContain('Data cache');
+      }
+    });
+
+    it('keeps total minus free for plain PostgreSQL, whose free memory includes its cache', async () => {
+      answerAll();
+      instanceType('r7g.large', 2, 16_384);
+      parameters('postgres-plain', { shared_buffers: '524288' });
+      const result = await read('rds-instance', { instanceClass: 'db.r7g.large', engine: 'postgres', parameterGroup: 'postgres-plain' });
+      expect(memoryOf(result)).toMatchObject({ label: 'Memory used', total: 16 * GIB });
+      expect(memoryOf(result)?.note ?? null).toBeNull();
+      expect(result.capacity.map(({ label }) => label)).not.toContain('Data cache');
+    });
+  });
+
   it('works out the default connection limit from the instance memory', async () => {
     answerAll();
     instanceType('r6g.large', 2, 16_384);

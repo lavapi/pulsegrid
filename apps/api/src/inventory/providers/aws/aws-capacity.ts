@@ -34,8 +34,7 @@ const tasks = new Map<string, TaskSize | null>();
 
 /** Parameter groups can be edited, so their settings are kept only for a short while. */
 const SETTING_TTL_MS = 10 * 60_000;
-const MAX_CONNECTIONS = 'max_connections';
-const settings = new Map<string, { value: string | null; until: number }>();
+const settings = new Map<string, { values: ParameterSettings; until: number }>();
 
 /** RDS and ElastiCache classes are EC2 types with a prefix: db.r6g.large and cache.r6g.large are both r6g.large. */
 export const ec2TypeOf = (type: string): string => type.replace(/^(db|cache)\./, '');
@@ -117,33 +116,43 @@ export const diskSizes = async (
   }
 };
 
-/** The max_connections value in an RDS parameter group: a number, a formula, or null when unset or unreadable. */
-export const maxConnectionsSetting = async (
+/** Values from an RDS parameter group, by name; a name is missing when unset. */
+export type ParameterSettings = ReadonlyMap<string, string>;
+
+/**
+ * Reads the named parameters from an RDS parameter group in one pass, stopping once all are found. An unreadable
+ * group gives no values, and isn't kept, so the next read tries again.
+ */
+export const parameterSettings = async (
   { credentials, region }: Lookup,
   parameterGroup: string,
+  names: readonly string[],
   now = Date.now(),
-): Promise<string | null> => {
-  const key = `${region}/${parameterGroup}`;
+): Promise<ParameterSettings> => {
+  const key = `${region}/${parameterGroup}/${[...names].sort().join(',')}`;
   const cached = settings.get(key);
   if (cached && cached.until > now) {
-    return cached.value;
+    return cached.values;
   }
   try {
     const pages = paginateDescribeDBParameters(
       { client: new RDSClient({ region, credentials }) },
       { DBParameterGroupName: parameterGroup },
     );
-    let value: string | null = null;
+    const values = new Map<string, string>();
     for await (const { Parameters = [] } of pages) {
-      const found = Parameters.find(({ ParameterName }) => ParameterName === MAX_CONNECTIONS);
-      if (found) {
-        value = found.ParameterValue ?? null;
+      for (const { ParameterName, ParameterValue } of Parameters) {
+        if (ParameterName && ParameterValue && names.includes(ParameterName)) {
+          values.set(ParameterName, ParameterValue);
+        }
+      }
+      if (values.size === names.length) {
         break;
       }
     }
-    settings.set(key, { value, until: now + SETTING_TTL_MS });
-    return value;
+    settings.set(key, { values, until: now + SETTING_TTL_MS });
+    return values;
   } catch {
-    return null;
+    return new Map();
   }
 };

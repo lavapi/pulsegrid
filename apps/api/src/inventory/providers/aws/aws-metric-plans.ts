@@ -6,9 +6,11 @@ import {
   type ResourceType,
   trimmedNumber,
 } from '@pulsegrid/shared';
-import { diskSizes, type InstanceSpec, instanceSpec, maxConnectionsSetting, taskSize } from './aws-capacity';
+import { auroraCache, cacheParameter } from './aurora-cache';
+import { diskSizes, type InstanceSpec, instanceSpec, parameterSettings, taskSize } from './aws-capacity';
 import type { AwsKey } from './aws-key';
 import { type ConnectionLimit, connectionLimit } from './connection-limit';
+import type { ParameterValue } from './parameter-formula';
 
 const RDS = 'AWS/RDS';
 const ELASTICACHE = 'AWS/ElastiCache';
@@ -18,6 +20,7 @@ const BYTES_PER_GIB = 1024 ** 3;
 const MS_PER_SECOND = 1000;
 const FIRST_NODE = '0001';
 const SERVERLESS_CLASS = 'db.serverless';
+const MAX_CONNECTIONS = 'max_connections';
 const INSTANCE_ID = /^i-[0-9a-f]{8,17}$/;
 const MEMORY_WARN_SHARE = 0.9;
 const STORAGE_WARN_SHARE = 0.85;
@@ -208,6 +211,31 @@ const serverlessRange = (details: Record<string, unknown>): string | null => {
   return max === null ? null : `${positive(details['serverlessMinAcu']) ?? 0}–${max} ACU`;
 };
 
+const approximately = (estimated: boolean): string => (estimated ? 'about ' : '');
+
+/**
+ * Memory in use. Aurora sets its data cache aside at startup and never counts it as freeable, so total minus free
+ * would always look nearly full: its card leaves the cache out, or shows free memory when the cache size is unknown.
+ * Other engines count their cache as freeable, so total minus free is right for them.
+ */
+const instanceMemory = (spec: InstanceSpec | null, engine: string | null, cache: ParameterValue | null): MetricDefinition => {
+  if (!spec) {
+    return FREE_MEMORY;
+  }
+  if (!cacheParameter(engine)) {
+    return usedOf({ id: 'memory', label: 'Memory used', metric: 'FreeableMemory' }, spec.memoryBytes, (free) => spec.memoryBytes - free);
+  }
+  if (!cache) {
+    return FREE_MEMORY;
+  }
+  const working = spec.memoryBytes - cache.value;
+  const note = `Aurora keeps ${approximately(cache.estimated)}${formatBytes(cache.value)} of ${formatBytes(spec.memoryBytes)} as its data cache`;
+  return usedOf({ id: 'memory', label: 'Working memory', metric: 'FreeableMemory', note }, working, (free) => working - free);
+};
+
+const cacheText = (cache: ParameterValue | null): string | null =>
+  cache && `${cache.estimated ? '≈ ' : ''}${formatBytes(cache.value)}`;
+
 const rdsInstancePlan = async (input: PlanInput): Promise<MetricPlan> => {
   const { name, details } = input.resource;
   const instanceClass = text(details['instanceClass']);
@@ -215,11 +243,16 @@ const rdsInstancePlan = async (input: PlanInput): Promise<MetricPlan> => {
   const allocatedGb = positive(details['storageGb']);
   const inCluster = text(details['cluster']) !== null;
   const parameterGroup = text(details['parameterGroup']);
-  const [spec, setting] = await Promise.all([
+  const engine = text(details['engine']);
+  const cacheName = cacheParameter(engine);
+  const [spec, settings] = await Promise.all([
     instanceClass && !serverless ? instanceSpec(input, instanceClass) : null,
-    parameterGroup ? maxConnectionsSetting(input, parameterGroup) : null,
+    parameterGroup
+      ? parameterSettings(input, parameterGroup, cacheName ? [MAX_CONNECTIONS, cacheName] : [MAX_CONNECTIONS])
+      : new Map<string, string>(),
   ]);
-  const limit = connectionLimit(setting, spec?.memoryBytes ?? null);
+  const limit = connectionLimit(settings.get(MAX_CONNECTIONS) ?? null, spec?.memoryBytes ?? null);
+  const cache = spec ? auroraCache(engine, settings, spec.memoryBytes) : null;
   const storage =
     allocatedGb !== null && !inCluster
       ? [
@@ -237,9 +270,7 @@ const rdsInstancePlan = async (input: PlanInput): Promise<MetricPlan> => {
     definitions: [
       withNote(CPU, spec && `of ${vcpuText(spec.vcpus)}`),
       ...(serverless ? [SERVERLESS_CAPACITY] : []),
-      spec
-        ? usedOf({ id: 'memory', label: 'Memory used', metric: 'FreeableMemory' }, spec.memoryBytes, (free) => spec.memoryBytes - free)
-        : FREE_MEMORY,
+      instanceMemory(spec, engine, cache),
       ...storage,
       connectionsOutOf(limit, parameterGroup),
       latency('read-latency', 'Read latency', 'ReadLatency'),
@@ -248,6 +279,7 @@ const rdsInstancePlan = async (input: PlanInput): Promise<MetricPlan> => {
     capacity: facts([
       ['Instance class', instanceClass],
       ...specFacts(spec),
+      ['Data cache', cacheText(cache)],
       ['Max connections', limitText(limit)],
       ['Engine', engineOf(details)],
       ['Allocated storage', allocatedGb === null || inCluster ? null : formatBytes(allocatedGb * BYTES_PER_GIB)],
