@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-11-19
+
 ### Removed
 
 - AWS security alerts: the SNS webhook `/api/webhooks/aws-security`, the Security alerts pages and menu count, the 10-minute Security Hub check, and the Slack integration, which only posted alerts. Migration 0040 deletes their tables and data and takes the alert permissions off every role. The settings `SECURITY_ALERTS_PROJECT`, `SECURITY_ALERTS_TOPIC_ARNS`, `SECURITY_ALERTS_ACCOUNT_NAMES`, `SECURITY_ALERTS_POLL_ROLE_ARN`, `SECURITY_ALERTS_POLL_REGIONS` and `SECURITY_ALERTS_POLL_MINUTES` are no longer read. Run `pnpm db:migrate`.

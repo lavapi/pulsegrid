@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-11-19
+
 - AWS security alerts are removed, with Slack, which only posted them. Stored alerts are deleted. Run `pnpm db:migrate`, and remove the SNS subscription to `/api/webhooks/aws-security` on the AWS side.
 
 ## [0.26.0] - 2026-11-18
