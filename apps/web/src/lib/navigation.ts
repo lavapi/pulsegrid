@@ -13,7 +13,6 @@ import {
   Rocket,
   Server,
   Ship,
-  ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
   UserRoundCog,
@@ -48,13 +47,6 @@ export const MAIN_NAV: NavItem[] = [
   { href: '/failover-tests', label: 'Failover tests', icon: FlaskConical },
   { href: '/costs', label: 'Costs', icon: CircleDollarSign, permission: 'costs.view' },
   { href: '/activity', label: 'Activity', icon: History, permission: 'activity.view' },
-  {
-    href: '/security-alerts',
-    label: 'Security alerts',
-    icon: ShieldAlert,
-    permission: 'security.view',
-    countPath: '/security-alerts/unseen',
-  },
 ];
 
 export const SETTINGS_NAV: NavItem[] = [

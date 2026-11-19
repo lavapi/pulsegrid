@@ -24,7 +24,6 @@ const UNSCOPED_PATHS = [
   '/environments',
   '/production-releases',
   '/releases',
-  '/security-alerts',
   '/settings',
 ];
 
@@ -33,7 +32,6 @@ const SCOPE_LABELS: [path: string, label: string][] = [
   ['/costs', 'Across all your accounts'],
   ['/environments', 'Across all your accounts'],
   ['/releases', 'Across all your accounts'],
-  ['/security-alerts', 'Across your AWS organization'],
   ['/production-releases', 'Production account'],
 ];
 

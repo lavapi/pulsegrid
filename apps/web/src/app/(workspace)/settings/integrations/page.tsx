@@ -4,9 +4,8 @@ import {
   GIT_PROVIDERS,
   type GitConnection,
   hasPermission,
-  type SlackIntegration,
 } from '@pulsegrid/shared';
-import { ChevronRight, MessageSquare } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -53,10 +52,9 @@ export default async function IntegrationsPage() {
   if (!hasPermission(user, 'integrations.manage')) {
     redirect('/');
   }
-  const [accounts, connections, slack] = await Promise.all([
+  const [accounts, connections] = await Promise.all([
     apiGet<CloudAccount[]>('/cloud/accounts'),
     apiGet<GitConnection[]>('/git/connections'),
-    apiGet<SlackIntegration>('/integrations/slack'),
   ]);
 
   return (
@@ -98,22 +96,6 @@ export default async function IntegrationsPage() {
             }
           />
         ))}
-      </section>
-      <section className="flex flex-col gap-3" aria-labelledby="notification-integrations">
-        <h2 className="text-sm font-semibold" id="notification-integrations">
-          Notifications
-        </h2>
-        <IntegrationLink
-          href="/settings/integrations/slack"
-          icon={
-            <span className="grid size-11 shrink-0 place-items-center rounded bg-muted">
-              <MessageSquare className="size-5" aria-hidden="true" />
-            </span>
-          }
-          label="Slack"
-          description="Post new critical and high AWS security alerts to a channel"
-          status={<Badge tone={slack.connected ? 'success' : 'neutral'}>{slack.connected ? 'Connected' : 'Not connected'}</Badge>}
-        />
       </section>
     </>
   );
