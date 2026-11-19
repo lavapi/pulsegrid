@@ -25,4 +25,8 @@ export * from './providers/aws';
 export * from './sync-progress';
 export * from './infrastructure-map';
 export * from './roles';
+<<<<<<< HEAD
+=======
+export * from './security-alerts';
+>>>>>>> origin/main
 export * from './production-releases';
