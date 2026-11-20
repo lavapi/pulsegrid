@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-11-20
+
 - See at a glance which database is the writer and which are readers, on the RDS cards and each database's page, and each instance's CPU, connections and memory right on its card.
 
 ## [0.27.1] - 2026-11-20

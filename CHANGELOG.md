@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-11-20
+
 ### Added
 
 - Database instances in a cluster show a **Writer** or **Reader** badge on their card and their page, and **Role** in their details. The role comes from the cluster's member list on every sync, so a failover shows after the next one. Cluster cards name the **Writer**.
