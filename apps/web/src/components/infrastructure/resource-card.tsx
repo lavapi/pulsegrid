@@ -3,10 +3,13 @@ import Link from 'next/link';
 import { HealthBadge } from '@/components/health-badge';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { CARD_LOAD_TYPES } from '@/lib/card-load';
 import { cardFacts } from '@/lib/resource-cards';
 import { cn } from '@/lib/utils';
 import { startedByLabel, STATUS_VIEWS } from '@/lib/action-status';
 import { ActionStatusLine } from './action-status';
+import { CardLoad } from './card-load';
+import { RoleBadge } from './role-badge';
 
 function ActivityStrip({ run }: { run: ActionRun }) {
   const { label, tone } = STATUS_VIEWS[run.status];
@@ -43,7 +46,8 @@ export function ResourceCard({ resource, run }: { resource: Resource; run: Actio
                 <span className="block text-xs font-normal text-muted-foreground">{resource.name}</span>
               )}
             </h3>
-            <span className="shrink-0">
+            <span className="flex shrink-0 items-center gap-1.5">
+              <RoleBadge resource={resource} />
               <HealthBadge health={resource.health} status={resource.status} />
             </span>
           </div>
@@ -56,6 +60,7 @@ export function ResourceCard({ resource, run }: { resource: Resource; run: Actio
             ))}
           </dl>
         </div>
+        {CARD_LOAD_TYPES.includes(resource.type) && <CardLoad resourceId={resource.id} />}
         {run && <ActivityStrip run={run} />}
       </Card>
     </Link>

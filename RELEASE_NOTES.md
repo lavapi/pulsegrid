@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- See at a glance which database is the writer and which are readers, on the RDS cards and each database's page, and each instance's CPU, connections and memory right on its card.
+
 ## [0.27.1] - 2026-11-20
 
 - Aurora database pages show **Working memory** instead of a "Memory used" that counted Aurora's reserved data cache and always looked about 90% full. The note under it and the new **Data cache** fact say how much Aurora keeps for its cache.
