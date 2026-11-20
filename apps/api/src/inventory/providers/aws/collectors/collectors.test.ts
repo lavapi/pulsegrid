@@ -127,6 +127,48 @@ describe('rdsCollector', () => {
 
     expect(resources.map(({ health }) => health)).toEqual(['healthy', 'stopped', 'degraded', 'unknown']);
   });
+
+  const cluster = (writer: string) => ({
+    DBClusterArn: 'arn:cluster',
+    DBClusterIdentifier: 'app-postgres',
+    Status: 'available',
+    DBClusterMembers: [
+      { DBInstanceIdentifier: 'app-postgres-1', IsClusterWriter: writer === 'app-postgres-1' },
+      { DBInstanceIdentifier: 'app-postgres-2', IsClusterWriter: writer === 'app-postgres-2' },
+    ],
+  });
+  const instance = (name: string, clusterName?: string) => ({
+    DBInstanceArn: `arn:${name}`,
+    DBInstanceIdentifier: name,
+    DBInstanceStatus: 'available',
+    Engine: clusterName ? 'aurora-postgresql' : 'postgres',
+    DBClusterIdentifier: clusterName,
+  });
+  const rolesAfterSync = async (writer: string) => {
+    rds.on(DescribeDBClustersCommand).resolves({ DBClusters: [cluster(writer)] });
+    rds.on(DescribeDBInstancesCommand).resolves({
+      DBInstances: [instance('app-postgres-1', 'app-postgres'), instance('app-postgres-2', 'app-postgres'), instance('legacy')],
+    });
+    const resources = await rdsCollector.collect(context);
+    return Object.fromEntries(resources.map(({ name, details }) => [name, details['role'] ?? details['writer'] ?? null]));
+  };
+
+  it("marks each cluster member as writer or reader, names the cluster's writer, and leaves standalone instances without a role", async () => {
+    expect(await rolesAfterSync('app-postgres-2')).toEqual({
+      'app-postgres': 'app-postgres-2',
+      'app-postgres-1': 'reader',
+      'app-postgres-2': 'writer',
+      legacy: null,
+    });
+  });
+
+  it('swaps the roles after a failover', async () => {
+    expect(await rolesAfterSync('app-postgres-1')).toMatchObject({
+      'app-postgres': 'app-postgres-1',
+      'app-postgres-1': 'writer',
+      'app-postgres-2': 'reader',
+    });
+  });
 });
 
 describe('s3Collector', () => {

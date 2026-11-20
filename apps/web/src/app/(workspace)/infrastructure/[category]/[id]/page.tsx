@@ -24,6 +24,7 @@ import { ResourceActionPanel } from '@/components/infrastructure/resource-action
 import { SecretPanel } from '@/components/infrastructure/secret-panel';
 import { ServiceDeployments } from '@/components/infrastructure/deployments/service-deployments';
 import { ResourceLoad } from '@/components/infrastructure/load/resource-load';
+import { RoleBadge } from '@/components/infrastructure/role-badge';
 import { DatabaseLog } from '@/components/infrastructure/insights/database-log';
 import { RequestLog } from '@/components/infrastructure/insights/request-log';
 import { ResourceTabs } from '@/components/infrastructure/insights/resource-tabs';
@@ -38,6 +39,7 @@ import { formatValue, humanizeKey } from '@/lib/format';
 import { activeTab, resourceTabs } from '@/lib/resource-logs';
 import { apiGet, apiGetOptional, getCurrentUser } from '@/lib/server-api';
 import { formatDeployment, formatLaunchType } from '@/lib/service-views';
+import { formatRole } from '@/lib/cluster-role';
 
 function Fields({ entries }: { entries: [string, ReactNode][] }) {
   return (
@@ -55,6 +57,7 @@ function Fields({ entries }: { entries: [string, ReactNode][] }) {
 const DETAIL_FORMATTERS: Record<string, (value: unknown) => string> = {
   launchType: formatLaunchType,
   rolloutState: formatDeployment,
+  role: formatRole,
 };
 
 const RECENT_ACTIVITY = 5;
@@ -156,7 +159,12 @@ export default async function ResourceDetailPage({
             </span>
           )
         }
-        action={<HealthBadge health={resource.health} status={resource.status} />}
+        action={
+          <span className="flex items-center gap-2">
+            <RoleBadge resource={resource} />
+            <HealthBadge health={resource.health} status={resource.status} />
+          </span>
+        }
       />
       {tabs.length > 0 && (
         <ResourceTabs tabs={tabs} active={active} path={`/infrastructure/${category}/${resource.id}`} />

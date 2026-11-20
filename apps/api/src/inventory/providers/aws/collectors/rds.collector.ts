@@ -18,7 +18,26 @@ const RDS_HEALTH: HealthRules = {
 const securityGroupsOf = (groups: DBInstance['VpcSecurityGroups']): string[] =>
   (groups ?? []).flatMap(({ VpcSecurityGroupId }) => VpcSecurityGroupId ?? []);
 
-const toInstanceResource = (instance: DBInstance, region: string): CollectedResource => {
+export type ClusterRole = 'writer' | 'reader';
+
+/** Each cluster member's role, by instance name, as its cluster reports it; it changes after a failover. */
+export const clusterRoles = (clusters: readonly DBCluster[]): Map<string, ClusterRole> =>
+  new Map(
+    clusters.flatMap(({ DBClusterMembers = [] }) =>
+      DBClusterMembers.flatMap(({ DBInstanceIdentifier, IsClusterWriter }) =>
+        DBInstanceIdentifier ? [[DBInstanceIdentifier, IsClusterWriter ? 'writer' : 'reader'] as const] : [],
+      ),
+    ),
+  );
+
+const writerOf = (cluster: DBCluster): string | undefined =>
+  cluster.DBClusterMembers?.find(({ IsClusterWriter }) => IsClusterWriter)?.DBInstanceIdentifier;
+
+const toInstanceResource = (
+  instance: DBInstance,
+  region: string,
+  roles: ReadonlyMap<string, ClusterRole>,
+): CollectedResource => {
   const status = instance.DBInstanceStatus ?? 'unknown';
   return {
     type: 'rds-instance',
@@ -35,6 +54,7 @@ const toInstanceResource = (instance: DBInstance, region: string): CollectedReso
       storageGb: instance.AllocatedStorage,
       multiAz: instance.MultiAZ,
       cluster: instance.DBClusterIdentifier,
+      role: roles.get(instance.DBInstanceIdentifier ?? ''),
       publiclyAccessible: instance.PubliclyAccessible,
       storageEncrypted: instance.StorageEncrypted,
       vpcId: instance.DBSubnetGroup?.VpcId,
@@ -61,6 +81,7 @@ const toClusterResource = (cluster: DBCluster, region: string): CollectedResourc
       engine: cluster.Engine,
       engineVersion: cluster.EngineVersion,
       members: cluster.DBClusterMembers?.length,
+      writer: writerOf(cluster),
       serverlessMinAcu: cluster.ServerlessV2ScalingConfiguration?.MinCapacity,
       serverlessMaxAcu: cluster.ServerlessV2ScalingConfiguration?.MaxCapacity,
       multiAz: cluster.MultiAZ,
@@ -81,9 +102,10 @@ export const rdsCollector: ResourceCollector<AwsKey> = {
       collectPages(paginateDescribeDBInstances({ client }, {}), (page) => page.DBInstances),
       collectPages(paginateDescribeDBClusters({ client }, {}), (page) => page.DBClusters),
     ]);
+    const roles = clusterRoles(clusters);
     return [
       ...clusters.map((item) => toClusterResource(item, region)),
-      ...instances.map((item) => toInstanceResource(item, region)),
+      ...instances.map((item) => toInstanceResource(item, region, roles)),
     ];
   },
 };

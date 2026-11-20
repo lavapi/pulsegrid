@@ -34,6 +34,12 @@ const yesNo =
     return value ? 'Yes' : 'No';
   };
 
+/** A value that only means something for a database outside a cluster, such as its own storage. */
+const standalone =
+  (value: (resource: Resource) => string) =>
+  (resource: Resource): string =>
+    resource.details['cluster'] ? EMPTY : value(resource);
+
 const engine = ({ details }: Resource): string =>
   [details['engine'], details['engineVersion']].filter(Boolean).join(' ') || EMPTY;
 
@@ -98,6 +104,7 @@ export const RESOURCE_COLUMNS: Record<ResourceType, ResourceColumn[]> = {
     column('Deployment', ({ details }) => formatDeployment(details['rolloutState'])),
   ],
   'rds-cluster': [
+    column('Writer', text('writer')),
     column('Engine', engine),
     column('Members', text('members')),
     column('Multi-AZ', yesNo('multiAz')),
@@ -106,8 +113,8 @@ export const RESOURCE_COLUMNS: Record<ResourceType, ResourceColumn[]> = {
   'rds-instance': [
     column('Engine', engine),
     column('Class', text('instanceClass')),
-    column('Storage GB', text('storageGb')),
-    column('Multi-AZ', yesNo('multiAz')),
+    column('Storage GB', standalone(text('storageGb'))),
+    column('Multi-AZ', standalone(yesNo('multiAz'))),
     column('Encrypted', yesNo('storageEncrypted')),
     column('Public', yesNo('publiclyAccessible')),
   ],
