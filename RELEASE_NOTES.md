@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.27.1] - 2026-11-20
+
 - Aurora database pages show **Working memory** instead of a "Memory used" that counted Aurora's reserved data cache and always looked about 90% full. The note under it and the new **Data cache** fact say how much Aurora keeps for its cache.
 
 ## [0.27.0] - 2026-11-19

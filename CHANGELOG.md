@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.27.1] - 2026-11-20
+
 ### Fixed
 
 - Aurora instances no longer look nearly out of memory. Aurora sets its data cache aside at startup (`shared_buffers` for PostgreSQL, `innodb_buffer_pool_size` for MySQL) and never counts it as freeable, so total minus FreeableMemory always looked about 90% full. Their page now shows **Working memory**, the memory outside the cache, with a note on the cache size and a **Data cache** capacity fact; it shows **Free memory** when the cache size can't be worked out. The cache size comes from the instance's parameter group, read in the same pass as `max_connections`, as an estimate when it's AWS's default formula. Other RDS engines are unchanged.
