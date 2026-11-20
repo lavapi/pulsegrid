@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- Database instances in a cluster show a **Writer** or **Reader** badge on their card and their page, and **Role** in their details. The role comes from the cluster's member list on every sync, so a failover shows after the next one. Cluster cards name the **Writer**.
+- RDS instance cards show their latest **CPU**, **Connections** (out of the instance's limit) and memory (**Working memory** for Aurora), with bars that turn amber at the same warning levels as the instance page. They read the same load as the page and refresh every minute while visible.
+
+### Changed
+
+- Aurora cluster members' cards no longer show the placeholder "Storage GB 1" or a per-instance Multi-AZ; standalone databases keep both.
+
 ## [0.27.1] - 2026-11-20
 
 ### Fixed

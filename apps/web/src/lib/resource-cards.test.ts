@@ -27,6 +27,29 @@ describe('cardFacts', () => {
     expect(labels.length).toBeLessThanOrEqual(4);
   });
 
+  it("drops an Aurora member's placeholder storage and per-instance Multi-AZ, but keeps them for standalone databases", () => {
+    const database = (details: Record<string, unknown>) =>
+      cardFacts({ type: 'rds-instance', details } as unknown as Resource).map(({ label, value }) => `${label}: ${value}`);
+    const shared = { engine: 'aurora-postgresql', engineVersion: '18.3', instanceClass: 'db.r7g.large', storageGb: 1, multiAz: false };
+    expect(database({ ...shared, cluster: 'app', storageEncrypted: true, publiclyAccessible: false })).toEqual([
+      'Engine: aurora-postgresql 18.3',
+      'Class: db.r7g.large',
+      'Encrypted: Yes',
+      'Public: No',
+    ]);
+    expect(database({ ...shared, engine: 'postgres', storageGb: 100 })).toEqual([
+      'Engine: postgres 18.3',
+      'Class: db.r7g.large',
+      'Storage GB: 100',
+      'Multi-AZ: No',
+    ]);
+  });
+
+  it("names a cluster's writer first", () => {
+    const facts = cardFacts({ type: 'rds-cluster', details: { writer: 'app-2', engine: 'aurora-postgresql' } } as unknown as Resource);
+    expect(facts[0]).toEqual({ label: 'Writer', value: 'app-2' });
+  });
+
   it('leaves out empty details', () => {
     const resource = { type: 'ecs-service', details: {} } as unknown as Resource;
     expect(cardFacts(resource).every(({ value }) => value !== '—')).toBe(true);
