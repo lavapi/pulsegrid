@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-11-24
+
 ### Added
 
 - EC2 cards show **CPU**, **Memory used** and the fullest **Disk used**, named by its path, in the combined card request. Without the CloudWatch agent they show CPU and say that memory and disk need the agent.

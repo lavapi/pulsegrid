@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-11-24
+
 - EC2 cards show CPU, memory and the fullest disk. EC2 pages now chart every disk the CloudWatch agent reports, such as `/data`, not only `/`.
 
 ## [0.29.0] - 2026-11-24
