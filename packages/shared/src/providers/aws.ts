@@ -165,20 +165,6 @@ export const AWS_PROVIDER: CloudProviderDefinition = {
         },
       ],
     },
-    {
-      id: 'key',
-      label: 'Access key',
-      description: "An IAM user's access key, stored encrypted. Roles are safer: use a key only where a role isn't possible.",
-      fields: [
-        { key: 'accessKeyId', label: 'Access Key ID', secret: false, placeholder: 'AKIA…' },
-        {
-          key: 'secretAccessKey',
-          label: 'Secret Access Key',
-          secret: true,
-          hint: 'Stored encrypted, and never shown again',
-        },
-      ],
-    },
   ],
   defaultRegion: 'eu-central-1',
   regions: [

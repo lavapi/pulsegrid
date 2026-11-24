@@ -11,9 +11,8 @@ import {
   LogsUnreadable,
   type RequestLogSource,
 } from '../src/inventory/providers/provider';
-import { setExtraPermissions, signIn, startTestApp, type TestContext, user } from './support/test-app';
+import { setExtraPermissions, signIn, startTestApp, type TestContext, user, TEST_ROLE } from './support/test-app';
 
-const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
 const ENTRY: RequestLogEntry = {
   time: '2026-11-11T10:00:00.000000Z',
   host: 'api.example.com',
@@ -71,7 +70,7 @@ describe('request logs and query activity', () => {
         ...row,
         name: 'Account',
         regions: ['eu-central-1'],
-        encrypted_credentials: context.app.get(CredentialVault).seal(row, KEY),
+        encrypted_credentials: context.app.get(CredentialVault).seal(row, TEST_ROLE),
         environment_id: environmentId,
       })
       .returning('id')

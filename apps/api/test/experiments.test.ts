@@ -13,9 +13,8 @@ import {
   type ExperimentRecord,
   type ExperimentSource,
 } from '../src/inventory/providers/provider';
-import { setExtraPermissions, signIn, startTestApp, type TestContext, user } from './support/test-app';
+import { setExtraPermissions, signIn, startTestApp, type TestContext, user, TEST_ROLE, TEST_SESSION } from './support/test-app';
 
-const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
 const REGION = 'eu-central-1';
 const TEMPLATE = {
   id: 'EXT1',
@@ -94,7 +93,7 @@ describe('failover tests', () => {
         ...row,
         name: `${environment} account`,
         regions: [REGION],
-        encrypted_credentials: sealed ? context.app.get(CredentialVault).seal(row, KEY) : null,
+        encrypted_credentials: sealed ? context.app.get(CredentialVault).seal(row, TEST_ROLE) : null,
         environment_id: environmentId,
       })
       .returning('id')
@@ -165,7 +164,7 @@ describe('failover tests', () => {
     const { id, awsAccount } = await addAccount('Staging');
     const { body } = await start(id).expect(201);
     expect(body).toEqual({ id: 'EXP2', region: REGION });
-    expect(source.start).toHaveBeenCalledWith({ credentials: KEY, region: REGION }, 'EXT1', expect.any(String));
+    expect(source.start).toHaveBeenCalledWith({ credentials: TEST_SESSION, region: REGION }, 'EXT1', expect.any(String));
     const [event] = await context.owner
       .selectFrom('audit_events')
       .select(['action', 'actor_email', 'metadata'])
@@ -194,17 +193,17 @@ describe('failover tests', () => {
     );
   });
 
-  it('needs the permission and an access key', async () => {
+  it('needs the permission and a connected account', async () => {
     await start((await addAccount('Staging')).id, viewer).expect(403);
     const keyless = await start((await addAccount('Staging', false)).id);
-    expect(keyless.body.message).toBe('This account has no access key. Add one under Integrations.');
+    expect(keyless.body.message).toBe("This account isn't connected. Connect it under Integrations.");
     expect(source.start).not.toHaveBeenCalled();
   });
 
   it('stops an experiment and records it', async () => {
     const { id } = await addAccount('Staging');
     await http().post(`/api/cloud/accounts/${id}/experiments/${REGION}/EXP5/stop`).set('Cookie', developer).expect(204);
-    expect(source.stop).toHaveBeenCalledWith({ credentials: KEY, region: REGION }, 'EXP5');
+    expect(source.stop).toHaveBeenCalledWith({ credentials: TEST_SESSION, region: REGION }, 'EXP5');
     expect(await actions('EXP5')).toEqual([{ action: 'cloud.experiment.stopped', actor_email: 'dev@example.test' }]);
   });
 
@@ -337,7 +336,7 @@ describe('failover tests', () => {
       const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({}).expect(201);
       source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'running')]);
       await http().post(`${runs(id)}/${run.id}/stop`).set('Cookie', developer).expect(204);
-      expect(source.stop).toHaveBeenCalledWith({ credentials: KEY, region: REGION }, 'RUNEXT1');
+      expect(source.stop).toHaveBeenCalledWith({ credentials: TEST_SESSION, region: REGION }, 'RUNEXT1');
       source.listExperiments.mockResolvedValue([summary('RUNEXT1', 'EXT1', 'stopped')]);
       source.getExperiment.mockResolvedValue(record('RUNEXT1', 'EXT1', 'stopped'));
       await advance(run.id);

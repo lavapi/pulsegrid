@@ -209,7 +209,7 @@ describe('following a reboot', () => {
     );
     expect(await follow('server.reboot', null)).toEqual({
       state: 'unconfirmed',
-      summary: "Reboot sent, but this key can't confirm it finished.",
+      summary: "Reboot sent, but the account's PulseGrid role can't confirm it finished.",
     });
   });
 

@@ -89,7 +89,7 @@ describe('fisEnvironmentHealth', () => {
     rds.on(DescribeDBClustersCommand).rejects(Object.assign(new Error('no'), { name: 'AccessDenied' }));
     cloudwatch.on(DescribeAlarmsCommand).rejects(Object.assign(new Error('slow'), { name: 'Throttling' }));
     expect(await fisEnvironmentHealth(context, inventory, ['game-errors'])).toEqual([
-      "Can't check databases: add rds:DescribeDBClusters to the key's IAM policy",
+      "Can't check databases: add rds:DescribeDBClusters to the role's IAM policy",
       "Can't check stop alarms right now",
     ]);
   });

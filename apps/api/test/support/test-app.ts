@@ -1,7 +1,9 @@
 import 'reflect-metadata';
 import type { UserPermission } from '@pulsegrid/shared';
 import type { Provider } from '@nestjs/common';
+import { AssumeRoleCommand, STSClient } from '@aws-sdk/client-sts';
 import { Test, type TestingModuleBuilder } from '@nestjs/testing';
+import { mockClient } from 'aws-sdk-client-mock';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { Kysely } from 'kysely';
@@ -25,6 +27,29 @@ const ROLE_PASSWORD = 'devdash_app_local';
 const HOST = 'localhost:5432';
 const PUBLIC_URL = 'http://localhost:3000';
 export const LEAKED_PASSWORD = 'password-from-a-breach';
+
+/** The role test accounts are connected with. */
+export const TEST_ROLE = { roleArn: 'arn:aws:iam::123456789012:role/PulseGridAccess', externalId: 'pulsegrid-test' };
+
+/** What a test role resolves to: STS is faked, so code under test calls AWS with these. */
+export const TEST_SESSION = {
+  accessKeyId: 'ASIATESTSESSION00000',
+  secretAccessKey: 'never-shown',
+  sessionToken: 'test-session-token',
+  roleArn: TEST_ROLE.roleArn,
+};
+
+/** Taking on a role always works in tests, so accounts connected with TEST_ROLE resolve to TEST_SESSION. */
+mockClient(STSClient)
+  .on(AssumeRoleCommand)
+  .resolves({
+    Credentials: {
+      AccessKeyId: TEST_SESSION.accessKeyId,
+      SecretAccessKey: TEST_SESSION.secretAccessKey,
+      SessionToken: TEST_SESSION.sessionToken,
+      Expiration: new Date(Date.now() + 24 * 60 * 60_000),
+    },
+  });
 export const ownerUrl = (database: string) => `postgres://devdash_owner:devdash_owner_local@${HOST}/${database}`;
 export const appUrl = `postgres://devdash_app:${ROLE_PASSWORD}@${HOST}/${TEST_DATABASE}`;
 

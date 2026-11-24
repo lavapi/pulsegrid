@@ -14,7 +14,7 @@ export const MESSAGES = {
   throttled: 'AWS is busy right now. Try again in a minute.',
   keyNotAllowed:
     "The Production account's key isn't allowed to run the database access workflows. Add the statement from docs/database-access.md to its IAM policy.",
-  noKey: 'The Production account has no access key in PulseGrid. Add one under Integrations.',
+  noKey: "The Production account isn't connected in PulseGrid. Connect it under Integrations.",
 } as const;
 
 /** What each error code the workflows end with means for the person granting access. */

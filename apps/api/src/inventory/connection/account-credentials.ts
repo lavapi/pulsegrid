@@ -4,6 +4,9 @@ import type { CloudCredentials } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { CredentialVault } from './credential-vault';
 
+/** Shown wherever a cloud account has nothing stored to connect with. */
+export const NOT_CONNECTED = "This account isn't connected. Connect it under Integrations.";
+
 type ConnectedAccount = Pick<CloudAccountRow, 'tenant_id' | 'provider' | 'account_id' | 'encrypted_credentials'>;
 
 /**

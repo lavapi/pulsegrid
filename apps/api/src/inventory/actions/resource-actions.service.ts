@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { isUniqueViolation } from '../../database/errors';
-import { AccountCredentials } from '../connection/account-credentials';
+import { AccountCredentials, NOT_CONNECTED } from '../connection/account-credentials';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { ResourceAccess } from '../resources/resource-access';
 import { ActionQueue } from './action-queue';
@@ -20,7 +20,6 @@ const NOT_ALLOWED = 'You do not have permission to do that.';
 const ALREADY_RUNNING = 'Another action is still running on this resource.';
 const STARTING = 'Starting';
 const MS_PER_MINUTE = 60_000;
-const NO_CREDENTIALS = 'This account has no access key. Add one under Integrations.';
 
 @Injectable()
 export class ResourceActionsService {
@@ -68,7 +67,7 @@ export class ResourceActionsService {
     }
     const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
-      throw new ConflictException(NO_CREDENTIALS);
+      throw new ConflictException(NOT_CONNECTED);
     }
     const run = await this.claim(auth, resource.id, permission, action.timeoutMinutes);
     const context = {

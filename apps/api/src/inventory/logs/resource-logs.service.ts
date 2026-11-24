@@ -1,13 +1,12 @@
 import { type LogAccess, type LogView, LOG_RANGES } from '@pulsegrid/shared';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
-import { AccountCredentials } from '../connection/account-credentials';
+import { AccountCredentials, NOT_CONNECTED } from '../connection/account-credentials';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { ResourceAccess } from '../resources/resource-access';
 import { LogReads } from './log-reads';
 
 const NO_LOGS = "This resource doesn't have logs.";
-const NO_CREDENTIALS = 'This account has no access key. Add one under Integrations.';
 const NEEDS_PERMISSION = 'Ask your super admin for the View logs permission.';
 const MS_PER_MINUTE = 60_000;
 const LONGEST_RANGE_MS = Math.max(...LOG_RANGES.map(({ minutes }) => minutes)) * MS_PER_MINUTE;
@@ -59,7 +58,7 @@ export class ResourceLogsService {
     }
     const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
-      return empty(access, NO_CREDENTIALS);
+      return empty(access, NOT_CONNECTED);
     }
     await this.views.recordView(auth, resource, account.account_id, ipAddress);
     try {

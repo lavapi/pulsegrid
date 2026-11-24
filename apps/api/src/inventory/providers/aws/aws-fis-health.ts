@@ -152,7 +152,7 @@ export const fisEnvironmentHealth = async (
       } catch (error) {
         return [
           isAccessDenied(error)
-            ? `Can't check ${label}: add ${permission} to the key's IAM policy`
+            ? `Can't check ${label}: add ${permission} to the role's IAM policy`
             : `Can't check ${label} right now`,
         ];
       }

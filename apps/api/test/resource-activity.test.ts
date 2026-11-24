@@ -10,7 +10,7 @@ import {
   type CloudProvider,
   type DetectedActivity,
 } from '../src/inventory/providers/provider';
-import { signIn, startTestApp, type TestContext, user } from './support/test-app';
+import { signIn, startTestApp, type TestContext, user, TEST_ROLE } from './support/test-app';
 import { newEnvironment } from '../src/inventory/environments/account-environment';
 
 const detect = vi.fn<() => Promise<DetectedActivity[]>>();
@@ -64,7 +64,7 @@ describe('outside activity', () => {
         ...row,
         name: 'Account',
         regions: ['eu-central-1'],
-        encrypted_credentials: context.app.get(CredentialVault).seal(row, { accessKeyId: 'a', secretAccessKey: 'b' }),
+        encrypted_credentials: context.app.get(CredentialVault).seal(row, TEST_ROLE),
         credential_hint: null,
         can_write: false,
         last_error: null,

@@ -110,7 +110,7 @@ const notReadable = async (context: Context, location: AlbLogLocation, kind: Alb
   const principal = await principalOf(context);
   const folder = location.prefix ? `${location.prefix.replace(/\/+$/, '')}*` : 'AWSLogs/*';
   return new LogsUnreadable({
-    message: `${kind === 'access' ? 'ALB' : 'ALB connection'} logs aren't readable yet: the bucket ${location.bucket} must grant this key s3:ListBucket and s3:GetObject on the ${folder} prefix, and the key's IAM policy must allow them.`,
+    message: `${kind === 'access' ? 'ALB' : 'ALB connection'} logs aren't readable yet: the bucket ${location.bucket} must grant the account's PulseGrid role s3:ListBucket and s3:GetObject on the ${folder} prefix, and the role's IAM policy must allow them.`,
     principal,
   });
 };
@@ -131,7 +131,7 @@ const locate = async (context: Context, kind: AlbLogKind): Promise<AlbLogLocatio
     if (isAccessDenied(error)) {
       throw new LogsUnreadable({
         message:
-          "PulseGrid can't see where this load balancer keeps its logs: add elasticloadbalancing:DescribeLoadBalancerAttributes to the key's IAM policy.",
+          "PulseGrid can't see where this load balancer keeps its logs: add elasticloadbalancing:DescribeLoadBalancerAttributes to the role's IAM policy.",
         principal: null,
       });
     }

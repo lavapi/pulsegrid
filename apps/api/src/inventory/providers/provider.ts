@@ -422,8 +422,8 @@ export interface CloudProvider<
   /** Turns what is stored into credentials to call the cloud with; without it, they're the same. */
   resolveCredentials?(stored: Stored): Promise<Credentials>;
   isValidRegion(region: string): boolean;
-  /** Checks a connection; `sourceAddress` is where PulseGrid calls the cloud from, for policies locked to it. */
-  checkCredentials(credentials: Stored, region: string, sourceAddress?: string | null): Promise<CredentialCheck>;
+  /** Checks a connection: which account it reaches, and what it can read and do there. */
+  checkCredentials(credentials: Stored, region: string): Promise<CredentialCheck>;
   failureMessage(error: unknown, label: string): string;
   actionFailureMessage(error: unknown): string;
   buildMap(resources: readonly MapResource[]): InfrastructureMap;

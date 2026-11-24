@@ -6,7 +6,8 @@ import { TenantDatabase } from '../../database/tenant-database';
 import { AccountCredentials } from '../connection/account-credentials';
 import type { CloudCredentials, ExperimentContext, ExperimentSource } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
-import { experimentAccess, NO_CREDENTIALS } from './experiment-access';
+import { NOT_CONNECTED } from '../connection/account-credentials';
+import { experimentAccess } from './experiment-access';
 import { STOPPED_ACTION } from './experiment-audit';
 import { ExperimentStarter, REGION_MISSING } from './experiment-starter';
 import { type ExperimentAccount, findExperimentAccount } from './experiment-account';
@@ -73,7 +74,7 @@ export class ExperimentGateway {
     }
     const credentials = await this.credentials(target);
     if (!credentials) {
-      throw new ConflictException(NO_CREDENTIALS);
+      throw new ConflictException(NOT_CONNECTED);
     }
     try {
       return await work(target.source, { credentials, region });

@@ -14,6 +14,9 @@ export function ConnectionMethodPicker({
   onChange: (kind: CredentialKind) => void;
 }) {
   const chosen = methods.find(({ id }) => id === value);
+  if (methods.length < 2) {
+    return chosen && <p className="text-[13px] text-muted-foreground">{chosen.description}</p>;
+  }
   return (
     <div className="flex flex-col gap-2">
       <div className="flex w-fit rounded-lg border p-0.5" role="group" aria-label="How to connect">

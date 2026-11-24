@@ -40,6 +40,7 @@ import * as credentialsUpdatedAt from './migrations/0038_credentials_updated_at'
 import * as securityAlerts from './migrations/0039_security_alerts';
 import * as removeSecurityAlerts from './migrations/0040_remove_security_alerts';
 import * as credentialKind from './migrations/0041_credential_kind';
+import * as awsRolesOnly from './migrations/0042_aws_roles_only';
 
 const MIGRATIONS: Record<string, Migration> = {
   '0001_foundation': foundation,
@@ -83,6 +84,7 @@ const MIGRATIONS: Record<string, Migration> = {
   '0039_security_alerts': securityAlerts,
   '0040_remove_security_alerts': removeSecurityAlerts,
   '0041_credential_kind': credentialKind,
+  '0042_aws_roles_only': awsRolesOnly,
 };
 
 const ensureAppRole = async (db: Kysely<unknown>, password: string): Promise<void> => {

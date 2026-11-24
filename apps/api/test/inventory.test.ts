@@ -15,13 +15,7 @@ import {
   type ResourceCollector,
 } from '../src/inventory/providers/provider';
 import { InventorySyncService } from '../src/inventory/sync/inventory-sync.service';
-import {
-  appUrl,
-  signIn,
-  startTestApp,
-  type TestContext,
-  user,
-} from './support/test-app';
+import { appUrl, signIn, startTestApp, type TestContext, user, TEST_ROLE } from './support/test-app';
 
 const named = (name: string, overrides: Partial<CollectedResource> = {}): CollectedResource => ({
   type: 'ec2-instance',
@@ -35,8 +29,7 @@ const named = (name: string, overrides: Partial<CollectedResource> = {}): Collec
   ...overrides,
 });
 
-const SECRET = 'abcdEFGHijklMNOPqrstUVWXyz0123456789+/AB';
-const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: SECRET };
+const ROLE = { roleArn: TEST_ROLE.roleArn };
 
 let sequence = 100000000000;
 const newAccountId = (): string => String(++sequence);
@@ -82,7 +75,7 @@ describe('AWS inventory', () => {
   const http = () => request(context.app.getHttpServer());
   const integration = (regions: string[], name = 'Production') => ({
     provider: 'aws',
-    credentials: KEY,
+    credentials: ROLE,
     name,
     regions,
     environmentId: null,
@@ -121,8 +114,8 @@ describe('AWS inventory', () => {
 
   describe('integrations', () => {
     const replaceKey = (id: string, cookie = admin) =>
-      http().put(`/api/cloud/accounts/${id}/credentials`).set('Cookie', cookie).send({ credentials: KEY });
-    const check = (credentials: Record<string, string> = KEY) =>
+      http().put(`/api/cloud/accounts/${id}/credentials`).set('Cookie', cookie).send({ credentials: ROLE });
+    const check = (credentials: Record<string, string> = ROLE) =>
       http().post('/api/cloud/accounts/check').set('Cookie', admin).send({ provider: 'aws', credentials });
 
     it('refuses an environment from another project', async () => {
@@ -144,33 +137,35 @@ describe('AWS inventory', () => {
       await http()
         .post('/api/cloud/accounts/check')
         .set('Cookie', developer)
-        .send({ provider: 'aws', credentials: KEY })
+        .send({ provider: 'aws', credentials: ROLE })
         .expect(403);
     });
 
-    it('rejects invalid regions and credentials, without echoing the secret', async () => {
+    it('rejects invalid regions and anything that is not a role', async () => {
       const region = await http().post('/api/cloud/accounts').set('Cookie', admin).send(integration(['nowhere']));
       expect(region.status).toBe(400);
       expect(region.body.message).toBe('Choose valid regions for this provider.');
-      const secret = await http()
+      const user = await http()
         .post('/api/cloud/accounts')
         .set('Cookie', admin)
-        .send({ ...integration(['eu-central-1']), credentials: { ...KEY, secretAccessKey: 'too-short' } });
-      expect(secret.status).toBe(400);
-      expect(secret.text).not.toContain('too-short');
+        .send({ ...integration(['eu-central-1']), credentials: { roleArn: 'arn:aws:iam::123456789012:user/someone' } });
+      expect(user.status).toBe(400);
     });
 
-    it('refuses temporary keys', async () => {
-      await check({ ...KEY, accessKeyId: 'ASIAABCDEFGHIJKLMNOP' }).expect(400);
+    it('refuses access keys, without echoing the secret', async () => {
+      const secret = 'abcdEFGHijklMNOPqrstUVWXyz0123456789+/AB';
+      const response = await check({ accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: secret }).expect(400);
+      expect(response.body.message).toBe("Those credentials aren't in the right format.");
+      expect(response.text).not.toContain(secret);
     });
 
     it('shows the message a provider gives for rejected credentials', async () => {
       fakes.check = async () => {
-        throw new CredentialsRejected("Root account keys aren't allowed.");
+        throw new CredentialsRejected("PulseGrid can't take on this role.");
       };
       const response = await check();
       expect(response.status).toBe(400);
-      expect(response.body.message).toBe("Root account keys aren't allowed.");
+      expect(response.body.message).toBe("PulseGrid can't take on this role.");
     });
 
     it('hides unexpected errors behind a friendly message', async () => {
@@ -188,30 +183,31 @@ describe('AWS inventory', () => {
       expect(body).toMatchObject({ services: [{ service: 'ec2', readable: true }], canWrite: false });
     });
 
-    it('never returns or stores the secret in plain text', async () => {
+    it('shows the role by name, and never returns or stores its External ID in plain text', async () => {
       const account = await connect();
+      const { body: trust } = await http().get('/api/cloud/accounts/role-trust').set('Cookie', admin).expect(200);
       const { text } = await http().get('/api/cloud/accounts').set('Cookie', admin).expect(200);
-      expect(text).not.toContain(SECRET);
-      expect(text).not.toContain(KEY.accessKeyId);
-      expect(text).toContain('AKIA…MNOP');
+      expect(text).toContain('Role PulseGridAccess');
+      expect(text).not.toContain(trust.externalId);
       const row = await context.owner
         .selectFrom('cloud_accounts')
-        .select('encrypted_credentials')
+        .select(['encrypted_credentials', 'credential_kind'])
         .where('id', '=', account.id)
         .executeTakeFirstOrThrow();
-      expect(row.encrypted_credentials).not.toContain(SECRET);
+      expect(row.credential_kind).toBe('role');
+      expect(row.encrypted_credentials).not.toContain(trust.externalId);
       const audit = await http().get('/api/audit-events').set('Cookie', admin);
-      expect(audit.text).not.toContain(SECRET);
+      expect(audit.text).not.toContain(trust.externalId);
     });
 
-    it('remembers a key that can change resources', async () => {
+    it('remembers a role that can change resources', async () => {
       fakes.check = async () => ({ ...passingCheck, accountId: newAccountId(), canWrite: true });
       const account = await connect();
       const { body } = await http().get('/api/cloud/accounts').set('Cookie', admin);
       expect(body.find(({ id }: { id: string }) => id === account.id).canWrite).toBe(true);
     });
 
-    it('takes over an account that has no key, keeping its resources', async () => {
+    it('takes over an account that has no connection, keeping its resources', async () => {
       const accountId = newAccountId();
       const { id } = await context.owner
         .insertInto('cloud_accounts')
@@ -223,7 +219,7 @@ describe('AWS inventory', () => {
       expect(body).toMatchObject({ id, name: 'New', hasCredentials: true, status: 'connected' });
     });
 
-    it('rejects a second key for the same account', async () => {
+    it('rejects a second connection for the same account', async () => {
       const accountId = newAccountId();
       fakes.check = async () => ({ ...passingCheck, accountId });
       await connect();
@@ -439,7 +435,7 @@ describe('AWS inventory', () => {
         {
           collector: 'EC2',
           region: 'eu-central-1',
-          message: 'This key does not have permission to read EC2. Check its IAM policy.',
+          message: "The account's PulseGrid role doesn't have permission to read EC2. Check its IAM policy.",
         },
       ]);
       expect(saved.lastSyncedAt).not.toBeNull();

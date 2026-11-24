@@ -5,10 +5,9 @@ import { withTenantContext } from '../src/database/tenant-context';
 import { CredentialVault } from '../src/inventory/connection/credential-vault';
 import { awsProvider } from '../src/inventory/providers/aws/aws.provider';
 import { CLOUD_PROVIDER_LIST, type CloudProvider, type StoredSecret } from '../src/inventory/providers/provider';
-import { setExtraPermissions, signIn, startTestApp, type TestContext, user } from './support/test-app';
+import { setExtraPermissions, signIn, startTestApp, type TestContext, user, TEST_ROLE, TEST_SESSION } from './support/test-app';
 import { newEnvironment } from '../src/inventory/environments/account-environment';
 
-const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
 const SECRET_VALUE = 'super-secret-value';
 const read = vi.fn<() => Promise<StoredSecret>>();
 const write = vi.fn<(context: unknown, value: string) => Promise<void>>();
@@ -47,7 +46,7 @@ describe('secrets', () => {
         ...row,
         name: 'Account',
         regions: ['eu-central-1'],
-        encrypted_credentials: context.app.get(CredentialVault).seal(row, KEY),
+        encrypted_credentials: context.app.get(CredentialVault).seal(row, TEST_ROLE),
         credential_hint: null,
         can_write: false,
         last_error: null,
@@ -148,7 +147,7 @@ describe('secrets', () => {
     it('shows a readable message when AWS refuses', async () => {
       read.mockRejectedValue(Object.assign(new Error('raw aws text'), { name: 'AccessDeniedException' }));
       const { body } = await view(await addSecret('Staging')).expect(200);
-      expect(body.error).toContain("This key doesn't allow that");
+      expect(body.error).toContain("The account's PulseGrid role doesn't allow that");
       expect(JSON.stringify(body)).not.toContain('raw aws text');
     });
 
@@ -282,7 +281,7 @@ describe('secrets', () => {
       const id = await addSecret('Staging');
       await save(id, null, 'new').expect(204);
       expect(write.mock.calls[0]![1]).toBe('new');
-      await save(id, 'KEY', 'new').expect(400);
+      await save(id, 'TEST_SESSION', 'new').expect(400);
     });
 
     it('deletes a key', async () => {
@@ -334,7 +333,7 @@ describe('secrets', () => {
       const id = await addSecret('Staging');
       await save(id, null, 'x').expect(400);
       await save(id, 'bad\nkey', 'x').expect(400);
-      await save(id, 'KEY', 'x'.repeat(65_537)).expect(400);
+      await save(id, 'TEST_SESSION', 'x'.repeat(65_537)).expect(400);
       expect(write).not.toHaveBeenCalled();
     });
 
@@ -342,7 +341,7 @@ describe('secrets', () => {
       write.mockRejectedValue(Object.assign(new Error('raw aws text'), { name: 'AccessDeniedException' }));
       const response = await save(await addSecret('Staging'), 'TOKEN', 'x');
       expect(response.status).toBe(400);
-      expect(response.body.message).toContain("This key doesn't allow that");
+      expect(response.body.message).toContain("The account's PulseGrid role doesn't allow that");
     });
   });
 });

@@ -13,7 +13,7 @@ import type { AwsKey } from './aws-key';
 const FAILED_STATES = new Set(['failed', 'incompatible-network', 'incompatible-parameters']);
 const RESTART_GRACE_MS = 30_000;
 const SERVER_GRACE_MS = 60_000;
-const SERVER_UNCONFIRMED = "Reboot sent, but this key can't confirm it finished.";
+const SERVER_UNCONFIRMED = "Reboot sent, but the account's PulseGrid role can't confirm it finished.";
 const SERVER_PROBLEM = 'AWS reports a problem with this server. Check it in AWS.';
 
 const elapsedMs = (startedAt: Date): number => Date.now() - startedAt.getTime();

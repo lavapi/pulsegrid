@@ -42,7 +42,7 @@ const MESSAGES: Record<string, string> = {
   ValidationException: "AWS refused this experiment. Check the template's targets and role in the FIS console.",
   ResourceNotFoundException: 'That experiment or template no longer exists in AWS.',
 };
-const NO_PERMISSION = "This key can't do that. Add the FIS permissions from Integrations to its IAM policy.";
+const NO_PERMISSION = "The account's PulseGrid role can't do that. Add the FIS permissions from Integrations to its IAM policy.";
 const FAILED = "AWS couldn't complete that. Please try again.";
 
 const client = ({ credentials, region }: ExperimentContext<AwsKey>): FisClient =>

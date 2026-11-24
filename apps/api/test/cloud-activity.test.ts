@@ -4,9 +4,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { CredentialVault } from '../src/inventory/connection/credential-vault';
 import { awsProvider } from '../src/inventory/providers/aws/aws.provider';
 import { type ActivityResult, CLOUD_PROVIDER_LIST, type CloudProvider } from '../src/inventory/providers/provider';
-import { signIn, startTestApp, type TestContext, user } from './support/test-app';
+import { signIn, startTestApp, type TestContext, user, TEST_ROLE, TEST_SESSION } from './support/test-app';
 
-const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
 const read = vi.fn<(context: unknown, query: unknown) => Promise<ActivityResult>>();
 const provider: CloudProvider = { ...awsProvider, activitySource: { read } };
 
@@ -32,7 +31,7 @@ describe('AWS activity', () => {
         ...row,
         name: 'Account',
         regions: ['eu-central-1'],
-        encrypted_credentials: context.app.get(CredentialVault).seal(row, KEY),
+        encrypted_credentials: context.app.get(CredentialVault).seal(row, TEST_ROLE),
         credential_hint: null,
         can_write: false,
         last_error: null,
@@ -51,7 +50,7 @@ describe('AWS activity', () => {
   it('passes filters and the key to the provider', async () => {
     await activity(accountId, admin, '?actor=alex&resource=i-1&reads=true').expect(200);
     expect(read).toHaveBeenCalledWith(
-      { credentials: KEY, regions: ['eu-central-1'] },
+      { credentials: TEST_SESSION, regions: ['eu-central-1'] },
       expect.objectContaining({ actor: 'alex', resource: 'i-1', includeReads: true }),
     );
   });
@@ -65,7 +64,7 @@ describe('AWS activity', () => {
   it('shows a readable message when AWS refuses', async () => {
     read.mockRejectedValue(Object.assign(new Error('raw aws text'), { name: 'AccessDeniedException' }));
     const { body } = (await activity(accountId).expect(200)) as { body: CloudActivityPage };
-    expect(body.error).toContain("This key doesn't allow that");
+    expect(body.error).toContain("The account's PulseGrid role doesn't allow that");
     expect(JSON.stringify(body)).not.toContain('raw aws text');
   });
 });

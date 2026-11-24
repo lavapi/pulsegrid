@@ -18,7 +18,7 @@ const INVALID_ARGUMENT = 'InvalidArgumentException';
 const MS_PER_HOUR = 3_600_000;
 const PI_OFF = 'Performance Insights is off for this instance.';
 const PI_DENIED =
-  "Add pi:DescribeDimensionKeys and pi:GetResourceMetrics to the key's IAM policy to see its busiest statements.";
+  "Add pi:DescribeDimensionKeys and pi:GetResourceMetrics to the role's IAM policy to see its busiest statements.";
 const PI_FAILED = "Performance Insights didn't answer. Try again in a moment.";
 
 /** Per-call statistics have different names for PostgreSQL and MySQL. */

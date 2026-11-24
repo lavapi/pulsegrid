@@ -3,13 +3,12 @@ import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
 import type { RedisClient } from '../../redis/redis-connection';
 import { REDIS } from '../../redis/redis.module';
-import { AccountCredentials } from '../connection/account-credentials';
+import { AccountCredentials, NOT_CONNECTED } from '../connection/account-credentials';
 import { type CloudCredentials, type CloudProvider, LogsUnreadable } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { ResourceAccess } from '../resources/resource-access';
 
 const NEEDS_PERMISSION = 'Ask your super admin for the View logs permission.';
-const NO_CREDENTIALS = 'This account has no access key. Add one under Integrations.';
 const THROTTLED = /Throttl|TooMany|SlowDown|RateExceeded|LimitExceeded/;
 const SLOW_DOWN = 'AWS asked PulseGrid to slow down. Try again in a moment.';
 const READ_FAILED = "PulseGrid couldn't read this from AWS right now. Try again in a moment.";
@@ -68,7 +67,7 @@ export class LogReads {
     }
     const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
-      return { kind: 'blocked', access: ALLOWED, problem: { message: NO_CREDENTIALS, principal: null } };
+      return { kind: 'blocked', access: ALLOWED, problem: { message: NOT_CONNECTED, principal: null } };
     }
     await this.recordView(auth, resource, account.account_id, ipAddress);
     return {
