@@ -26,7 +26,8 @@ import { EnvironmentDomainsService } from './environments/environment-domains.se
 import { EnvironmentsController } from './environments/environments.controller';
 import { EnvironmentsService } from './environments/environments.service';
 import { InventoryCoreModule } from './inventory-core.module';
-import { ResourceLoadController } from './load/resource-load.controller';
+import { CardLoadService } from './load/card-load.service';
+import { CardLoadController, ResourceLoadController } from './load/resource-load.controller';
 import { ResourceLoadService } from './load/resource-load.service';
 import { DatabaseActivityService } from './logs/database-activity.service';
 import { LogReads } from './logs/log-reads';
@@ -57,6 +58,7 @@ import { SyncProgressController } from './sync/sync-progress.controller';
     EnvironmentsController,
     ResourceActionsController,
     ResourceActivityController,
+    CardLoadController,
     ResourceLoadController,
     ResourceLogsController,
     ResourceInsightsController,
@@ -80,6 +82,7 @@ import { SyncProgressController } from './sync/sync-progress.controller';
     ResourceAccess,
     DisplayNamesService,
     ResourceActionsService,
+    CardLoadService,
     ResourceLoadService,
     ResourceLogsService,
     LogReads,

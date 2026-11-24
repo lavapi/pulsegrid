@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- ElastiCache cards show **Engine CPU**, **Memory used** and **Evictions**, from the busiest node when there are several. ECS service cards show **CPU** and **Memory used** out of what their tasks reserve.
+
+### Changed
+
+- Resource cards get their load in one request per page instead of one per card: `GET /api/resources/card-load?ids=…` reads only the charts the cards show, for up to 100 resources, with one CloudWatch read per account and region, kept for a minute so refreshes and other viewers cost no extra read.
+- An ElastiCache eviction now counts as a warning, on the card and on the cache's load chart.
+
 ## [0.28.0] - 2026-11-20
 
 ### Added

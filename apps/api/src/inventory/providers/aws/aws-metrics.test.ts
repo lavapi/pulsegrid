@@ -376,3 +376,52 @@ describe('AWS_METRIC_SOURCE', () => {
     expect(AWS_METRIC_SOURCE.failureMessage(new Error('x'))).toBe("We couldn't read the load from AWS. Please try again.");
   });
 });
+
+describe('readLatest', () => {
+  const chartIds = (type: ResourceType): string[] =>
+    ({ 'rds-instance': ['cpu', 'connections', 'memory', 'free-memory'], 'ecs-service': ['cpu', 'memory'] })[type as string] ?? [];
+  const resource = (type: ResourceType, name: string, details: Record<string, unknown>) => ({ type, name, nativeId: name, details });
+
+  it('reads only the card charts of many resources in one request, and keeps their results apart', async () => {
+    answerAll();
+    instanceType('t4g.medium', 2, 4096);
+    const results = await AWS_METRIC_SOURCE.readLatest!(
+      {
+        credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+        region: 'eu-central-1',
+        resources: [
+          resource('rds-instance', 'db-1', { instanceClass: 'db.t4g.medium' }),
+          resource('rds-instance', 'db-2', { instanceClass: 'db.t4g.medium' }),
+          resource('rds-cluster', 'no-cards', {}),
+        ],
+      },
+      chartIds,
+      until,
+    );
+
+    expect(cloudWatch.commandCalls(GetMetricDataCommand)).toHaveLength(1);
+    expect(metricNames()).toEqual(['CPUUtilization', 'FreeableMemory', 'DatabaseConnections']);
+    const [first, second, third] = results;
+    expect(first?.charts.map(({ id }) => id)).toEqual(['cpu', 'memory', 'connections']);
+    expect(second?.charts.map(({ id }) => id)).toEqual(['cpu', 'memory', 'connections']);
+    expect(third?.charts).toEqual([]);
+    const dimensions = sentQueries().map(({ Id, MetricStat }) => `${Id}:${MetricStat?.Metric?.Dimensions?.[0]?.Value}`);
+    expect(dimensions.filter((entry) => entry.startsWith('r0'))).toEqual(expect.arrayContaining(['r0m0_0:db-1']));
+    expect(dimensions.filter((entry) => entry.startsWith('r1'))).toEqual(expect.arrayContaining(['r1m0_0:db-2']));
+  });
+
+  it('splits more than 500 queries into several requests', async () => {
+    answerAll();
+    const services = Array.from({ length: 300 }, (_, index) =>
+      resource('ecs-service', `svc-${index}`, { cluster: 'main', runningTasks: 1 }),
+    );
+    const results = await AWS_METRIC_SOURCE.readLatest!(
+      { credentials: { accessKeyId: 'a', secretAccessKey: 'b' }, region: 'eu-central-1', resources: services },
+      chartIds,
+      until,
+    );
+    expect(cloudWatch.commandCalls(GetMetricDataCommand).map(({ args }) => args[0].input.MetricDataQueries?.length)).toEqual([500, 100]);
+    expect(results.at(-1)?.charts.map(({ id }) => id)).toEqual(['cpu', 'memory']);
+  });
+});
+

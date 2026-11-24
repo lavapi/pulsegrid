@@ -1,4 +1,6 @@
 import {
+  CARD_LOAD_MAX_RESOURCES,
+  type CardLoadMap,
   LOAD_RANGES,
   LOAD_WINDOW_MAX_MINUTES,
   loadRange,
@@ -12,6 +14,7 @@ import { CurrentAuth } from '../../auth/guards/current-auth.decorator';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { ZodPipe } from '../../common/zod.pipe';
 import type { MetricQuery } from '../providers/provider';
+import { CardLoadService } from './card-load.service';
 import { ResourceLoadService } from './resource-load.service';
 
 const READ_LIMIT = { default: { limit: 60, ttl: 60_000 } };
@@ -32,6 +35,30 @@ const windowQuery = z
   .transform(({ from, to }): MetricQuery => ({ since: from, until: to, periodSeconds: windowPeriodSeconds(from, to) }));
 
 const loadSchema = z.union([windowQuery, rangeQuery]);
+
+const cardLoadSchema = z.strictObject({
+  ids: z
+    .string()
+    .transform((value) => [...new Set(value.split(',').filter(Boolean))])
+    .pipe(z.array(z.uuid()).max(CARD_LOAD_MAX_RESOURCES)),
+});
+
+/** The latest load for the resource cards on a page, read together. */
+@Controller('resources/card-load')
+export class CardLoadController {
+  constructor(private readonly cards: CardLoadService) {}
+
+  @Get()
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(ThrottlerGuard)
+  @Throttle(READ_LIMIT)
+  read(
+    @CurrentAuth() auth: AuthContext,
+    @Query(new ZodPipe(cardLoadSchema, 'Choose up to 100 resources.')) query: z.infer<typeof cardLoadSchema>,
+  ): Promise<CardLoadMap> {
+    return this.cards.read(auth, query.ids);
+  }
+}
 
 @Controller('resources/:id/load')
 export class ResourceLoadController {

@@ -1,9 +1,9 @@
-import { type ActionRun, type Resource, resourcePath, shownName } from '@pulsegrid/shared';
+import { type ActionRun, type LoadChart, type Resource, resourcePath, shownName } from '@pulsegrid/shared';
 import Link from 'next/link';
 import { HealthBadge } from '@/components/health-badge';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { CARD_LOAD_TYPES } from '@/lib/card-load';
+import { hasCardLoad } from '@/lib/card-load';
 import { cardFacts } from '@/lib/resource-cards';
 import { cn } from '@/lib/utils';
 import { startedByLabel, STATUS_VIEWS } from '@/lib/action-status';
@@ -27,7 +27,14 @@ function ActivityStrip({ run }: { run: ActionRun }) {
   );
 }
 
-export function ResourceCard({ resource, run }: { resource: Resource; run: ActionRun | undefined }) {
+interface ResourceCardProps {
+  resource: Resource;
+  run: ActionRun | undefined;
+  /** Latest load: undefined while loading, null when it couldn't be read. */
+  load?: LoadChart[] | null | undefined;
+}
+
+export function ResourceCard({ resource, run, load }: ResourceCardProps) {
   const running = run?.status === 'running';
   return (
     <Link href={resourcePath(resource)} className="group block rounded-xl focus-visible:outline-none">
@@ -60,7 +67,7 @@ export function ResourceCard({ resource, run }: { resource: Resource; run: Actio
             ))}
           </dl>
         </div>
-        {CARD_LOAD_TYPES.includes(resource.type) && <CardLoad resourceId={resource.id} />}
+        {hasCardLoad(resource.type) && <CardLoad type={resource.type} charts={load} />}
         {run && <ActivityStrip run={run} />}
       </Card>
     </Link>
