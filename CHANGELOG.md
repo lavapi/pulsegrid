@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-11-24
+
 ### Added
 
 - ElastiCache cards show **Engine CPU**, **Memory used** and **Evictions**, from the busiest node when there are several. ECS service cards show **CPU** and **Memory used** out of what their tasks reserve.
