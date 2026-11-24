@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-11-24
+
 ### Added
 
 - AWS accounts can be connected with a **role** instead of an access key: PulseGrid takes it on with its own ECS task role and the project's **External ID**, so nothing secret is stored and credentials last an hour, renewing themselves. Integrations shows the External ID and the trust policy to copy, recommends a role for new accounts, and offers **Switch to a role** on accounts that use a key, which replaces the stored key. The check takes on the role and simulates the role's own policies. CloudTrail activity in any of the role's sessions counts as PulseGrid's.
