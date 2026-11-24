@@ -3,6 +3,7 @@ import {
   type CloudAccount,
   type CredentialCheck,
   EMPTY_TAG_FILTER,
+  type RoleTrustDetails,
 } from '@pulsegrid/shared';
 import {
   Body,
@@ -71,14 +72,21 @@ export class CloudAccountsController {
     return this.accounts.outboundAddress();
   }
 
+  @Get('role-trust')
+  @RequirePermission('integrations.manage')
+  roleTrust(@CurrentAuth() auth: AuthContext): RoleTrustDetails {
+    return this.accounts.roleTrust(auth.tenantId);
+  }
+
   @Post('check')
   @RequirePermission('integrations.manage')
   @UseGuards(ThrottlerGuard)
   @HttpCode(200)
   check(
+    @CurrentAuth() auth: AuthContext,
     @Body(new ZodPipe(checkSchema, INVALID_ACCOUNT)) body: z.infer<typeof checkSchema>,
   ): Promise<CredentialCheck> {
-    return this.accounts.checkCredentials(body.provider, body.credentials);
+    return this.accounts.checkCredentials(auth.tenantId, body.provider, body.credentials);
   }
 
   @Post()

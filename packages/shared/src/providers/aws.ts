@@ -121,19 +121,63 @@ export const AWS_POLICY = JSON.stringify(
   2,
 );
 
+/** The role each account gives PulseGrid; any name works, this one is suggested. */
+export const AWS_ROLE_NAME = 'PulseGridAccess';
+
+/**
+ * The trust policy for the role: only PulseGrid's own task roles may assume it, and only with this project's
+ * External ID.
+ */
+export const awsRoleTrustPolicy = (externalId: string, principals: readonly string[]): string =>
+  JSON.stringify(
+    {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: principals.length > 0 ? principals : ['<PulseGrid task role ARN>'] },
+          Action: 'sts:AssumeRole',
+          Condition: { StringEquals: { 'sts:ExternalId': externalId } },
+        },
+      ],
+    },
+    null,
+    2,
+  );
+
 export const AWS_PROVIDER: CloudProviderDefinition = {
   id: 'aws',
   label: 'AWS',
-  description: 'Read and manage infrastructure with an access key for each account',
+  description: 'Read and manage infrastructure through a role in each account',
   icon: '/cloud-icons/aws/logo.svg',
   accountLabel: 'AWS account',
-  credentialFields: [
-    { key: 'accessKeyId', label: 'Access Key ID', secret: false, placeholder: 'AKIA…' },
+  connectionMethods: [
     {
-      key: 'secretAccessKey',
-      label: 'Secret Access Key',
-      secret: true,
-      hint: 'Stored encrypted, and never shown again',
+      id: 'role',
+      label: 'Role',
+      description: 'PulseGrid takes on a role in the account. Nothing secret is stored, and access ends when you delete the role.',
+      fields: [
+        {
+          key: 'roleArn',
+          label: 'Role ARN',
+          secret: false,
+          placeholder: `arn:aws:iam::123456789012:role/${AWS_ROLE_NAME}`,
+        },
+      ],
+    },
+    {
+      id: 'key',
+      label: 'Access key',
+      description: "An IAM user's access key, stored encrypted. Roles are safer: use a key only where a role isn't possible.",
+      fields: [
+        { key: 'accessKeyId', label: 'Access Key ID', secret: false, placeholder: 'AKIA…' },
+        {
+          key: 'secretAccessKey',
+          label: 'Secret Access Key',
+          secret: true,
+          hint: 'Stored encrypted, and never shown again',
+        },
+      ],
     },
   ],
   defaultRegion: 'eu-central-1',
@@ -150,7 +194,7 @@ export const AWS_PROVIDER: CloudProviderDefinition = {
   setup: {
     title: 'IAM policy',
     description:
-      "Create a dedicated IAM user with this policy for each account, production included. Don't use personal or admin keys. It covers everything PulseGrid can read and do. Who can do what, in staging and in production, is set by roles in PulseGrid. A secret with its own KMS key must also allow this user.",
+      "Give the PulseGrid role in each account, production included, this policy. It covers everything PulseGrid can read and do. Who can do what, in staging and in production, is set by roles in PulseGrid. A secret with its own KMS key must also allow the role.",
     code: AWS_POLICY,
   },
 };

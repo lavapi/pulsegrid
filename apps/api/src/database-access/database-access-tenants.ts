@@ -3,8 +3,8 @@ import type { Kysely } from 'kysely';
 import { DATABASE } from '../database/database.module';
 import type { Database } from '../database/schema';
 import { TenantDatabase } from '../database/tenant-database';
-import { CredentialVault } from '../inventory/connection/credential-vault';
-import { parseAwsKey } from '../inventory/providers/aws/aws-key';
+import { AccountCredentials } from '../inventory/connection/account-credentials';
+import type { AwsKey } from '../inventory/providers/aws/aws-key';
 import { DatabaseAccessError, MESSAGES } from './database-access-errors';
 import { DatabaseAccessWorkflows, DEFAULT_POLL, type PollOptions } from './database-access-workflows';
 import { DATABASE_ACCESS_SETUP, type DatabaseAccessSetup } from './database-access.settings';
@@ -20,7 +20,7 @@ export class DatabaseAccessTenants {
   constructor(
     @Inject(DATABASE) private readonly db: Kysely<Database>,
     private readonly database: TenantDatabase,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
     @Inject(DATABASE_ACCESS_SETUP) private readonly setup: DatabaseAccessSetup,
     @Inject(WORKFLOW_POLL) private readonly poll: PollOptions = DEFAULT_POLL,
   ) {}
@@ -40,10 +40,10 @@ export class DatabaseAccessTenants {
     return owning;
   }
 
-  /** The workflows, called with the Production account's key in this project. */
+  /** The workflows, called with the Production account's credentials in this project. */
   async workflows(tenantId: string): Promise<DatabaseAccessWorkflows> {
     const account = await this.productionAccount(tenantId);
-    const key = account ? parseAwsKey(this.vault.open(account)) : null;
+    const key = account ? ((await this.accountCredentials.of(account)) as AwsKey | null) : null;
     if (!this.setup.ready || !key) {
       throw new DatabaseAccessError(MESSAGES.noKey);
     }

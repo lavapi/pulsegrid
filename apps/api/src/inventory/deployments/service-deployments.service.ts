@@ -1,7 +1,7 @@
 import type { ServiceDeploymentsView } from '@pulsegrid/shared';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { ResourceAccess } from '../resources/resource-access';
 
@@ -16,7 +16,7 @@ export class ServiceDeploymentsService {
   constructor(
     private readonly access: ResourceAccess,
     private readonly providers: ProviderRegistry,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
   ) {}
 
   /** A service's recent blue/green, canary or linear deployments. Everyone can see them, in every environment. */
@@ -26,7 +26,7 @@ export class ServiceDeploymentsService {
     if (!source || source.resourceType !== resource.type) {
       throw new NotFoundException(NOT_A_SERVICE);
     }
-    const credentials = this.vault.open(account);
+    const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
       return { strategy: null, deployments: [], error: NO_CREDENTIALS };
     }

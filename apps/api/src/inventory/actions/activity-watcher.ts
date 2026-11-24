@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { CloudAccountRow } from '../../database/schema';
 import { TenantDatabase } from '../../database/tenant-database';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import type { ActivityWatch, CloudCredentials } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import type { AccountRef } from '../sync/inventory-sync.service';
@@ -17,7 +17,7 @@ export class ActivityWatcher {
   constructor(
     private readonly database: TenantDatabase,
     private readonly providers: ProviderRegistry,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
     private readonly runs: ActionRunStore,
   ) {}
 
@@ -25,7 +25,7 @@ export class ActivityWatcher {
     const account = await this.database.run(tenantId, (trx) =>
       trx.selectFrom('cloud_accounts').selectAll().where('id', '=', accountId).executeTakeFirst(),
     );
-    const credentials = account && this.openCredentials(account);
+    const credentials = account && (await this.openCredentials(account));
     if (!account || !credentials) {
       return;
     }
@@ -37,9 +37,9 @@ export class ActivityWatcher {
     );
   }
 
-  private openCredentials(account: CloudAccountRow): CloudCredentials | null {
+  private async openCredentials(account: CloudAccountRow): Promise<CloudCredentials | null> {
     try {
-      return this.vault.open(account);
+      return await this.accountCredentials.of(account);
     } catch (error) {
       this.logger.warn(`Reading the key failed: ${(error as Error).name}`);
       return null;

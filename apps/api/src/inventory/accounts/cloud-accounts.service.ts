@@ -3,6 +3,7 @@ import {
   cloudProvider,
   type CloudAccount,
   type CredentialCheck,
+  type RoleTrustDetails,
   type TagFilter,
 } from '@pulsegrid/shared';
 import {
@@ -19,6 +20,7 @@ import type { TenantTransaction } from '../../database/tenant-context';
 import { TenantDatabase } from '../../database/tenant-database';
 import { CredentialVault } from '../connection/credential-vault';
 import { OutboundAddress } from '../connection/outbound-address';
+import { RoleTrust } from '../connection/role-trust';
 import { type AccountEnvironment, toAccountEnvironment } from '../environments/account-environment';
 import { checkAccountMove, findEnvironment } from '../environments/account-moves';
 import {
@@ -67,14 +69,18 @@ const toCloudAccount = (row: CloudAccountRow, environment: AccountEnvironment | 
   environmentName: environment?.name ?? null,
   isProduction: environment?.isProduction ?? false,
   hasCredentials: row.encrypted_credentials !== null,
+  credentialKind: row.credential_kind,
   credentialHint: row.credential_hint,
   credentialsUpdatedAt: row.credentials_updated_at?.toISOString() ?? null,
   canWrite: row.can_write,
   tagFilter: row.tag_filter,
 });
 
-const parsed = (provider: CloudProvider, input: unknown): CloudCredentials => {
-  const credentials = provider.parseCredentials(input);
+/** The connection as the provider reads it; a role gets this project's External ID, never one sent in. */
+const parsed = (provider: CloudProvider, input: unknown, externalId: string): CloudCredentials => {
+  const credentials = provider.parseCredentials(
+    typeof input === 'object' && input !== null ? { ...input, externalId } : input,
+  );
   if (!credentials) {
     throw new BadRequestException(INVALID_CREDENTIALS);
   }
@@ -91,7 +97,13 @@ export class CloudAccountsService {
     private readonly vault: CredentialVault,
     private readonly providers: ProviderRegistry,
     private readonly outbound: OutboundAddress,
+    private readonly trust: RoleTrust,
   ) {}
+
+  /** What a role in a connected account must trust, shown when connecting with a role. */
+  roleTrust(tenantId: string): RoleTrustDetails {
+    return this.trust.details(tenantId);
+  }
 
   /** Where PulseGrid calls the cloud from, to lock access keys to it. */
   async outboundAddress(): Promise<{ address: string | null }> {
@@ -111,10 +123,10 @@ export class CloudAccountsService {
     });
   }
 
-  checkCredentials(providerId: string, input: unknown): Promise<CredentialCheck> {
+  checkCredentials(tenantId: string, providerId: string, input: unknown): Promise<CredentialCheck> {
     const provider = this.providers.get(providerId);
     const region = cloudProvider(providerId)?.defaultRegion ?? '';
-    return this.check(provider, parsed(provider, input), region);
+    return this.check(provider, parsed(provider, input, this.trust.externalId(tenantId)), region);
   }
 
   async add(auth: AuthContext, input: NewCloudAccount, ip: string | undefined): Promise<CloudAccount> {
@@ -123,7 +135,7 @@ export class CloudAccountsService {
     if (!regions.every(provider.isValidRegion)) {
       throw new BadRequestException(INVALID_REGION);
     }
-    const credentials = parsed(provider, input.credentials);
+    const credentials = parsed(provider, input.credentials, this.trust.externalId(auth.tenantId));
     const check = await this.check(provider, credentials, regions[0] ?? '');
     const identity = {
       tenant_id: auth.tenantId,
@@ -183,7 +195,7 @@ export class CloudAccountsService {
   ): Promise<CloudAccount> {
     const current = await this.database.run(auth.tenantId, (trx) => this.find(trx, id));
     const provider = this.providers.get(current.provider);
-    const credentials = parsed(provider, input);
+    const credentials = parsed(provider, input, this.trust.externalId(auth.tenantId));
     const check = await this.check(provider, credentials, current.regions[0] ?? '');
     if (check.accountId !== current.account_id) {
       throw new BadRequestException(WRONG_ACCOUNT);
@@ -325,6 +337,7 @@ export class CloudAccountsService {
   ) {
     return {
       encrypted_credentials: this.vault.seal(identity, credentials),
+      credential_kind: provider.credentialKind(credentials),
       credential_hint: provider.credentialHint(credentials),
       credentials_updated_at: new Date(),
       can_write: check.canWrite,

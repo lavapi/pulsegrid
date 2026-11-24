@@ -12,7 +12,7 @@ import type { AuthContext } from '../auth/session/auth-context';
 import { chunk } from '../common/chunk';
 import { isUniqueViolation } from '../database/errors';
 import { TenantDatabase } from '../database/tenant-database';
-import { CredentialVault } from '../inventory/connection/credential-vault';
+import { AccountCredentials } from '../inventory/connection/account-credentials';
 import { domainsByEnvironment } from '../inventory/environments/environment-domains';
 import type { Deployment } from '../inventory/providers/provider';
 import { ProviderRegistry } from '../inventory/providers/provider-registry';
@@ -70,7 +70,7 @@ export class ReleasesService {
     private readonly database: TenantDatabase,
     private readonly pipelines: PipelinesService,
     private readonly providers: ProviderRegistry,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
     private readonly cache: PipelineCache,
     private readonly audit: AuditService,
   ) {}
@@ -310,7 +310,7 @@ export class ReleasesService {
     }
     const path = resourcePath({ id: resource.id, type: resource.type });
     const provider = this.providers.get(account.provider);
-    const credentials = this.vault.open(account);
+    const credentials = await this.accountCredentials.of(account);
     if (!provider.deploymentSource) {
       return { deployment: null, path, issue: null };
     }

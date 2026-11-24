@@ -391,7 +391,16 @@ export interface DeploymentSource<Credentials extends CloudCredentials = CloudCr
 
 export class CredentialsRejected extends Error {}
 
-export interface CloudProvider<Credentials extends CloudCredentials = CloudCredentials> {
+export type CredentialKind = 'key' | 'role';
+
+/**
+ * A cloud provider. `Stored` is what PulseGrid keeps for an account, such as a key or a role to assume;
+ * `Credentials` is what calls the cloud, which `resolveCredentials` makes from it when the two differ.
+ */
+export interface CloudProvider<
+  Credentials extends CloudCredentials = CloudCredentials,
+  Stored extends CloudCredentials = Credentials,
+> {
   id: string;
   collectors: readonly ResourceCollector<Credentials>[];
   unfilteredTypes: readonly ResourceType[];
@@ -406,18 +415,22 @@ export interface CloudProvider<Credentials extends CloudCredentials = CloudCrede
   experimentSource?: ExperimentSource<Credentials>;
   costSource?: CostSource<Credentials>;
   deploymentSource?: DeploymentSource<Credentials>;
-  parseCredentials(input: unknown): Credentials | null;
-  credentialHint(credentials: Credentials): string;
+  parseCredentials(input: unknown): Stored | null;
+  credentialHint(credentials: Stored): string;
+  /** What kind of connection was stored, such as `key` or `role`. */
+  credentialKind(credentials: Stored): CredentialKind;
+  /** Turns what is stored into credentials to call the cloud with; without it, they're the same. */
+  resolveCredentials?(stored: Stored): Promise<Credentials>;
   isValidRegion(region: string): boolean;
-  /** Checks a key; `sourceAddress` is where PulseGrid calls the cloud from, for policies locked to it. */
-  checkCredentials(credentials: Credentials, region: string, sourceAddress?: string | null): Promise<CredentialCheck>;
+  /** Checks a connection; `sourceAddress` is where PulseGrid calls the cloud from, for policies locked to it. */
+  checkCredentials(credentials: Stored, region: string, sourceAddress?: string | null): Promise<CredentialCheck>;
   failureMessage(error: unknown, label: string): string;
   actionFailureMessage(error: unknown): string;
   buildMap(resources: readonly MapResource[]): InfrastructureMap;
 }
 
-export const defineProvider = <Credentials extends CloudCredentials>(
-  provider: CloudProvider<Credentials>,
+export const defineProvider = <Credentials extends CloudCredentials, Stored extends CloudCredentials = Credentials>(
+  provider: CloudProvider<Credentials, Stored>,
 ): CloudProvider => provider as unknown as CloudProvider;
 
 export const CLOUD_PROVIDER_LIST = Symbol('CLOUD_PROVIDER_LIST');

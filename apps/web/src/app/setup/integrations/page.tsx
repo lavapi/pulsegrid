@@ -4,6 +4,7 @@ import {
   type EnvironmentAdminView,
   GIT_PROVIDERS,
   type GitConnection,
+  type RoleTrustDetails,
 } from '@pulsegrid/shared';
 import { Check } from 'lucide-react';
 import Link from 'next/link';
@@ -14,7 +15,7 @@ import { SetupSteps } from '@/components/setup/setup-steps';
 import { SyncProgressProvider } from '@/components/sync/sync-progress-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
-import { apiGet, getCurrentUser } from '@/lib/server-api';
+import { apiGet, apiGetOptional, getCurrentUser } from '@/lib/server-api';
 
 function Added({ names }: { names: string[] }) {
   return names.map((name) => (
@@ -30,10 +31,11 @@ export default async function SetupIntegrationsPage() {
   if (!user.twoFactorEnabled) {
     redirect('/setup-two-factor?install=1');
   }
-  const [accounts, connections, { environments }] = await Promise.all([
+  const [accounts, connections, { environments }, trust] = await Promise.all([
     apiGet<CloudAccount[]>('/cloud/accounts'),
     apiGet<GitConnection[]>('/git/connections'),
     apiGet<EnvironmentAdminView>('/environments/manage'),
+    apiGetOptional<RoleTrustDetails>('/cloud/accounts/role-trust'),
   ]);
 
   return (
@@ -52,7 +54,7 @@ export default async function SetupIntegrationsPage() {
             <Added
               names={accounts.filter((item) => item.provider === provider.id).map(({ name }) => name)}
             />
-            <AddCloudAccountForm provider={provider} environments={environments} />
+            <AddCloudAccountForm provider={provider} environments={environments} trust={trust} />
           </Card>
         ))}
         {GIT_PROVIDERS.map((provider) => (

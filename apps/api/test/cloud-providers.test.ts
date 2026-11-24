@@ -14,7 +14,9 @@ import { signIn, startTestApp, type TestContext, user } from './support/test-app
 
 const PROJECT_ID = 'my-project-123';
 
-const otherCloud: CloudProvider = defineProvider<{ token: string }>({
+type OtherStored = { token: string } | { roleName: string; externalId: string };
+
+const otherCloud: CloudProvider = defineProvider<{ token: string }, OtherStored>({
   id: 'othercloud',
   unfilteredTypes: [],
   collectors: [
@@ -38,10 +40,16 @@ const otherCloud: CloudProvider = defineProvider<{ token: string }>({
     },
   ],
   parseCredentials: (input) => {
-    const { token } = input as { token?: string };
+    const { token, roleName, externalId } = input as { token?: string; roleName?: string; externalId?: string };
+    if (roleName && externalId) {
+      return { roleName, externalId };
+    }
     return token ? { token } : null;
   },
-  credentialHint: ({ token }) => `…${token.slice(-2)}`,
+  credentialHint: (stored) => ('roleName' in stored ? `Role ${stored.roleName}` : `…${stored.token.slice(-2)}`),
+  credentialKind: (stored) => ('roleName' in stored ? 'role' : 'key'),
+  resolveCredentials: async (stored) =>
+    'roleName' in stored ? { token: `assumed-${stored.roleName}-with-${stored.externalId}` } : stored,
   isValidRegion: (region) => region === 'moon-1',
   checkCredentials: async () => ({ accountId: PROJECT_ID, services: [], canWrite: false, missingActions: null }),
   actions: [],
@@ -144,4 +152,47 @@ describe('cloud providers', () => {
     expect(body).toHaveLength(2);
     expect(body.map(({ id }: { id: string }) => id)).toContain(first.id);
   });
+
+  describe('connecting with a role', () => {
+    const roleAccount = { ...account, credentials: { roleName: 'PulseGridAccess', externalId: 'sent-by-the-browser' } };
+
+    it("uses the project's own External ID, stores the kind, and calls the cloud with the role's credentials", async () => {
+      const { body: trust } = await http().get('/api/cloud/accounts/role-trust').set('Cookie', admin).expect(200);
+      expect(trust.externalId).toMatch(/^pulsegrid-[\w-]{32}$/);
+
+      const { body: saved } = await add(roleAccount).expect(201);
+      expect(saved).toMatchObject({ credentialKind: 'role', credentialHint: 'Role PulseGridAccess', hasCredentials: true });
+
+      await context.app.get(InventorySyncService).syncAccount({ tenantId: context.acme.tenant.id, accountId: saved.id });
+      const { body: page } = await http().get(`/api/resources?account=${saved.id}`).set('Cookie', admin).expect(200);
+      expect(page.resources.map(({ nativeId }: Resource) => nativeId)).toEqual([
+        `bucket-assumed-PulseGridAccess-with-${trust.externalId}`,
+      ]);
+    });
+
+    it('gives each project its own stable External ID', async () => {
+      const ids = await Promise.all([
+        http().get('/api/cloud/accounts/role-trust').set('Cookie', admin),
+        http().get('/api/cloud/accounts/role-trust').set('Cookie', admin),
+      ]);
+      expect(ids[0]?.body.externalId).toBe(ids[1]?.body.externalId);
+      const other = await signIn(context, context.globex, user('gia', 'admin'));
+      const { body: elsewhere } = await http().get('/api/cloud/accounts/role-trust').set('Cookie', other).expect(200);
+      expect(elsewhere.externalId).not.toBe(ids[0]?.body.externalId);
+    });
+
+    it('switches an account from a key to a role', async () => {
+      const { body: saved } = await add(account).expect(201);
+      expect(saved.credentialKind).toBe('key');
+      const { body: switched } = await http()
+        .put(`/api/cloud/accounts/${saved.id}/credentials`)
+        .set('Cookie', admin)
+        .send({ credentials: roleAccount.credentials })
+        .expect(200);
+      expect(switched).toMatchObject({ credentialKind: 'role', credentialHint: 'Role PulseGridAccess' });
+      const { text } = await http().get('/api/cloud/accounts').set('Cookie', admin).expect(200);
+      expect(text).not.toContain('secret-token-42');
+    });
+  });
 });
+

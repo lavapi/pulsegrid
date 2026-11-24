@@ -3,6 +3,8 @@
 import {
   type CloudProviderDefinition,
   type CredentialCheck,
+  type CredentialKind,
+  type RoleTrustDetails,
   EMPTY_TAG_FILTER,
   type ManagedEnvironment,
   type TagFilter,
@@ -17,20 +19,25 @@ import { Field, Input } from '@/components/ui/input';
 import { apiSend, apiSendForJson } from '@/lib/browser-api';
 import { cleanTagFilter } from '@/lib/tag-suggestions';
 import { CredentialFields, type CredentialValues, isComplete } from './credential-fields';
+import { ConnectionMethodPicker } from './connection-method-picker';
 import { CredentialResult } from './credential-result';
 import { RegionPicker } from './region-picker';
+import { RoleTrustGuide } from './role-trust-guide';
 import { TagFilterFields } from './tag-filter-fields';
 
 interface AddCloudAccountFormProps {
   provider: CloudProviderDefinition;
   environments: ManagedEnvironment[];
+  trust: RoleTrustDetails | null;
 }
 
-export function AddCloudAccountForm({ provider, environments }: AddCloudAccountFormProps) {
+export function AddCloudAccountForm({ provider, environments, trust }: AddCloudAccountFormProps) {
   const router = useRouter();
   const { follow } = useSyncProgress();
   const [pending, startTransition] = useTransition();
   const [name, setName] = useState('');
+  const [kind, setKind] = useState<CredentialKind>(provider.connectionMethods[0]?.id ?? 'key');
+  const fields = provider.connectionMethods.find(({ id }) => id === kind)?.fields ?? [];
   const [credentials, setCredentials] = useState<CredentialValues>({});
   const [regions, setRegions] = useState<string[]>([provider.defaultRegion]);
   const [environmentId, setEnvironmentId] = useState('');
@@ -40,6 +47,11 @@ export function AddCloudAccountForm({ provider, environments }: AddCloudAccountF
   const changeCredentials = (next: CredentialValues) => {
     setCredentials(next);
     setResult(null);
+  };
+
+  const changeKind = (next: CredentialKind) => {
+    setKind(next);
+    changeCredentials({});
   };
 
   const test = () => {
@@ -104,11 +116,11 @@ export function AddCloudAccountForm({ provider, environments }: AddCloudAccountF
             ]}
           />
         </Field>
-        <CredentialFields
-          fields={provider.credentialFields}
-          values={credentials}
-          onChange={changeCredentials}
-        />
+      </div>
+      <ConnectionMethodPicker methods={provider.connectionMethods} value={kind} onChange={changeKind} />
+      {kind === 'role' && trust && <RoleTrustGuide trust={trust} />}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <CredentialFields fields={fields} values={credentials} onChange={changeCredentials} />
       </div>
       <RegionPicker regions={provider.regions} selected={regions} onChange={setRegions} />
       <TagFilterFields value={tagFilter} onChange={setTagFilter} />
@@ -116,10 +128,10 @@ export function AddCloudAccountForm({ provider, environments }: AddCloudAccountF
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
-          disabled={pending || !isComplete(provider.credentialFields, credentials)}
+          disabled={pending || !isComplete(fields, credentials)}
           onClick={test}
         >
-          {pending ? 'Checking…' : 'Test credentials'}
+          {pending ? 'Checking…' : kind === 'role' ? 'Test role' : 'Test credentials'}
         </Button>
         <Button
           variant="primary"
