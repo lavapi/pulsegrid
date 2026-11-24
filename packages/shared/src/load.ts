@@ -30,6 +30,7 @@ export const CARD_LOAD_SLOTS: Partial<Record<ResourceType, readonly (readonly st
   'elasticache-cluster': [['engine-cpu'], ['memory', 'memory-share'], ['evictions']],
   'elasticache-replication-group': [['engine-cpu'], ['memory', 'memory-share'], ['evictions']],
   'ecs-service': [['cpu'], ['memory']],
+  'ec2-instance': [['cpu'], ['memory'], ['disk']],
 };
 
 /** The most resources one request for card load can ask about. */

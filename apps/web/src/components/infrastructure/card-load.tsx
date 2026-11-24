@@ -1,13 +1,13 @@
-import type { LoadChart, ResourceType } from '@pulsegrid/shared';
-import { type CardMeter, cardMeters } from '@/lib/card-load';
+import type { LoadChart, Resource } from '@pulsegrid/shared';
+import { type CardMeter, cardHint, cardMeters } from '@/lib/card-load';
 import { cn } from '@/lib/utils';
 
 function Meter({ meter }: { meter: CardMeter }) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-baseline justify-between gap-2 text-xs">
-        <span className="text-muted-foreground">{meter.label}</span>
-        <span className={cn('truncate tabular-nums', meter.warn && 'font-medium text-warning')}>{meter.reading}</span>
+        <span className="min-w-0 truncate text-muted-foreground">{meter.label}</span>
+        <span className={cn('shrink-0 tabular-nums', meter.warn && 'font-medium text-warning')}>{meter.reading}</span>
       </div>
       {meter.share !== null && (
         <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
@@ -22,8 +22,15 @@ function Meter({ meter }: { meter: CardMeter }) {
 }
 
 /** The resource's latest load; `charts` is undefined while loading and null when it couldn't be read. */
-export function CardLoad({ type, charts }: { type: ResourceType; charts: LoadChart[] | null | undefined }) {
-  const meters = charts ? cardMeters(type, charts) : [];
+export function CardLoad({
+  resource,
+  charts,
+}: {
+  resource: Pick<Resource, 'type' | 'name'>;
+  charts: LoadChart[] | null | undefined;
+}) {
+  const meters = charts ? cardMeters(resource, charts) : [];
+  const hint = charts ? cardHint(resource.type, charts) : null;
   return (
     <div className="flex flex-col gap-2.5 border-t px-4 py-3" aria-label="Load in the last few minutes">
       {charts === undefined ? (
@@ -33,6 +40,7 @@ export function CardLoad({ type, charts }: { type: ResourceType; charts: LoadCha
       ) : (
         meters.map((meter) => <Meter meter={meter} key={meter.label} />)
       )}
+      {hint && meters.length > 0 && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { CloudWatchClient, GetMetricDataCommand, type MetricDataQuery } from '@aws-sdk/client-cloudwatch';
-import { LOAD_RESOURCE_TYPES, LOAD_SERIES_LIMIT, type LoadChart, type LoadPoint } from '@pulsegrid/shared';
+import { LOAD_RESOURCE_TYPES, LOAD_SERIES_LIMIT, type LoadChart, type LoadPoint, type LoadSeries } from '@pulsegrid/shared';
 import type { MetricContext, MetricQuery, MetricResult, MetricSource } from '../provider';
 import { isAccessDenied } from './aws-error-messages';
 import type { AwsKey } from './aws-key';
@@ -23,7 +23,10 @@ const queryFor = (
   periodSeconds: number,
 ): Omit<MetricDataQuery, 'Id'> =>
   definition.search
-    ? { Expression: `SEARCH('${definition.search}', '${definition.statistic}', ${periodSeconds})` }
+    ? {
+        Expression: `SEARCH('${definition.search}', '${definition.statistic}', ${periodSeconds})`,
+        ...(definition.splitBy ? { Label: `\${PROP('Dim.${definition.splitBy}')}` } : {}),
+      }
     : {
         MetricStat: {
           Metric: {
@@ -50,14 +53,15 @@ const queriesFor = (
     })),
   );
 
-/** Points by query. A search can match more than one series; only the first is kept. */
+/** Points by query, then by series label: a search can match more than one series. */
+type Points = Map<string, Map<string, LoadPoint[]>>;
+
 const readPoints = async (
   client: CloudWatchClient,
   queries: MetricDataQuery[],
   { since, until }: MetricQuery,
-): Promise<Map<string, LoadPoint[]>> => {
-  const points = new Map<string, LoadPoint[]>();
-  const labels = new Map<string, string>();
+): Promise<Points> => {
+  const points: Points = new Map();
   let token: string | undefined;
   for (let page = 0; page < MAX_PAGES; page += 1) {
     const { MetricDataResults = [], NextToken } = await client.send(
@@ -70,15 +74,13 @@ const readPoints = async (
       }),
     );
     for (const { Id = '', Label = '', Timestamps = [], Values = [] } of MetricDataResults) {
-      if ((labels.get(Id) ?? Label) !== Label) {
-        continue;
-      }
-      labels.set(Id, Label);
+      const byLabel = points.get(Id) ?? new Map<string, LoadPoint[]>();
       const added = Timestamps.map((timestamp, index) => ({
         timestamp: timestamp.toISOString(),
         value: Values[index] ?? 0,
       }));
-      points.set(Id, [...(points.get(Id) ?? []), ...added]);
+      byLabel.set(Label, [...(byLabel.get(Label) ?? []), ...added]);
+      points.set(Id, byLabel);
     }
     token = NextToken;
     if (!token) {
@@ -88,37 +90,55 @@ const readPoints = async (
   return points;
 };
 
+const sorted = (points: readonly LoadPoint[], scale: (value: number) => number): LoadPoint[] =>
+  points
+    .map(({ timestamp, value }) => ({ timestamp, value: scale(value) }))
+    .sort((first, second) => first.timestamp.localeCompare(second.timestamp));
+
+/**
+ * One line per target, from the first series its query found; a definition split by a dimension gives one line
+ * per value instead, such as one per disk, named by it.
+ */
+const seriesOf = (
+  definition: MetricDefinition,
+  definitionIndex: number,
+  targets: readonly MetricTarget[],
+  points: Points,
+  prefix: string,
+): LoadSeries[] => {
+  const scale = definition.scale ?? ((value: number) => value);
+  return targets.flatMap((target, targetIndex) => {
+    const found = [...(points.get(queryId(definitionIndex, targetIndex, prefix)) ?? new Map<string, LoadPoint[]>())];
+    if (definition.splitBy) {
+      return found.slice(0, LOAD_SERIES_LIMIT).map(([label, values]) => ({ label, points: sorted(values, scale) }));
+    }
+    return [{ label: target.label, points: sorted(found[0]?.[1] ?? [], scale) }];
+  });
+};
+
 const toChart = (
   definition: MetricDefinition,
   definitionIndex: number,
   targets: readonly MetricTarget[],
-  points: Map<string, LoadPoint[]>,
+  points: Points,
   prefix: string,
-): LoadChart => {
-  const scale = definition.scale ?? ((value: number) => value);
-  return {
-    id: definition.id,
-    label: definition.label,
-    unit: definition.unit,
-    limit: definition.limit ?? null,
-    warnAbove: definition.warnAbove ?? null,
-    total: definition.total ?? null,
-    note: definition.note ?? null,
-    series: targets.map((target, targetIndex) => ({
-      label: target.label,
-      points: (points.get(queryId(definitionIndex, targetIndex, prefix)) ?? [])
-        .map(({ timestamp, value }) => ({ timestamp, value: scale(value) }))
-        .sort((first, second) => first.timestamp.localeCompare(second.timestamp)),
-    })),
-  };
-};
+): LoadChart => ({
+  id: definition.id,
+  label: definition.label,
+  unit: definition.unit,
+  limit: definition.limit ?? null,
+  warnAbove: definition.warnAbove ?? null,
+  total: definition.total ?? null,
+  note: definition.note ?? null,
+  series: seriesOf(definition, definitionIndex, targets, points, prefix),
+});
 
 const hasData = ({ series }: LoadChart): boolean => series.some(({ points }) => points.length > 0);
 
 const shownTargets = (plan: MetricPlan): MetricTarget[] => plan.targets.slice(0, LOAD_SERIES_LIMIT);
 
 /** The plan's charts from the points read, finished as the plan asks. */
-const resultOf = (plan: MetricPlan, points: Map<string, LoadPoint[]>, prefix = ''): MetricResult => {
+const resultOf = (plan: MetricPlan, points: Points, prefix = ''): MetricResult => {
   const targets = shownTargets(plan);
   const charts = plan.definitions
     .map((definition, index) => toChart(definition, index, targets, points, prefix))
@@ -132,8 +152,8 @@ const readAllPoints = async (
   client: CloudWatchClient,
   queries: MetricDataQuery[],
   query: MetricQuery,
-): Promise<Map<string, LoadPoint[]>> => {
-  const points = new Map<string, LoadPoint[]>();
+): Promise<Points> => {
+  const points: Points = new Map();
   for (let start = 0; start < queries.length; start += QUERIES_PER_REQUEST) {
     const read = await readPoints(client, queries.slice(start, start + QUERIES_PER_REQUEST), query);
     read.forEach((value, key) => points.set(key, value));
