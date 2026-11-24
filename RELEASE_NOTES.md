@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-11-24
+
+- Cache and service cards show their load too: ElastiCache shows Engine CPU, memory and evictions (from its busiest node), ECS services show CPU and memory. All cards on a page now load together, which keeps CloudWatch reads and costs down.
+
 ## [0.28.0] - 2026-11-20
 
 - See at a glance which database is the writer and which are readers, on the RDS cards and each database's page, and each instance's CPU, connections and memory right on its card.

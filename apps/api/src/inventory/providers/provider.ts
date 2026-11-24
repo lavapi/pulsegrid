@@ -258,9 +258,24 @@ export interface MetricContext<Credentials extends CloudCredentials = CloudCrede
   resource: { type: ResourceType; name: string; nativeId: string; details: Record<string, unknown> };
 }
 
+export interface LatestMetricsContext<Credentials extends CloudCredentials = CloudCredentials> {
+  credentials: Credentials;
+  region: string;
+  resources: MetricContext['resource'][];
+}
+
 export interface MetricSource<Credentials extends CloudCredentials = CloudCredentials> {
   resourceTypes: readonly ResourceType[];
   read(context: MetricContext<Credentials>, query: MetricQuery): Promise<MetricResult>;
+  /**
+   * The last few minutes of the named charts for many resources in one region, read together; results are in the
+   * same order as the resources, null for one with nothing to read.
+   */
+  readLatest?(
+    context: LatestMetricsContext<Credentials>,
+    chartIds: (type: ResourceType) => readonly string[],
+    now?: Date,
+  ): Promise<(MetricResult | null)[]>;
   failureMessage(error: unknown): string;
 }
 

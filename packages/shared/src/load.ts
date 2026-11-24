@@ -21,6 +21,23 @@ export const LOAD_RESOURCE_TYPES: readonly ResourceType[] = [
 
 export const LOAD_SERIES_LIMIT = 3;
 
+/**
+ * What a resource card shows, one meter per slot. Each slot lists chart ids in order of preference, so a card
+ * falls back when the better chart can't be worked out, such as free memory when memory in use is unknown.
+ */
+export const CARD_LOAD_SLOTS: Partial<Record<ResourceType, readonly (readonly string[])[]>> = {
+  'rds-instance': [['cpu'], ['connections'], ['memory', 'free-memory']],
+  'elasticache-cluster': [['engine-cpu'], ['memory', 'memory-share'], ['evictions']],
+  'elasticache-replication-group': [['engine-cpu'], ['memory', 'memory-share'], ['evictions']],
+  'ecs-service': [['cpu'], ['memory']],
+};
+
+/** The most resources one request for card load can ask about. */
+export const CARD_LOAD_MAX_RESOURCES = 100;
+
+/** Charts a card shows, by resource id; a resource missing from the map has no load to show right now. */
+export type CardLoadMap = Record<string, LoadChart[]>;
+
 export type LoadUnit = 'percent' | 'count' | 'bytes' | 'milliseconds';
 
 export interface LoadPoint {
