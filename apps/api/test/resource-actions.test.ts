@@ -14,17 +14,9 @@ import {
   type ResourceActionContext,
 } from '../src/inventory/providers/provider';
 import { SyncQueue } from '../src/inventory/sync/sync-queue';
-import {
-  setExtraPermissions,
-  signIn,
-  startTestApp,
-  type TestContext,
-  type TestRole,
-  user,
-} from './support/test-app';
+import { setExtraPermissions, signIn, startTestApp, type TestContext, type TestRole, user, TEST_ROLE, TEST_SESSION } from './support/test-app';
 import { newEnvironment } from '../src/inventory/environments/account-environment';
 
-const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
 const run = vi.fn<(context: ResourceActionContext) => Promise<ActionStart>>();
 const track = vi.fn<(context: ActionTrackingContext) => Promise<ActionProgress>>();
 const action = (permission: CloudPermission, resourceType: ResourceType) => ({
@@ -72,7 +64,7 @@ describe('resource actions', () => {
         ...row,
         name: 'Account',
         regions: ['eu-central-1'],
-        encrypted_credentials: sealed ? context.app.get(CredentialVault).seal(row, KEY) : null,
+        encrypted_credentials: sealed ? context.app.get(CredentialVault).seal(row, TEST_ROLE) : null,
         credential_hint: null,
         can_write: false,
         last_error: null,
@@ -230,11 +222,11 @@ describe('resource actions', () => {
       await perform(id, 'database.reboot').expect(201);
     });
 
-    it('needs an access key', async () => {
+    it('needs a connected account', async () => {
       const id = await addResource(await addAccount('Staging', false), 'ec2-instance');
       const response = await perform(id, 'server.reboot');
       expect(response.status).toBe(409);
-      expect(response.body.message).toContain('no access key');
+      expect(response.body.message).toContain("isn't connected");
     });
   });
 
@@ -243,7 +235,7 @@ describe('resource actions', () => {
       const id = await addResource(await addAccount('Staging'), 'ecs-service', 'web');
       await perform(id, 'service.redeploy').expect(201);
       expect(run).toHaveBeenCalledWith({
-        credentials: KEY,
+        credentials: TEST_SESSION,
         region: 'eu-central-1',
         resource: { nativeId: expect.stringContaining('native-web'), name: 'web', details: { cluster: 'main' } },
       });
@@ -255,7 +247,7 @@ describe('resource actions', () => {
       const [event] = await auditActions(id);
       expect(event?.action).toBe('cloud.action.started');
       expect(event?.metadata).toMatchObject({ label: 'box', permission: 'server.reboot' });
-      expect(JSON.stringify(event)).not.toContain(KEY.secretAccessKey);
+      expect(JSON.stringify(event)).not.toContain(TEST_SESSION.secretAccessKey);
     });
 
     it('shows a readable message when the key is not allowed, and records the failure', async () => {
@@ -263,7 +255,7 @@ describe('resource actions', () => {
       const id = await addResource(await addAccount('Staging'), 'ec2-instance');
       const response = await perform(id, 'server.reboot');
       expect(response.status).toBe(400);
-      expect(response.body.message).toBe("This key doesn't allow that. Add the action permissions to its IAM policy.");
+      expect(response.body.message).toBe("The account's PulseGrid role doesn't allow that. Add the action permissions to its IAM policy.");
       expect(JSON.stringify(response.body)).not.toContain('raw aws text');
       expect((await auditActions(id)).map(({ action: name }) => name)).toEqual(['cloud.action.failed']);
     });

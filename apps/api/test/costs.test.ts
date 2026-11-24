@@ -5,20 +5,12 @@ import { CredentialVault } from '../src/inventory/connection/credential-vault';
 import { CostRefreshService } from '../src/inventory/costs/cost-refresh.service';
 import { awsProvider } from '../src/inventory/providers/aws/aws.provider';
 import { CLOUD_PROVIDER_LIST, type CloudProvider, type CostEntry } from '../src/inventory/providers/provider';
-import {
-  setExtraPermissions,
-  signIn,
-  startTestApp,
-  type TestContext,
-  type TestTenant,
-  user,
-} from './support/test-app';
+import { setExtraPermissions, signIn, startTestApp, type TestContext, type TestTenant, user, TEST_ROLE, TEST_SESSION } from './support/test-app';
 
-const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
 const read = vi.fn<(context: unknown, period: unknown) => Promise<CostEntry[]>>();
 const provider: CloudProvider = {
   ...awsProvider,
-  costSource: { read, failureMessage: () => "This key can't read costs." },
+  costSource: { read, failureMessage: () => "The account's PulseGrid role can't read costs." },
 };
 const month = new Date().toISOString().slice(0, 7);
 const entry = (service: string, amount: number, category: string | null = null): CostEntry => ({
@@ -50,7 +42,7 @@ describe('costs', () => {
         name: `Account ${cloudAccount}`,
         status: 'connected',
         regions: ['eu-central-1'],
-        encrypted_credentials: context.app.get(CredentialVault).seal(row, KEY),
+        encrypted_credentials: context.app.get(CredentialVault).seal(row, TEST_ROLE),
         credential_hint: null,
         can_write: false,
         last_error: null,
@@ -105,7 +97,7 @@ describe('costs', () => {
     await refresh().refreshDueAccounts();
 
     expect(read).toHaveBeenCalledWith(
-      { credentials: KEY, accountId: '500000000000' },
+      { credentials: TEST_SESSION, accountId: '500000000000' },
       expect.objectContaining({ from: expect.any(Date), until: expect.any(Date) }),
     );
     const [account] = (await overview()).accounts;
@@ -143,7 +135,7 @@ describe('costs', () => {
     await refresh().refreshDueAccounts(new Date(start.getTime() + 6 * 60 * 60 * 1000));
 
     const body = await overview();
-    expect(body.accounts[0]).toMatchObject({ error: "This key can't read costs." });
+    expect(body.accounts[0]).toMatchObject({ error: "The account's PulseGrid role can't read costs." });
     expect(body.accounts[0]!.services).toHaveLength(1);
     expect(body.accounts[0]!.updatedAt).toBe(start.toISOString());
     expect(JSON.stringify(body)).not.toContain('raw aws text');

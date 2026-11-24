@@ -31,7 +31,7 @@ Set these on the API:
 
 ## Access
 
-PulseGrid uses no access key for this. Its API task role may only assume the production role, which needs:
+PulseGrid stores nothing secret for this. Its API task role may only assume the production role, which needs:
 
 ```json
 {

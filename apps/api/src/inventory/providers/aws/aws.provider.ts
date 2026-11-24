@@ -2,7 +2,7 @@ import { type CloudProvider, defineProvider } from '../provider';
 import { AWS_ACTIONS } from './aws-actions';
 import { AWS_ACTIVITY_WATCHES } from './aws-activity';
 import { actionErrorMessage, collectorErrorMessage } from './aws-error-messages';
-import { type AwsConnection, type AwsKey, connectionHint, isAwsRole, parseAwsConnection } from './aws-key';
+import { type AwsConnection, type AwsKey, connectionHint, parseAwsConnection } from './aws-key';
 import { checkAwsConnection } from './aws-key-checker';
 import { AWS_CREDENTIALS } from './aws-role';
 import { buildAwsMap } from './aws-map';
@@ -35,7 +35,7 @@ const awsProviderOf: CloudProvider<AwsKey, AwsConnection> = {
   deploymentSource: AWS_DEPLOYMENT_SOURCE,
   parseCredentials: parseAwsConnection,
   credentialHint: connectionHint,
-  credentialKind: (connection) => (isAwsRole(connection) ? 'role' : 'key'),
+  credentialKind: () => 'role',
   resolveCredentials: (connection) => AWS_CREDENTIALS.resolve(connection),
   isValidRegion: isAwsRegion,
   checkCredentials: checkAwsConnection,

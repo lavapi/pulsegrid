@@ -1,12 +1,11 @@
 import type { ServiceDeploymentsView } from '@pulsegrid/shared';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
-import { AccountCredentials } from '../connection/account-credentials';
+import { AccountCredentials, NOT_CONNECTED } from '../connection/account-credentials';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { ResourceAccess } from '../resources/resource-access';
 
 const NOT_A_SERVICE = "This resource doesn't have deployments to show.";
-const NO_CREDENTIALS = 'This account has no access key. Add one under Integrations.';
 const RECENT_DEPLOYMENTS = 5;
 
 @Injectable()
@@ -28,7 +27,7 @@ export class ServiceDeploymentsService {
     }
     const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
-      return { strategy: null, deployments: [], error: NO_CREDENTIALS };
+      return { strategy: null, deployments: [], error: NOT_CONNECTED };
     }
     const context = {
       credentials,

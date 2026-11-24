@@ -25,7 +25,7 @@ export const LEVEL_PATTERNS: Record<DatabaseLogQuery['level'], string | undefine
 const NOT_POSTGRES = 'Only PostgreSQL logs are shown for now.';
 const NOT_EXPORTED =
   "This database doesn't send its PostgreSQL log to CloudWatch Logs. Turn on log exports for postgresql in RDS to see it here.";
-const DENIED = "Add logs:FilterLogEvents to the key's IAM policy to read the database log.";
+const DENIED = "Add logs:FilterLogEvents to the role's IAM policy to read the database log.";
 
 const isPostgres = (engine: unknown): boolean => typeof engine === 'string' && engine.includes('postgres');
 

@@ -43,7 +43,7 @@ Every command and value has a copy button. To send the guide, use **Copy for Sla
 
 ## The Production key
 
-PulseGrid calls the workflows with the access key it already stores for the Production account. Add this statement to that key's IAM policy, with your workflow ARNs and schedule group. It isn't part of the PulseGrid policy every key gets, because it names this setup's workflows:
+PulseGrid calls the workflows through the role it takes on in the Production account. Add this statement to that role's IAM policy, with your workflow ARNs and schedule group. It isn't part of the PulseGrid policy every role gets, because it names this setup's workflows:
 
 ```json
 {

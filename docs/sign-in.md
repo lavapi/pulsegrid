@@ -22,7 +22,7 @@ The project name at the top left of the sidebar opens the project switcher. It l
 
 The cloud account picked in the top bar is remembered separately for each project.
 
-The super admin can rename or delete the open project under **Settings > Project**. Deleting asks you to type the project's name, and can't be undone. It removes everything in the project: its cloud accounts and stored access keys, Git connections, environments, domains, pipeline apps, releases, costs, roles, members and Activity. Nothing changes in AWS or GitHub, and people stay under **People**. You move to another project, and anyone who had it open sees the project chooser. The only remaining project can't be deleted.
+The super admin can rename or delete the open project under **Settings > Project**. Deleting asks you to type the project's name, and can't be undone. It removes everything in the project: its cloud accounts and their connections, Git connections, environments, domains, pipeline apps, releases, costs, roles, members and Activity. Nothing changes in AWS or GitHub, and people stay under **People**. You move to another project, and anyone who had it open sees the project chooser. The only remaining project can't be deleted.
 
 ### People and members
 

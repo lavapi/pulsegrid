@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
-import { AccountCredentials } from '../connection/account-credentials';
+import { AccountCredentials, NOT_CONNECTED } from '../connection/account-credentials';
 import type { CloudProvider, SecretContext, SecretStore } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { ResourceAccess } from '../resources/resource-access';
@@ -26,7 +26,6 @@ import { secretAccess } from './secret-rules';
 
 const NOT_A_SECRET = "That resource isn't a secret.";
 const NOT_ALLOWED = 'You do not have permission to do that.';
-const NO_CREDENTIALS = 'This account has no access key. Add one under Integrations.';
 const CHANGED = 'This secret changed since you opened it. Reload the page and try again.';
 const KEY_MISSING = 'That key no longer exists. Reload the page.';
 const WRONG_FORMAT = "That change doesn't match this secret any more. Reload the page.";
@@ -164,7 +163,7 @@ export class SecretsService {
     const target = async (): Promise<SecretTarget> => {
       const credentials = await this.accountCredentials.of(account);
       if (!credentials) {
-        throw new ConflictException(NO_CREDENTIALS);
+        throw new ConflictException(NOT_CONNECTED);
       }
       return {
         provider,

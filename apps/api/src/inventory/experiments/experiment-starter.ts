@@ -6,7 +6,7 @@ import type { CloudAccountRow } from '../../database/schema';
 import { TenantDatabase } from '../../database/tenant-database';
 import { AccountCredentials } from '../connection/account-credentials';
 import type { ExperimentSource } from '../providers/provider';
-import { NO_CREDENTIALS } from './experiment-access';
+import { NOT_CONNECTED } from '../connection/account-credentials';
 import { STARTED_ACTION } from './experiment-audit';
 
 export const REGION_MISSING = "That region isn't synced for this account.";
@@ -47,7 +47,7 @@ export class ExperimentStarter {
     }
     const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
-      return { kind: 'failed', message: NO_CREDENTIALS };
+      return { kind: 'failed', message: NOT_CONNECTED };
     }
     let experimentId: string;
     try {

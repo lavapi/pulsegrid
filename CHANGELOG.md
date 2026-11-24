@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Removed
+
+- AWS access keys: AWS accounts connect only through a role. The key form, the "Lock keys to PulseGrid" card and its outbound address lookup, the IP and AWS-service simulation context, and the key age warning are gone. Migration 0042 clears any AWS key still stored, so that account shows **Needs credentials**, and drops `cloud_accounts.credentials_updated_at`. Run `pnpm db:migrate`.
+
+### Changed
+
+- Messages about missing permissions and missing connections name the account's PulseGrid role instead of a key, and the message for an unconnected account is shared everywhere.
+
 ## [0.31.0] - 2026-11-24
 
 ### Added
