@@ -1,3 +1,4 @@
+import type { ResourceType } from '@pulsegrid/shared';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CredentialVault } from '../src/inventory/connection/credential-vault';
@@ -7,6 +8,7 @@ import { awsProvider } from '../src/inventory/providers/aws/aws.provider';
 import {
   CLOUD_PROVIDER_LIST,
   type CloudProvider,
+  type LatestMetricsContext,
   type MetricContext,
   type MetricQuery,
   type MetricResult,
@@ -31,10 +33,13 @@ const RESULT: MetricResult = {
   hiddenSeries: 0,
 };
 const read = vi.fn<(context: MetricContext, query: MetricQuery) => Promise<MetricResult>>();
+const readLatest = vi.fn<
+  (context: LatestMetricsContext, chartIds: (type: ResourceType) => readonly string[]) => Promise<(MetricResult | null)[]>
+>();
 const provider: CloudProvider = {
   ...awsProvider,
   actions: [],
-  metricSource: { ...AWS_METRIC_SOURCE, read } as CloudProvider['metricSource'],
+  metricSource: { ...AWS_METRIC_SOURCE, read, readLatest } as CloudProvider['metricSource'],
 };
 
 describe('resource load', () => {
@@ -98,6 +103,8 @@ describe('resource load', () => {
   beforeEach(() => {
     read.mockReset();
     read.mockResolvedValue(RESULT);
+    readLatest.mockReset();
+    readLatest.mockImplementation(async ({ resources }) => resources.map(() => RESULT));
   });
 
   it('shows load to everyone, in production too, for the chosen range', async () => {
@@ -144,5 +151,58 @@ describe('resource load', () => {
     const invalid = await load(id, viewer, 'range=1y');
     expect(invalid.status).toBe(400);
     expect(invalid.body.message).toBe('Choose a time range for the load.');
+  });
+
+  describe('card load', () => {
+    const cards = (ids: string[], cookie = viewer) =>
+      http().get(`/api/resources/card-load?ids=${ids.join(',')}`).set('Cookie', cookie);
+    const inSameAccount = async (first: string, ...others: string[]) => {
+      const { cloud_account_id: accountId } = await context.owner
+        .selectFrom('resources')
+        .select('cloud_account_id')
+        .where('id', '=', first)
+        .executeTakeFirstOrThrow();
+      await context.owner.updateTable('resources').set({ cloud_account_id: accountId }).where('id', 'in', others).execute();
+    };
+
+    it('reads the latest load of many cards together, once per account and region', async () => {
+      const [first, second, cluster] = [
+        await addResource('Staging', 'rds-instance'),
+        await addResource('Staging', 'ecs-service'),
+        await addResource('Staging', 'rds-cluster'),
+      ];
+      await inSameAccount(first, second, cluster);
+
+      const { body, headers } = await cards([first, second, cluster]).expect(200);
+      expect(body).toEqual({ [first]: RESULT.charts, [second]: RESULT.charts });
+      expect(headers['cache-control']).toBe('no-store');
+      expect(readLatest).toHaveBeenCalledTimes(1);
+      const [batch, chartIds] = readLatest.mock.calls[0]!;
+      expect(batch.resources.map(({ type }) => type).sort()).toEqual(['ecs-service', 'rds-instance']);
+      expect(chartIds('ecs-service')).toEqual(['cpu', 'memory']);
+      expect(chartIds('elasticache-cluster')).toEqual(['engine-cpu', 'memory', 'memory-share', 'evictions']);
+    });
+
+    it('keeps the answer for a minute, so refreshes and other people cost no extra read', async () => {
+      const id = await addResource('Staging', 'elasticache-cluster');
+      await cards([id]).expect(200);
+      await cards([id]).expect(200);
+      expect(readLatest).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves out cards it could not read, without showing why', async () => {
+      const failing = await addResource('Staging', 'rds-instance');
+      const noKey = await addResource('Staging', 'rds-instance', false);
+      readLatest.mockRejectedValue(Object.assign(new Error('raw aws text'), { name: 'AccessDenied' }));
+      const { body } = await cards([failing, noKey]).expect(200);
+      expect(body).toEqual({});
+    });
+
+    it("never reads another project's resources, and checks what it is asked", async () => {
+      const id = await addResource('Staging', 'rds-instance');
+      expect((await cards([id], otherOwner).expect(200)).body).toEqual({});
+      await cards(['not-an-id']).expect(400);
+      await cards(Array.from({ length: 101 }, () => crypto.randomUUID())).expect(400);
+    });
   });
 });

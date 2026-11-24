@@ -1,12 +1,6 @@
-'use client';
-
-import type { ResourceLoad } from '@pulsegrid/shared';
-import { useEffect, useState } from 'react';
-import { apiSendForJson } from '@/lib/browser-api';
+import type { LoadChart, ResourceType } from '@pulsegrid/shared';
 import { type CardMeter, cardMeters } from '@/lib/card-load';
 import { cn } from '@/lib/utils';
-
-const REFRESH_MS = 60_000;
 
 function Meter({ meter }: { meter: CardMeter }) {
   return (
@@ -27,37 +21,14 @@ function Meter({ meter }: { meter: CardMeter }) {
   );
 }
 
-/** The resource's latest CPU, connections and memory, refreshed every minute while the page is visible. */
-export function CardLoad({ resourceId }: { resourceId: string }) {
-  const [meters, setMeters] = useState<CardMeter[] | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      if (document.visibilityState !== 'visible') {
-        return;
-      }
-      const { data } = await apiSendForJson<ResourceLoad>(`/resources/${resourceId}/load?range=1h`, 'GET');
-      if (!active) {
-        return;
-      }
-      setFailed(!data?.available);
-      setMeters(data?.available ? cardMeters(data) : []);
-    };
-    void load();
-    const timer = setInterval(() => void load(), REFRESH_MS);
-    return () => {
-      active = false;
-      clearInterval(timer);
-    };
-  }, [resourceId]);
-
+/** The resource's latest load; `charts` is undefined while loading and null when it couldn't be read. */
+export function CardLoad({ type, charts }: { type: ResourceType; charts: LoadChart[] | null | undefined }) {
+  const meters = charts ? cardMeters(type, charts) : [];
   return (
-    <div className="flex flex-col gap-2.5 border-t px-4 py-3" aria-label="Load in the last hour">
-      {meters === null ? (
-        <div className="h-[86px] animate-pulse rounded-md bg-muted/60" />
-      ) : failed || meters.length === 0 ? (
+    <div className="flex flex-col gap-2.5 border-t px-4 py-3" aria-label="Load in the last few minutes">
+      {charts === undefined ? (
+        <div className="h-16 animate-pulse rounded-md bg-muted/60" />
+      ) : meters.length === 0 ? (
         <p className="text-xs text-muted-foreground">Load not available right now.</p>
       ) : (
         meters.map((meter) => <Meter meter={meter} key={meter.label} />)

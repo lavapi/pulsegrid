@@ -181,6 +181,8 @@ const EVICTIONS: MetricDefinition = {
   unit: 'count',
   metric: 'Evictions',
   statistic: 'Sum',
+  /** Any eviction means the cache is too small for what it holds. */
+  warnAbove: 0,
 };
 
 const text = (value: unknown): string | null =>
