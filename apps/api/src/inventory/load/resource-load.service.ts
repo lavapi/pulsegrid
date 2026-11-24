@@ -1,7 +1,7 @@
 import type { ResourceLoad } from '@pulsegrid/shared';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import type { MetricQuery } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { ResourceAccess } from '../resources/resource-access';
@@ -24,7 +24,7 @@ export class ResourceLoadService {
   constructor(
     private readonly access: ResourceAccess,
     private readonly providers: ProviderRegistry,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
   ) {}
 
   async read(auth: AuthContext, id: string, query: MetricQuery): Promise<ResourceLoad> {
@@ -33,7 +33,7 @@ export class ResourceLoadService {
     if (!source?.resourceTypes.includes(resource.type)) {
       throw new NotFoundException(NO_LOAD);
     }
-    const credentials = this.vault.open(account);
+    const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
       return empty(NO_CREDENTIALS);
     }

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TenantDatabase } from '../../database/tenant-database';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import type { ActionProgress } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { SyncProgressStore } from '../sync/sync-progress.store';
@@ -18,7 +18,7 @@ export class ActionTracker {
     private readonly database: TenantDatabase,
     private readonly runs: ActionRunStore,
     private readonly providers: ProviderRegistry,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
     private readonly actionQueue: ActionQueue,
     private readonly syncQueue: SyncQueue,
     private readonly syncProgress: SyncProgressStore,
@@ -70,7 +70,7 @@ export class ActionTracker {
           .executeTakeFirstOrThrow(),
       };
     });
-    const credentials = this.vault.open(account);
+    const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
       return { state: 'unconfirmed', summary: KEY_GONE };
     }

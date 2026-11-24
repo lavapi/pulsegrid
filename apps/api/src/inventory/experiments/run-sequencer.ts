@@ -5,7 +5,7 @@ import { DATABASE } from '../../database/database.module';
 import type { CloudAccountRow, Database } from '../../database/schema';
 import type { TenantTransaction } from '../../database/tenant-context';
 import { TenantDatabase } from '../../database/tenant-database';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import type { CloudCredentials, ExperimentSource, InventoryItem } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { EnvironmentLock } from './environment-lock';
@@ -73,7 +73,7 @@ export class RunSequencer {
     @Inject(DATABASE) private readonly db: Kysely<Database>,
     private readonly database: TenantDatabase,
     private readonly providers: ProviderRegistry,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
     private readonly starter: ExperimentStarter,
     private readonly reports: ExperimentReportStore,
     private readonly lock: EnvironmentLock,
@@ -94,7 +94,7 @@ export class RunSequencer {
       }
       const found = await findExperimentAccount(trx, run.cloud_account_id);
       const source = found && this.providers.get(found.account.provider).experimentSource;
-      const credentials = found && this.vault.open(found.account);
+      const credentials = found && await this.accountCredentials.of(found.account);
       if (!found || !source || !credentials) {
         return;
       }

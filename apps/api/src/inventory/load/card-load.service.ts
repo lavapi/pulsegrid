@@ -4,7 +4,7 @@ import type { AuthContext } from '../../auth/session/auth-context';
 import type { Selectable } from 'kysely';
 import type { CloudAccountRow, ResourcesTable } from '../../database/schema';
 import { TenantDatabase } from '../../database/tenant-database';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import { ProviderRegistry } from '../providers/provider-registry';
 
 const CACHE_MS = 60_000;
@@ -46,7 +46,7 @@ export class CardLoadService {
   constructor(
     private readonly database: TenantDatabase,
     private readonly providers: ProviderRegistry,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
   ) {}
 
   async read(auth: AuthContext, ids: readonly string[], now = Date.now()): Promise<CardLoadMap> {
@@ -83,7 +83,7 @@ export class CardLoadService {
       return cached.charts;
     }
     const source = this.providers.get(account.provider).metricSource;
-    const credentials = this.vault.open(account);
+    const credentials = await this.accountCredentials.of(account);
     if (!source?.readLatest || !credentials) {
       return {};
     }

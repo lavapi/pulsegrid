@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import type { CloudProvider, SecretContext, SecretStore } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { ResourceAccess } from '../resources/resource-access';
@@ -69,7 +69,7 @@ export class SecretsService {
   constructor(
     private readonly access: ResourceAccess,
     private readonly providers: ProviderRegistry,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
   ) {}
 
   async view(auth: AuthContext, id: string): Promise<SecretView> {
@@ -78,7 +78,7 @@ export class SecretsService {
       return { access: rules, content: null, error: null };
     }
     try {
-      const { value, versionId } = await this.read(target());
+      const { value, versionId } = await this.read(await target());
       return { access: rules, content: toContent(parseSecret(value), versionId), error: null };
     } catch (error) {
       if (error instanceof BadRequestException || error instanceof ConflictException) {
@@ -99,7 +99,7 @@ export class SecretsService {
       await this.deny(auth, id, ipAddress, key);
       throw new ForbiddenException(rules.reason ?? NOT_ALLOWED);
     }
-    const secret = target();
+    const secret = await target();
     const { value } = await this.read(secret);
     const { entries } = parseSecret(value);
     const shown = entries && key !== null ? entryText(entries, key) : key === null ? value : null;
@@ -161,8 +161,8 @@ export class SecretsService {
       environment,
       managedBy: resource.details['managedBy'],
     });
-    const target = (): SecretTarget => {
-      const credentials = this.vault.open(account);
+    const target = async (): Promise<SecretTarget> => {
+      const credentials = await this.accountCredentials.of(account);
       if (!credentials) {
         throw new ConflictException(NO_CREDENTIALS);
       }

@@ -18,11 +18,14 @@ import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
 import { AWS_ACTIONS, AWS_LOG_BUCKET_ACTIONS, AWS_SERVICES, type CredentialCheck } from '@pulsegrid/shared';
 import { CredentialsRejected } from '../provider';
 import { isAccessDenied, keyErrorMessage } from './aws-error-messages';
-import { type AwsKey, isRootArn } from './aws-key';
+import { type AwsConnection, type AwsKey, isAwsRole, isRootArn, roleParts } from './aws-key';
+import { AWS_CREDENTIALS, type AwsCredentialResolver } from './aws-role';
 import { SERVICE_PERMISSIONS } from './service-catalog';
 
 const IAM_REGION = 'us-east-1';
 const ROOT_KEY = "Root account keys aren't allowed. Create a read-only IAM user instead.";
+const ROLE_NOT_TRUSTED =
+  "PulseGrid can't take on this role. Check that its trust policy names PulseGrid and this project's External ID.";
 
 type AwsServiceId = keyof typeof AWS_SERVICES;
 
@@ -148,27 +151,46 @@ const identityOf = async (credentials: AwsKey) => {
   }
 };
 
-export const checkAwsKey = async (
-  key: AwsKey,
+/** Credentials to check with: the key itself, or the role taken on with PulseGrid's task role. */
+const credentialsFor = async (connection: AwsConnection, resolver: AwsCredentialResolver): Promise<AwsKey> => {
+  try {
+    return await resolver.resolve(connection);
+  } catch {
+    throw new CredentialsRejected(ROLE_NOT_TRUSTED);
+  }
+};
+
+/**
+ * The IAM principal whose policies decide what PulseGrid may do: a role's own ARN, not its temporary session,
+ * since the IAM simulator only takes users and roles.
+ */
+const principalOf = (connection: AwsConnection, callerArn: string): string =>
+  isAwsRole(connection) ? connection.roleArn : callerArn;
+
+export const checkAwsConnection = async (
+  connection: AwsConnection,
   region: string,
   sourceAddress: string | null = null,
+  resolver: AwsCredentialResolver = AWS_CREDENTIALS,
 ): Promise<CredentialCheck> => {
-  const identity = await identityOf(key);
+  const credentials = await credentialsFor(connection, resolver);
+  const identity = await identityOf(credentials);
   const arn = identity.Arn ?? '';
   if (isRootArn(arn)) {
     throw new CredentialsRejected(ROOT_KEY);
   }
+  const principal = principalOf(connection, arn);
   const services = await Promise.all(
     SERVICE_PERMISSIONS.map(async ({ service }) => ({
       service,
       label: AWS_SERVICES[service],
-      readable: await canRead(service, { credentials: key, region }),
+      readable: await canRead(service, { credentials, region }),
     })),
   );
   return {
-    accountId: identity.Account ?? '',
+    accountId: (isAwsRole(connection) ? roleParts(connection.roleArn)?.accountId : identity.Account) ?? '',
     services,
-    canWrite: await canWrite(key, arn, { region, sourceAddress }),
-    missingActions: await missingActions(key, arn, { region, sourceAddress }),
+    canWrite: await canWrite(credentials, principal, { region, sourceAddress }),
+    missingActions: await missingActions(credentials, principal, { region, sourceAddress }),
   };
 };

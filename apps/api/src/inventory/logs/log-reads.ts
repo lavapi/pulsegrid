@@ -3,7 +3,7 @@ import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
 import type { RedisClient } from '../../redis/redis-connection';
 import { REDIS } from '../../redis/redis.module';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import { type CloudCredentials, type CloudProvider, LogsUnreadable } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { ResourceAccess } from '../resources/resource-access';
@@ -48,7 +48,7 @@ export class LogReads {
   constructor(
     private readonly access: ResourceAccess,
     private readonly providers: ProviderRegistry,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
     @Inject(REDIS) private readonly redis: RedisClient,
   ) {}
 
@@ -66,7 +66,7 @@ export class LogReads {
     if (!granted.has('logs.read')) {
       return { kind: 'blocked', access: DENIED, problem: null };
     }
-    const credentials = this.vault.open(account);
+    const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
       return { kind: 'blocked', access: ALLOWED, problem: { message: NO_CREDENTIALS, principal: null } };
     }

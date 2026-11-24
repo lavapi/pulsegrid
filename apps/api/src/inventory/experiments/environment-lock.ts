@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { sql } from 'kysely';
 import type { CloudAccountRow } from '../../database/schema';
 import type { TenantTransaction } from '../../database/tenant-context';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import { ProviderRegistry } from '../providers/provider-registry';
 
 /** Every account of the environment shares one lock; an account with no environment has its own. */
@@ -18,7 +18,7 @@ const lockKey = ({ environment_id: environmentId, id }: Pick<CloudAccountRow, 'e
 export class EnvironmentLock {
   constructor(
     private readonly providers: ProviderRegistry,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
   ) {}
 
   /** Holds the environment's lock until the transaction ends, so two starts can't both see it free. */
@@ -58,7 +58,7 @@ export class EnvironmentLock {
 
   private async runningInAws(account: CloudAccountRow): Promise<string | null> {
     const source = this.providers.get(account.provider).experimentSource;
-    const credentials = this.vault.open(account);
+    const credentials = await this.accountCredentials.of(account);
     if (!source || !credentials) {
       return null;
     }

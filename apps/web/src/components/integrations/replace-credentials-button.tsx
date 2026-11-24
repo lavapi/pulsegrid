@@ -2,7 +2,7 @@
 
 import type { CredentialField } from '@pulsegrid/shared';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { type ReactNode, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 import { ActionDialog } from '@/components/pipelines/action-dialog';
 import { useSyncProgress } from '@/components/sync/sync-progress-provider';
@@ -10,13 +10,30 @@ import { Button } from '@/components/ui/button';
 import { apiSend } from '@/lib/browser-api';
 import { CredentialFields, type CredentialValues, isComplete } from './credential-fields';
 
+const DEFAULT_LABEL = 'Replace credentials';
+const DEFAULT_DESCRIPTION =
+  'The new credentials must belong to the same account. The old ones stop being used, but you still need to delete them with your provider.';
+
 interface ReplaceCredentialsButtonProps {
   path: string;
   name: string;
   fields: readonly CredentialField[];
+  label?: string;
+  description?: string;
+  success?: string;
+  /** Shown above the fields, such as what a role must trust. */
+  guide?: ReactNode;
 }
 
-export function ReplaceCredentialsButton({ path, name, fields }: ReplaceCredentialsButtonProps) {
+export function ReplaceCredentialsButton({
+  path,
+  name,
+  fields,
+  label = DEFAULT_LABEL,
+  description = DEFAULT_DESCRIPTION,
+  success = 'Credentials replaced',
+  guide,
+}: ReplaceCredentialsButtonProps) {
   const router = useRouter();
   const { follow } = useSyncProgress();
   const [pending, startTransition] = useTransition();
@@ -30,7 +47,7 @@ export function ReplaceCredentialsButton({ path, name, fields }: ReplaceCredenti
         toast.error(failure);
         return;
       }
-      toast.success('Credentials replaced');
+      toast.success(success);
       await follow();
       router.refresh();
     });
@@ -38,14 +55,15 @@ export function ReplaceCredentialsButton({ path, name, fields }: ReplaceCredenti
 
   return (
     <ActionDialog
-      trigger={<Button size="sm">Replace credentials</Button>}
-      title={`Replace credentials for ${name}`}
-      description="The new credentials must belong to the same account. The old ones stop being used, but you still need to delete them with your provider."
-      confirmLabel="Replace credentials"
+      trigger={<Button size="sm">{label}</Button>}
+      title={`${label} for ${name}`}
+      description={description}
+      confirmLabel={label}
       canConfirm={isComplete(fields, credentials)}
       pending={pending}
       onConfirm={replace}
     >
+      {guide}
       <CredentialFields fields={fields} values={credentials} onChange={setCredentials} />
     </ActionDialog>
   );

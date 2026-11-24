@@ -2,8 +2,9 @@ import { type CloudProvider, defineProvider } from '../provider';
 import { AWS_ACTIONS } from './aws-actions';
 import { AWS_ACTIVITY_WATCHES } from './aws-activity';
 import { actionErrorMessage, collectorErrorMessage } from './aws-error-messages';
-import { type AwsKey, keyHint, parseAwsKey } from './aws-key';
-import { checkAwsKey } from './aws-key-checker';
+import { type AwsConnection, type AwsKey, connectionHint, isAwsRole, parseAwsConnection } from './aws-key';
+import { checkAwsConnection } from './aws-key-checker';
+import { AWS_CREDENTIALS } from './aws-role';
 import { buildAwsMap } from './aws-map';
 import { isAwsRegion } from './aws-region';
 import { AWS_ACTIVITY_SOURCE } from './aws-cloudtrail';
@@ -17,7 +18,7 @@ import { AWS_METRIC_SOURCE } from './aws-metrics';
 import { AWS_SECRET_STORE } from './aws-secrets';
 import { AWS_COLLECTORS } from './collectors';
 
-const awsProviderOf: CloudProvider<AwsKey> = {
+const awsProviderOf: CloudProvider<AwsKey, AwsConnection> = {
   id: 'aws',
   collectors: AWS_COLLECTORS,
   unfilteredTypes: ['vpc', 'subnet', 'security-group'],
@@ -32,10 +33,12 @@ const awsProviderOf: CloudProvider<AwsKey> = {
   experimentSource: AWS_EXPERIMENT_SOURCE,
   costSource: AWS_COST_SOURCE,
   deploymentSource: AWS_DEPLOYMENT_SOURCE,
-  parseCredentials: parseAwsKey,
-  credentialHint: keyHint,
+  parseCredentials: parseAwsConnection,
+  credentialHint: connectionHint,
+  credentialKind: (connection) => (isAwsRole(connection) ? 'role' : 'key'),
+  resolveCredentials: (connection) => AWS_CREDENTIALS.resolve(connection),
   isValidRegion: isAwsRegion,
-  checkCredentials: checkAwsKey,
+  checkCredentials: checkAwsConnection,
   failureMessage: collectorErrorMessage,
   actionFailureMessage: actionErrorMessage,
   buildMap: buildAwsMap,

@@ -1,4 +1,4 @@
-import type { CloudAccount, CredentialField } from '@pulsegrid/shared';
+import type { CloudAccount, ConnectionMethod, RoleTrustDetails } from '@pulsegrid/shared';
 import {
   RemoveAccountButton,
   SyncNowButton,
@@ -7,10 +7,12 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Time } from '@/components/ui/time';
+import { replacementMethods, replacementText } from '@/lib/connection-methods';
 import { isKeyOld, keyAgeDays, keyAgeText } from '@/lib/key-age';
 import { WriteAccessWarning } from './credential-result';
 import { EditAccountButton } from './edit-account-button';
 import { ReplaceCredentialsButton } from './replace-credentials-button';
+import { RoleTrustGuide } from './role-trust-guide';
 
 const statusOf = ({ hasCredentials, status }: CloudAccount) => {
   if (!hasCredentials) {
@@ -23,13 +25,15 @@ const statusOf = ({ hasCredentials, status }: CloudAccount) => {
 
 interface CloudAccountCardProps {
   account: CloudAccount;
-  fields: readonly CredentialField[];
+  methods: readonly ConnectionMethod[];
+  trust: RoleTrustDetails | null;
   regions: readonly string[];
 }
 
-export function CloudAccountCard({ account, fields, regions }: CloudAccountCardProps) {
+export function CloudAccountCard({ account, methods, trust, regions }: CloudAccountCardProps) {
   const { label, tone } = statusOf(account);
-  const keyAge = account.hasCredentials ? keyAgeDays(account.credentialsUpdatedAt, Date.now()) : null;
+  const usesKey = account.hasCredentials && account.credentialKind === 'key';
+  const keyAge = usesKey ? keyAgeDays(account.credentialsUpdatedAt, Date.now()) : null;
   const details = [account.accountId, account.credentialHint, account.regions.join(', ')].filter(
     Boolean,
   );
@@ -53,8 +57,8 @@ export function CloudAccountCard({ account, fields, regions }: CloudAccountCardP
         {account.canWrite && <WriteAccessWarning />}
         {isKeyOld(keyAge) && (
           <p className="text-[13px] text-warning" role="status">
-            This key is {keyAge} days old. Rotate it: create a new key in IAM, use Replace credentials, then delete
-            the old key.
+            This key is {keyAge} days old. Switch the account to a role, or rotate the key: create a new one in IAM,
+            use Replace access key, then delete the old one.
           </p>
         )}
         {(account.lastSyncedAt || keyAge !== null) && (
@@ -73,13 +77,17 @@ export function CloudAccountCard({ account, fields, regions }: CloudAccountCardP
           {account.hasCredentials && account.status === 'connected' && (
             <SyncNowButton accountId={account.id} />
           )}
-          {account.hasCredentials && (
-            <ReplaceCredentialsButton
-              path={`/cloud/accounts/${account.id}/credentials`}
-              name={account.name}
-              fields={fields}
-            />
-          )}
+          {account.hasCredentials &&
+            replacementMethods(account.credentialKind, methods).map((method) => (
+              <ReplaceCredentialsButton
+                key={method.id}
+                path={`/cloud/accounts/${account.id}/credentials`}
+                name={account.name}
+                fields={method.fields}
+                {...replacementText(account.credentialKind, method, account.name)}
+                guide={method.id === 'role' && trust ? <RoleTrustGuide trust={trust} /> : undefined}
+              />
+            ))}
           <EditAccountButton account={account} regions={regions} />
           <RemoveAccountButton accountId={account.id} name={account.name} />
         </div>

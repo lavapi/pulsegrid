@@ -19,6 +19,7 @@ import { ResourceActivityController } from './actions/resource-activity.controll
 import { CloudAccountsController } from './accounts/cloud-accounts.controller';
 import { CloudAccountsService } from './accounts/cloud-accounts.service';
 import { OutboundAddress } from './connection/outbound-address';
+import { RoleTrust } from './connection/role-trust';
 import { CostsController } from './costs/costs.controller';
 import { CostsService } from './costs/costs.service';
 import { EnvironmentDomainsController } from './environments/environment-domains.controller';
@@ -69,6 +70,7 @@ import { SyncProgressController } from './sync/sync-progress.controller';
   providers: [
     CloudAccountsService,
     OutboundAddress,
+    RoleTrust,
     CloudActivityService,
     ExperimentsService,
     ServiceDeploymentsService,

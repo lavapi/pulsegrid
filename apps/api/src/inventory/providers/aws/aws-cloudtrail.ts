@@ -34,7 +34,7 @@ interface UserIdentity {
   principalId?: string;
   accessKeyId?: string;
   invokedBy?: string;
-  sessionContext?: { sessionIssuer?: { userName?: string } };
+  sessionContext?: { sessionIssuer?: { userName?: string; arn?: string } };
 }
 
 interface TrailRecord {
@@ -75,7 +75,15 @@ export const actorOf = (identity: UserIdentity | undefined, username: string | u
   return named ?? username ?? UNKNOWN_ACTOR;
 };
 
-const toActivity = (event: TrailEvent, region: string, keyId: string): CloudActivityEvent => {
+/**
+ * Whether PulseGrid itself did this: with its access key, or in a session of the role it takes on, which has a new
+ * key every hour, so its sessions are known by the role instead.
+ */
+export const byPulseGrid = (identity: UserIdentity | undefined, { accessKeyId, roleArn }: AwsKey): boolean =>
+  identity?.accessKeyId === accessKeyId ||
+  (roleArn !== undefined && identity?.sessionContext?.sessionIssuer?.arn === roleArn);
+
+const toActivity = (event: TrailEvent, region: string, credentials: AwsKey): CloudActivityEvent => {
   const record = parseRecord(event.CloudTrailEvent);
   const action = event.EventName ?? '';
   return {
@@ -88,7 +96,7 @@ const toActivity = (event: TrailEvent, region: string, keyId: string): CloudActi
     region: record.awsRegion ?? region,
     sourceIp: record.sourceIPAddress ?? null,
     errorCode: record.errorCode ?? null,
-    viaDashboard: record.userIdentity?.accessKeyId === keyId,
+    viaDashboard: byPulseGrid(record.userIdentity, credentials),
   };
 };
 
@@ -123,7 +131,7 @@ const readRegion = async (
       MaxResults: PAGE_SIZE,
     }),
   );
-  return Events.map((event) => toActivity(event, region, credentials.accessKeyId));
+  return Events.map((event) => toActivity(event, region, credentials));
 };
 
 export const AWS_ACTIVITY_SOURCE: ActivitySource<AwsKey> = {

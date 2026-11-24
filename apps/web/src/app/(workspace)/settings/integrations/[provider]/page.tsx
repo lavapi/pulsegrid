@@ -3,6 +3,7 @@ import {
   cloudProvider,
   type EnvironmentAdminView,
   hasPermission,
+  type RoleTrustDetails,
 } from '@pulsegrid/shared';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -29,12 +30,14 @@ export default async function ProviderIntegrationPage({
   if (!hasPermission(user, 'integrations.manage')) {
     redirect('/');
   }
-  const [accounts, { environments }, outbound] = await Promise.all([
+  const [accounts, { environments }, outbound, trust] = await Promise.all([
     apiGet<CloudAccount[]>('/cloud/accounts'),
     apiGet<EnvironmentAdminView>('/environments/manage'),
     apiGetOptional<{ address: string | null }>('/cloud/accounts/outbound-address'),
+    apiGetOptional<RoleTrustDetails>('/cloud/accounts/role-trust'),
   ]);
   const own = accounts.filter((account) => account.provider === provider.id);
+  const anyKeys = own.some(({ hasCredentials, credentialKind }) => hasCredentials && credentialKind === 'key');
 
   return (
     <>
@@ -50,7 +53,8 @@ export default async function ProviderIntegrationPage({
       {own.map((account) => (
         <CloudAccountCard
           account={account}
-          fields={provider.credentialFields}
+          methods={provider.connectionMethods}
+          trust={trust}
           regions={provider.regions}
           key={account.id}
         />
@@ -58,12 +62,12 @@ export default async function ProviderIntegrationPage({
       <Card>
         <CardHeader
           title={`Add ${provider.accountLabel}`}
-          description="We detect the account from the credentials. Test them before saving."
+          description="We detect the account from the role or key. Test it before saving."
         />
-        <AddCloudAccountForm provider={provider} environments={environments} />
+        <AddCloudAccountForm provider={provider} environments={environments} trust={trust} />
       </Card>
       <ProviderSetupCard setup={provider.setup} />
-      {provider.id === 'aws' && <OutboundAddressCard address={outbound?.address ?? null} />}
+      {provider.id === 'aws' && anyKeys && <OutboundAddressCard address={outbound?.address ?? null} />}
     </>
   );
 }

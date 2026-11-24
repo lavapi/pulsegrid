@@ -6,6 +6,7 @@ import { ACTION_QUEUE_NAME, ActionQueue } from './actions/action-queue';
 import { ActionRunStore } from './actions/action-run.store';
 import { ActionTracker } from './actions/action-tracker';
 import { ActivityWatcher } from './actions/activity-watcher';
+import { AccountCredentials } from './connection/account-credentials';
 import { CredentialVault } from './connection/credential-vault';
 import { ExperimentReportCapture } from './experiments/experiment-report-capture';
 import { ExperimentReportStore } from './experiments/experiment-report.store';
@@ -46,6 +47,7 @@ import { SYNC_QUEUE_NAME, SyncQueue } from './sync/sync-queue';
       inject: [APP_CONFIG],
       useFactory: (config: AppConfig) => new TokenCipher(config.tokenEncryptionKey),
     },
+    AccountCredentials,
     CredentialVault,
     ExperimentReportStore,
     ExperimentReportCapture,
@@ -88,6 +90,7 @@ import { SYNC_QUEUE_NAME, SyncQueue } from './sync/sync-queue';
     ActivityWatcher,
     CostQueue,
     CostRefreshService,
+    AccountCredentials,
     CredentialVault,
     ExperimentReportCapture,
     ExperimentReportStore,

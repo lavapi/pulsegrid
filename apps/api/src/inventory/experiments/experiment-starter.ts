@@ -4,7 +4,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AuditService } from '../../audit/audit.service';
 import type { CloudAccountRow } from '../../database/schema';
 import { TenantDatabase } from '../../database/tenant-database';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import type { ExperimentSource } from '../providers/provider';
 import { NO_CREDENTIALS } from './experiment-access';
 import { STARTED_ACTION } from './experiment-audit';
@@ -37,7 +37,7 @@ export class ExperimentStarter {
 
   constructor(
     private readonly database: TenantDatabase,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
     private readonly audit: AuditService,
   ) {}
 
@@ -45,7 +45,7 @@ export class ExperimentStarter {
     if (!account.regions.includes(ref.region)) {
       return { kind: 'failed', message: REGION_MISSING };
     }
-    const credentials = this.vault.open(account);
+    const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
       return { kind: 'failed', message: NO_CREDENTIALS };
     }
