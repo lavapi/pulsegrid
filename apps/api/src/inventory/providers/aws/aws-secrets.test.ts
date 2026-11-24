@@ -75,7 +75,7 @@ describe('AWS_SECRET_STORE', () => {
 
 describe('secret error messages', () => {
   it.each([
-    ['AccessDeniedException', "This key doesn't allow that."],
+    ['AccessDeniedException', "The account's PulseGrid role doesn't allow that."],
     ['DecryptionFailure', "can't decrypt"],
     ['ResourceNotFoundException', 'no value yet'],
   ])('explains %s', (name, message) => {

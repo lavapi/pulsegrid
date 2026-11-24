@@ -15,13 +15,6 @@ const session = (id: string, expiresAt: number) => ({
 describe('AwsCredentialResolver', () => {
   afterEach(() => sts.reset());
 
-  it('uses a key as it is', async () => {
-    const assume = vi.fn();
-    const key = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'a'.repeat(40) };
-    expect(await new AwsCredentialResolver(assume).resolve(key)).toBe(key);
-    expect(assume).not.toHaveBeenCalled();
-  });
-
   it('takes on a role once, and again only shortly before its session ends', async () => {
     const now = Date.parse('2026-11-24T10:00:00Z');
     const assume = vi

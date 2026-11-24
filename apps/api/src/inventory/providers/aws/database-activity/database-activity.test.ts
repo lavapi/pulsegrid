@@ -90,7 +90,7 @@ describe('piTopSql', () => {
     pi.on(GetResourceMetricsCommand).rejects(Object.assign(new Error('raw'), { name: 'AccessDeniedException' }));
     const [denied] = await piTopSql(cluster, since, until);
     expect(denied?.unavailable).toBe(
-      "Add pi:DescribeDimensionKeys and pi:GetResourceMetrics to the key's IAM policy to see its busiest statements.",
+      "Add pi:DescribeDimensionKeys and pi:GetResourceMetrics to the role's IAM policy to see its busiest statements.",
     );
   });
 });

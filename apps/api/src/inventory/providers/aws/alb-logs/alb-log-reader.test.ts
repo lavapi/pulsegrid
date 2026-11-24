@@ -106,7 +106,7 @@ describe('ALB_REQUEST_LOG_SOURCE', () => {
     expect(error).toBeInstanceOf(LogsUnreadable);
     expect((error as LogsUnreadable).problem).toEqual({
       message:
-        "ALB logs aren't readable yet: the bucket game-alb-logs-222222222222 must grant this key s3:ListBucket and s3:GetObject on the game-staging* prefix, and the key's IAM policy must allow them.",
+        "ALB logs aren't readable yet: the bucket game-alb-logs-222222222222 must grant the account's PulseGrid role s3:ListBucket and s3:GetObject on the game-staging* prefix, and the role's IAM policy must allow them.",
       principal: `arn:aws:iam::${ACCOUNT}:user/pulsegrid`,
     });
   });

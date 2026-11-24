@@ -26,7 +26,7 @@ const DASHBOARD_SERVICES: Record<string, ServiceCategory> = {
 };
 
 const COST_ACCESS_DENIED =
-  "This key can't read costs. Add ce:GetCostAndUsage to its IAM policy, and check that Cost Explorer is on for this account.";
+  "The account's PulseGrid role can't read costs. Add ce:GetCostAndUsage to its IAM policy, and check that Cost Explorer is on for this account.";
 const COST_NOT_READY = "AWS doesn't have cost data for this account yet.";
 const COST_FAILED = "We couldn't read costs from AWS. We'll try again soon.";
 

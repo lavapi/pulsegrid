@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- AWS accounts now connect only through a role: access keys, the IP lock card and the key age warning are gone. Any account still on a key asks to be connected again. Run `pnpm db:migrate`.
+
 ## [0.31.0] - 2026-11-24
 
 - Connect AWS accounts with a role instead of an access key: nothing secret is stored in PulseGrid, and access ends when you delete the role. Each account on a key gets **Switch to a role**. See "Create a role" in `docs/connect-aws-account.md`. Run `pnpm db:migrate`.

@@ -10,7 +10,7 @@ const MAX_PAGES = 5;
 const QUERIES_PER_REQUEST = 500;
 const LATEST_WINDOW_MS = 10 * 60_000;
 const LATEST_PERIOD_SECONDS = 60;
-const NO_METRICS_PERMISSION = "This key can't read load. Add cloudwatch:GetMetricData to its IAM policy.";
+const NO_METRICS_PERMISSION = "The account's PulseGrid role can't read load. Add cloudwatch:GetMetricData to its IAM policy.";
 const READ_FAILED = "We couldn't read the load from AWS. Please try again.";
 
 /** Query ids are unique per request; the prefix keeps them apart when several resources share one. */

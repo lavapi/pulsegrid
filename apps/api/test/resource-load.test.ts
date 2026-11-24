@@ -13,9 +13,8 @@ import {
   type MetricQuery,
   type MetricResult,
 } from '../src/inventory/providers/provider';
-import { signIn, startTestApp, type TestContext, user } from './support/test-app';
+import { signIn, startTestApp, type TestContext, user, TEST_ROLE } from './support/test-app';
 
-const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
 const RESULT: MetricResult = {
   charts: [
     {
@@ -65,7 +64,7 @@ describe('resource load', () => {
         ...row,
         name: 'Account',
         regions: ['eu-central-1'],
-        encrypted_credentials: sealed ? context.app.get(CredentialVault).seal(row, KEY) : null,
+        encrypted_credentials: sealed ? context.app.get(CredentialVault).seal(row, TEST_ROLE) : null,
         environment_id: environmentId,
       })
       .returning('id')
@@ -131,16 +130,16 @@ describe('resource load', () => {
     await load(id, viewer, `from=${weekAgo}&to=${to}`).expect(400);
   });
 
-  it('says when the account has no access key', async () => {
+  it("says when the account isn't connected", async () => {
     const { body } = await load(await addResource('Staging', 'rds-instance', false)).expect(200);
-    expect(body.error).toBe('This account has no access key. Add one under Integrations.');
+    expect(body.error).toBe("This account isn't connected. Connect it under Integrations.");
     expect(read).not.toHaveBeenCalled();
   });
 
   it('explains a missing permission without showing the AWS error', async () => {
     read.mockRejectedValue(Object.assign(new Error('raw aws text'), { name: 'AccessDenied' }));
     const { body } = await load(await addResource('Staging', 'elasticache-cluster')).expect(200);
-    expect(body.error).toBe("This key can't read load. Add cloudwatch:GetMetricData to its IAM policy.");
+    expect(body.error).toBe("The account's PulseGrid role can't read load. Add cloudwatch:GetMetricData to its IAM policy.");
     expect(JSON.stringify(body)).not.toContain('raw aws text');
   });
 

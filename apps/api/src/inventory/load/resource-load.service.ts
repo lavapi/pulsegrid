@@ -1,13 +1,12 @@
 import type { ResourceLoad } from '@pulsegrid/shared';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
-import { AccountCredentials } from '../connection/account-credentials';
+import { AccountCredentials, NOT_CONNECTED } from '../connection/account-credentials';
 import type { MetricQuery } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { ResourceAccess } from '../resources/resource-access';
 
 const NO_LOAD = "This resource doesn't have load to show.";
-const NO_CREDENTIALS = 'This account has no access key. Add one under Integrations.';
 
 const empty = (error: string | null): ResourceLoad => ({
   available: true,
@@ -35,7 +34,7 @@ export class ResourceLoadService {
     }
     const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
-      return empty(NO_CREDENTIALS);
+      return empty(NOT_CONNECTED);
     }
     try {
       const result = await source.read(

@@ -13,7 +13,7 @@ import { DATABASE_ACCESS_SETUP, loadDatabaseAccessSetup } from '../src/database-
 import { TenantDatabase } from '../src/database/tenant-database';
 import { CredentialVault } from '../src/inventory/connection/credential-vault';
 import { TokenCipher } from '../src/inventory/connection/token-cipher';
-import { setExtraPermissions, signIn, startTestApp, type TestContext, user } from './support/test-app';
+import { setExtraPermissions, signIn, startTestApp, type TestContext, user, TEST_ROLE } from './support/test-app';
 
 const ACCOUNT = '860000000001';
 const GRANT_ARN = `arn:aws:states:eu-central-1:${ACCOUNT}:stateMachine:db-access-grant`;
@@ -27,7 +27,6 @@ const SETUP = loadDatabaseAccessSetup({
   DB_ACCESS_READER_ENDPOINT: 'db.cluster-ro-x.eu-central-1.rds.amazonaws.com',
   DB_ACCESS_DATABASE: 'game',
 });
-const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'a'.repeat(40) };
 const USER = 'pat@example.test';
 const HOUR = 3_600_000;
 
@@ -138,7 +137,7 @@ describe('database access', () => {
         ...production,
         name: 'Production',
         regions: ['eu-central-1'],
-        encrypted_credentials: context.app.get(CredentialVault).seal(production, KEY),
+        encrypted_credentials: context.app.get(CredentialVault).seal(production, TEST_ROLE),
       })
       .execute();
   });

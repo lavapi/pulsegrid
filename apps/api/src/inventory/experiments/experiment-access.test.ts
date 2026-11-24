@@ -24,9 +24,9 @@ describe('experimentAccess', () => {
     expect(experimentAccess({ account: account(), environment: production }, productionRunner).canRun).toBe(true);
   });
 
-  it('puts the permission first, then the access key', () => {
+  it('puts the permission first, then the connection', () => {
     expect(experimentAccess({ account: account(false), environment: staging }, runner).blockedReason).toContain(
-      'no access key',
+      "isn't connected",
     );
     expect(experimentAccess({ account: account(), environment: staging }, new Set()).blockedReason).toContain(
       'Run staging failover tests',

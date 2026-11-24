@@ -16,7 +16,7 @@ import type { AwsKey } from './aws-key';
 import { readTrafficDeployments, strategyOf } from './aws-service-deployments';
 
 const NO_PERMISSION =
-  "This key can't read blue/green deployments. Add ecs:ListServiceDeployments, ecs:DescribeServiceDeployments and ecs:DescribeServiceRevisions to its IAM policy.";
+  "The account's PulseGrid role can't read blue/green deployments. Add ecs:ListServiceDeployments, ecs:DescribeServiceDeployments and ecs:DescribeServiceRevisions to its IAM policy.";
 const READ_FAILED = "We couldn't read the deployments from AWS. Please try again.";
 const STRATEGY_LABELS = { 'blue-green': 'blue/green', canary: 'canary', linear: 'linear' } as const;
 

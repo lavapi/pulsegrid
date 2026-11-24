@@ -1,12 +1,12 @@
 # Connect AWS accounts
 
-The dashboard reads each AWS account through a **role** in that account, which PulseGrid takes on with its own ECS task role. Nothing secret is stored, the credentials last an hour and renew themselves, and access ends when you delete the role. An IAM user's access key still works for accounts that can't use a role. Admins connect accounts under **Settings > Integrations > AWS**. To add another cloud, see [cloud-providers.md](cloud-providers.md).
+The dashboard reads each AWS account through a **role** in that account, which PulseGrid takes on with its own ECS task role. Nothing secret is stored, the credentials last an hour and renew themselves, and access ends when you delete the role. Admins connect accounts under **Settings > Integrations > AWS**. To add another cloud, see [cloud-providers.md](cloud-providers.md).
 
 Everyone in the project sees its connected accounts. Dashboard roles control what people can do, not which accounts they see.
 
-## Create a role (recommended)
+## Create a role
 
-1. Open **Settings > Integrations > AWS** and choose **Role**. The page shows this project's **External ID** and the role's **trust policy**, ready to copy.
+1. Open **Settings > Integrations > AWS**. The page shows this project's **External ID** and the role's **trust policy**, ready to copy.
 2. In the AWS account, create a role, `PulseGridAccess` for example, with that trust policy. It lets only PulseGrid's task roles take on the role, and only with this project's External ID:
 
    ```json
@@ -29,16 +29,6 @@ Everyone in the project sees its connected accounts. Dashboard roles control wha
 The External ID is the same for every account in a project and different in every other project, so another PulseGrid project can't be pointed at your role. It's derived from `TOKEN_ENCRYPTION_KEY`; changing that key changes it.
 
 PulseGrid's task roles each need `sts:AssumeRole` on the roles it takes on, for example `arn:aws:iam::*:role/PulseGridAccess`. Set `PULSEGRID_TASK_ROLE_ARNS` on the API to their ARNs, separated by commas, so the page shows the exact trust policy. In CloudTrail, PulseGrid's calls appear as sessions of the role named `pulsegrid`.
-
-## Create a key
-
-Use a key only where a role isn't possible.
-
-1. In the AWS account, create a dedicated IAM user for the dashboard. Don't use a personal user or an admin user.
-2. Attach the [PulseGrid policy](#the-pulsegrid-policy), which is also shown on the **AWS** integration page. Every account uses the same policy, production included. It allows the list and describe actions, logs and costs PulseGrid reads, and the actions it can take: force deploys, reboots, failover tests and app secret values. It can't read S3 files or create or delete resources. Who can take which action, in staging and in production, is set by roles in PulseGrid.
-3. Create an access key for that user.
-
-Root account keys and temporary keys are refused.
 
 ## The PulseGrid policy
 
@@ -150,27 +140,27 @@ Every account uses this one policy, production included. Roles in PulseGrid deci
 | `rds:RebootDBInstance`, `elasticache:RebootCacheCluster`, `ec2:RebootInstances` | Reboots |
 | `ec2:DescribeInstanceStatus` | Checking that a rebooted server came back |
 | `secretsmanager:GetSecretValue`, `secretsmanager:PutSecretValue` | Showing and changing [app secret](#app-secrets) values |
-| `iam:SimulatePrincipalPolicy` | Testing a key for missing or extra permissions |
+| `iam:SimulatePrincipalPolicy` | Testing a role for missing or extra permissions |
 
 A few things sit outside this policy:
 
 - A secret encrypted with its own KMS key needs that key's policy to allow the IAM user.
-- A load balancer log bucket in another account, such as a log archive account, must also grant the key in its bucket policy. See [Request log](#request-log).
-- Each FIS experiment template has its own role, which FIS uses to inject the faults. The key never gets those permissions.
+- A load balancer log bucket in another account, such as a log archive account, must also grant the role in its bucket policy. See [Request log](#request-log).
+- Each FIS experiment template has its own role, which FIS uses to inject the faults. The role never gets those permissions.
 
 Pipelines use a GitHub token rather than AWS. It needs **Actions: Read and write**, **Contents: Read-only** and **Metadata: Read-only**. See [pipelines.md](pipelines.md). PulseGrid's own hosting needs nothing extra: Terraform creates the role it runs with. See [install-aws.md](install-aws.md).
 
 ## Add the account
 
 1. Go to **Settings > Integrations > AWS**.
-2. Enter a name, then the role ARN, or for a key, the Access Key ID and the Secret Access Key.
+2. Enter a name and the role ARN.
 3. Choose an environment and the regions to read.
-4. Select **Test role** or **Test credentials**. The page shows the account and which services it can read. A role PulseGrid can't take on is refused with what to check in its trust policy.
+4. Select **Test role**. The page shows the account and which services it can read. A role PulseGrid can't take on is refused with what to check in its trust policy.
 5. Select **Save integration**. The first sync starts straight away.
 
-Testing a role or key lists any actions from the PulseGrid policy that it lacks, because the pages and actions that need them won't work. If a key can delete or create resources, the page also shows a warning, because PulseGrid never needs that. Both checks need `iam:SimulatePrincipalPolicy`, which is in the policy. Without it, PulseGrid can't tell.
+Testing a role lists any actions from the PulseGrid policy that it lacks, because the pages and actions that need them won't work. If the role can delete or create resources, the page also shows a warning, because PulseGrid never needs that. Both checks need `iam:SimulatePrincipalPolicy`, which is in the policy. Without it, PulseGrid can't tell.
 
-An account that already has data but no key shows **Needs credentials**. It keeps its data but stops syncing. Adding a key for the same AWS account takes it over and keeps its resources and environment.
+An account that already has data but no role shows **Needs credentials**. It keeps its data but stops syncing. Adding a role in the same AWS account takes it over and keeps its resources and environment. Accounts that were connected with an access key show this too: access keys are no longer supported.
 
 ## Overview
 
@@ -180,7 +170,7 @@ Overview shows the health of the selected account: problems, resource counts, wo
 
 ECS clusters and services, EC2 servers, and RDS clusters and instances can have a display name in PulseGrid, such as **Frontend** for a cluster called `jack-mike-one`. Select **Rename** under the name on the resource's page. The display name is shown everywhere PulseGrid shows the resource: lists and cards, search, the map, Overview, Environments, Releases, failover test reports and Activity. The AWS name stays visible beside it, and search finds either.
 
-Display names live only in PulseGrid; nothing changes in AWS, so they need no extra permission on the key. A display name follows the resource's ARN, so syncs, redeploys, and a resource being deleted and recreated with the same ARN keep it. Older entries, such as past Activity and test reports, show the current display name with the name the resource had at the time. Each project names resources on its own.
+Display names live only in PulseGrid; nothing changes in AWS, so they need no extra permission on the role. A display name follows the resource's ARN, so syncs, redeploys, and a resource being deleted and recreated with the same ARN keep it. Older entries, such as past Activity and test reports, show the current display name with the name the resource had at the time. Each project names resources on its own.
 
 Renaming needs **Manage environments**. **Reset to AWS name** removes a display name. Every change is recorded in Activity with the old and new names.
 
@@ -190,7 +180,7 @@ When you add or edit an account, **Tag filters** choose which resources appear. 
 
 With an include rule, untagged resources are hidden unless you tick **Keep untagged resources**. VPCs, subnets and security groups are always kept, so the map stays connected.
 
-Filtered resources aren't stored, so they also disappear from health and Environments. Saving rules starts a sync, and removing a rule brings resources back. Filters only decide what the dashboard shows. They don't limit what the access key can reach, and **Activity > AWS** still shows events for filtered resources.
+Filtered resources aren't stored, so they also disappear from health and Environments. Saving rules starts a sync, and removing a rule brings resources back. Filters only decide what the dashboard shows. They don't limit what the role can reach, and **Activity > AWS** still shows events for filtered resources.
 
 Reading tags for ElastiCache, load balancers and S3 needs `elasticache:ListTagsForResource`, `elasticloadbalancing:DescribeTags` and `s3:GetBucketTagging`, which are in the PulseGrid policy. Without them those resources count as untagged.
 
@@ -204,9 +194,9 @@ The dashboard checks accounts every 30 seconds for deployments and status change
 
 To turn it on:
 
-1. Make sure the key's policy includes `ce:GetCostAndUsage`. It's in both policies on the **AWS** integration page, so keys made before this feature need the updated policy.
+1. Make sure the role's policy includes `ce:GetCostAndUsage`. It's in both policies on the **AWS** integration page, so roles set up before this feature need the updated policy.
 2. Turn on Cost Explorer in the AWS Billing console, if it isn't on already. AWS can take up to 24 hours to prepare the data the first time.
-3. If the account belongs to an AWS Organization, its management account must allow member accounts to use Cost Explorer. Each key only shows its own account, even a key in the management account.
+3. If the account belongs to an AWS Organization, its management account must allow member accounts to use Cost Explorer. Each role only shows its own account, even a role in the management account.
 
 The dashboard reads costs from AWS every 6 hours and saves the totals, so opening the page never calls AWS. AWS charges $0.01 for each request, which is about $1.20 a month per account. If a read fails, the last figures stay on the page with a message, and it tries again within the hour.
 
@@ -236,7 +226,7 @@ The card refreshes every 5 seconds while a deployment runs, and every 30 seconds
 
 ECS services show a **Logs** section. The dashboard finds the CloudWatch log group from the service's task definition, so services using another log driver show a message instead. Logs need the **View logs** permission, and work in every environment, because reading them changes nothing. Opening a service's logs is recorded in Activity, once every 15 minutes per person and service while they keep reading. Lines are read when you look at them and are never stored. The longest range is 24 hours.
 
-The PulseGrid policy includes `logs:FilterLogEvents` and `ecs:DescribeTaskDefinition`. The second also lets the key see plain environment variables in task definitions. The dashboard reads only the log settings.
+The PulseGrid policy includes `logs:FilterLogEvents` and `ecs:DescribeTaskDefinition`. The second also lets the role see plain environment variables in task definitions. The dashboard reads only the log settings.
 
 ## Request log
 
@@ -250,7 +240,7 @@ Application Load Balancer pages have a **Request log** tab: every HTTP request, 
 - Paths are shown without their query string, which can hold emails, ids or tokens. **Show query strings** needs the **See query strings and values in logs** permission, which Admins have.
 - Files arrive every 5 minutes, so the last few minutes may not be there yet. Logs are kept as long as the bucket keeps them; PulseGrid reads back 90 days at most.
 
-Reading the logs needs **View logs**. When the logs are in another account's bucket, that bucket's policy must grant the key. If it doesn't, the tab says so and shows the exact ARN to grant. For example, in the bucket's policy:
+Reading the logs needs **View logs**. When the logs are in another account's bucket, that bucket's policy must grant the role. If it doesn't, the tab says so and shows the exact ARN to grant. For example, in the bucket's policy:
 
 ```json
 {
@@ -261,7 +251,7 @@ Reading the logs needs **View logs**. When the logs are in another account's buc
 }
 ```
 
-The key's own policy allows reading only from buckets named like `*-alb-logs-*`. If your log bucket is named differently, add it to the second statement of the key's policy.
+The role's own policy allows reading only from buckets named like `*-alb-logs-*`. If your log bucket is named differently, add it to the second statement of the role's policy.
 
 ## Query activity
 
@@ -302,7 +292,7 @@ Load needs `cloudwatch:GetMetricData`. Totals need `ec2:DescribeInstanceTypes`, 
 
 Failover tests are AWS FIS experiments, run and reported from PulseGrid. The **Failover tests** page lists the FIS experiment templates of the account selected in the top bar, in every synced region, and its 20 most recent tests per region. Each template shows its targets, its steps with their durations, and the CloudWatch alarms that stop it early. A template with no stop alarm is marked, because only a person can stop it. Templates are created in the AWS console or with Terraform; PulseGrid doesn't create or change them. Links to the old `/experiments` pages still work.
 
-Everyone can see templates and tests. Starting or stopping one needs an access key and the **Run staging failover tests** permission, or **Run production failover tests** for an account in a production environment. Starting asks you to type the template's name.
+Everyone can see templates and tests. Starting or stopping one needs a connected account and the **Run staging failover tests** permission, or **Run production failover tests** for an account in a production environment. Starting asks you to type the template's name.
 
 A test's page refreshes every 5 seconds while it runs. It shows each step's state and timing, why the test ended, and who started it from PulseGrid; tests started elsewhere show **Outside PulseGrid**. Databases and caches the test picked that PulseGrid knows are listed with their Load charts, so you can see the effect. Every start and stop is recorded in Activity, and so is every refused attempt.
 
@@ -334,7 +324,7 @@ The run dialog lists the tests in the order they'll run, and says when something
 
 **In production**, you also tick that you understand the tests run in production, one at a time, and the run doesn't start while anything else is running there.
 
-Creating, changing, deleting and running groups need the same key and permission as single tests, staging or production depending on the account's environment. Group changes, runs and Stop all are recorded in Activity, along with each test they started or stopped.
+Creating, changing, deleting and running groups need the same connected account and permission as single tests, staging or production depending on the account's environment. Group changes, runs and Stop all are recorded in Activity, along with each test they started or stopped.
 
 ### Reports and history
 
@@ -359,7 +349,7 @@ A single test's report has the same parts for that one test.
 
 Reports are kept in PulseGrid until someone with **Manage environments** deletes them, so history outlives AWS, which drops experiments after about 120 days. Deleting a run deletes the reports of its tests too. Everyone can see reports. Load charts are read from CloudWatch when a report is opened. CloudWatch keeps 1-minute points for 15 days, then 5-minute points until 63 days and hourly points after that, so older reports show coarser charts.
 
-The PulseGrid policy includes `fis:ListExperimentTemplates`, `fis:GetExperimentTemplate`, `fis:ListExperiments`, `fis:GetExperiment`, `fis:ListExperimentResolvedTargets`, `fis:StartExperiment` and `fis:StopExperiment`. FIS runs each experiment with the role in its template, so the key itself never gets the permissions the experiment uses.
+The PulseGrid policy includes `fis:ListExperimentTemplates`, `fis:GetExperimentTemplate`, `fis:ListExperiments`, `fis:GetExperiment`, `fis:ListExperimentResolvedTargets`, `fis:StartExperiment` and `fis:StopExperiment`. FIS runs each experiment with the role in its template, so PulseGrid's role itself never gets the permissions the experiment uses.
 
 ## App secrets
 
@@ -373,52 +363,9 @@ Writing adds, edits or deletes one key and saves a new version in AWS. **Edit** 
 - A secret encrypted with its own KMS key must also allow the IAM user.
 - Running services usually read secrets when they start, so force deploy them after a change.
 
-## Switch an account from a key to a role
+## What's stored
 
-1. Create the role as in [Create a role](#create-a-role-recommended).
-2. Select **Switch to a role** on the account's card, and enter the role ARN. It must be in the same AWS account.
-3. PulseGrid checks the role, then replaces the stored key with the role. Delete the access key, and the IAM user if nothing else uses it, in AWS.
-
-## How keys are stored
-
-A role connection stores only the role ARN and External ID. For keys, secrets are encrypted with AES-256-GCM using `TOKEN_ENCRYPTION_KEY`. They're never returned by the API and never written to logs or the audit log. The dashboard only shows a masked Access Key ID, such as `AKIA…MNOP`.
-
-If you lose `TOKEN_ENCRYPTION_KEY`, stored keys can't be read, and you'll need to add them again.
-
-## Rotate a key
-
-Better still, switch the account to a role, which needs no rotation.
-
-1. Create a second access key on the IAM user.
-2. Select **Replace access key** on the account, and enter the new key. It must belong to the same AWS account.
-3. Delete the old key in AWS. The dashboard can't do this for you.
-
-Each account's card shows how old its key is. From 90 days, the card asks you to rotate it.
-
-## Lock keys to PulseGrid
-
-An access key works from anywhere until it's deleted. Lock each key to PulseGrid, so a copied key is useless anywhere else. The AWS page under **Integrations** shows the address PulseGrid calls AWS from, usually its NAT gateway's public IP. Add this statement to each key's IAM policy:
-
-```json
-{
-  "Sid": "OnlyFromPulseGrid",
-  "Effect": "Deny",
-  "Action": "*",
-  "Resource": "*",
-  "Condition": {
-    "NotIpAddress": { "aws:SourceIp": "<PulseGrid's address>/32" },
-    "StringNotEqualsIfExists": { "aws:SourceVpc": "<PulseGrid's VPC>" },
-    "BoolIfExists": { "aws:ViaAWSService": "false" }
-  }
-}
-```
-
-- `aws:SourceVpc` is needed when PulseGrid reaches some services, such as S3, through VPC endpoints: those calls come from the VPC, not the public address. Leave the line out if PulseGrid uses no VPC endpoints.
-- `aws:ViaAWSService` lets AWS services act on the key's behalf, such as KMS decrypting a secret PulseGrid reads.
-- The key check simulates calls from PulseGrid's address, so a locked key checks out as it really works.
-- If PulseGrid's address changes, for example a new NAT gateway or Elastic IP, update the statement, or PulseGrid loses access to the account.
-
-Before locking a key, make sure nothing else uses it: CloudTrail shows the source address of every call it made.
+For each account, PulseGrid stores only the role ARN and the project's External ID, encrypted with `TOKEN_ENCRYPTION_KEY`. They're never returned by the API or written to logs. The account card shows the role's name.
 
 ## Sync progress
 

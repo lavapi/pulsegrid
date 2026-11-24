@@ -76,7 +76,7 @@ To look around without an AWS account, fill your new project with made-up demo d
 pnpm db:demo
 ```
 
-Demo data only goes into a project with no cloud accounts yet. The made-up accounts have no access keys, so they never sync, and after a few minutes Overview notes that they haven't synced recently.
+Demo data only goes into a project with no cloud accounts yet. The made-up accounts aren't connected, so they never sync, and after a few minutes Overview notes that they haven't synced recently.
 
 ## Documentation
 

@@ -7,10 +7,9 @@ import { awsProvider } from '../src/inventory/providers/aws/aws.provider';
 import { CLOUD_PROVIDER_LIST, type CloudProvider, type Deployment } from '../src/inventory/providers/provider';
 import { GIT_PROVIDER_LIST, type GitClient, type GitProvider } from '../src/pipelines/git/git-provider';
 import { REDIS } from '../src/redis/redis.module';
-import { signIn, startTestApp, type TestContext, type TestTenant, user } from './support/test-app';
+import { signIn, startTestApp, type TestContext, type TestTenant, user, TEST_ROLE, TEST_SESSION } from './support/test-app';
 import { newEnvironment } from '../src/inventory/environments/account-environment';
 
-const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
 const REPOSITORY = 'acme-org/api';
 const SERVICE = 'arn:aws:ecs:eu-central-1:1:service/main/api';
 const WORKFLOW = { id: 'deploy', repository: REPOSITORY, name: 'Deploy', path: '.github/workflows/deploy.yml', url: 'u' };
@@ -110,7 +109,7 @@ describe('releases', () => {
         name,
         regions: ['eu-central-1'],
         status: 'connected',
-        encrypted_credentials: context.app.get(CredentialVault).seal(row, KEY),
+        encrypted_credentials: context.app.get(CredentialVault).seal(row, TEST_ROLE),
         credential_hint: null,
         can_write: false,
         last_error: null,
@@ -202,7 +201,7 @@ describe('releases', () => {
       ['Ready', 'waiting'],
     ]);
     expect(read).toHaveBeenCalledWith(
-      expect.objectContaining({ credentials: KEY, region: 'eu-central-1' }),
+      expect.objectContaining({ credentials: TEST_SESSION, region: 'eu-central-1' }),
     );
   });
 
@@ -264,7 +263,7 @@ describe('releases', () => {
     await link(target(stagingAccount)).expect(204);
     read.mockRejectedValue(Object.assign(new Error('raw aws text'), { name: 'AccessDeniedException' }));
     const body = await overview();
-    expect(body.releases[0]!.issue).toContain('does not have permission');
+    expect(body.releases[0]!.issue).toContain("doesn't have permission");
     expect(JSON.stringify(body)).not.toContain('raw aws text');
   });
 

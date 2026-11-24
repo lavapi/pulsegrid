@@ -12,7 +12,7 @@ import type { AuthContext } from '../auth/session/auth-context';
 import { chunk } from '../common/chunk';
 import { isUniqueViolation } from '../database/errors';
 import { TenantDatabase } from '../database/tenant-database';
-import { AccountCredentials } from '../inventory/connection/account-credentials';
+import { AccountCredentials, NOT_CONNECTED } from '../inventory/connection/account-credentials';
 import { domainsByEnvironment } from '../inventory/environments/environment-domains';
 import type { Deployment } from '../inventory/providers/provider';
 import { ProviderRegistry } from '../inventory/providers/provider-registry';
@@ -25,7 +25,6 @@ const RELEASES_AT_ONCE = 6;
 const ROLLOUT_LABEL = 'the rollout';
 const DEPLOY_TYPE = 'ecs-service';
 const SERVICE_GONE = "We can't find this service any more. Sync the account, or remove this link.";
-const NO_KEY = 'This account has no access key. Add one under Integrations.';
 const TARGET_MISSING = 'That link no longer exists.';
 const TARGET_EXISTS = 'That pipeline already deploys to that service.';
 const SERVICE_MISSING = "That service isn't available. Only non-production services can be linked.";
@@ -315,7 +314,7 @@ export class ReleasesService {
       return { deployment: null, path, issue: null };
     }
     if (!credentials) {
-      return { deployment: null, path, issue: NO_KEY };
+      return { deployment: null, path, issue: NOT_CONNECTED };
     }
     const { deploymentSource } = provider;
     try {

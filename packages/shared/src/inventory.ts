@@ -87,8 +87,6 @@ export interface SyncIssue {
   message: string;
 }
 
-/** How old an access key can get before PulseGrid suggests rotating it. */
-export const KEY_ROTATION_DAYS = 90;
 
 export interface CloudAccount {
   id: string;
@@ -104,8 +102,6 @@ export interface CloudAccount {
   /** How the account is connected: a role PulseGrid assumes, or an access key. */
   credentialKind: CredentialKind;
   credentialHint: string | null;
-  /** When the key was last set; keys older than KEY_ROTATION_DAYS should be rotated. */
-  credentialsUpdatedAt: string | null;
   canWrite: boolean | null;
   tagFilter: TagFilter;
   environmentId: string | null;

@@ -170,4 +170,4 @@ For a new stack, first turn off deletion protection on the database in the RDS c
 
 For existing resources, run `terraform destroy`, then drop the `devdash` database and the `devdash_owner` and `devdash_app` roles.
 
-The runtime secret, which holds the key that encrypts stored access keys, can be restored for 7 days after a destroy. Restore it in the Secrets Manager console if you destroyed by mistake.
+The runtime secret, which holds the key that encrypts stored connections, can be restored for 7 days after a destroy. Restore it in the Secrets Manager console if you destroyed by mistake.

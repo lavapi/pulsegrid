@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Time } from '@/components/ui/time';
 import { replacementMethods, replacementText } from '@/lib/connection-methods';
-import { isKeyOld, keyAgeDays, keyAgeText } from '@/lib/key-age';
 import { WriteAccessWarning } from './credential-result';
 import { EditAccountButton } from './edit-account-button';
 import { ReplaceCredentialsButton } from './replace-credentials-button';
@@ -32,8 +31,6 @@ interface CloudAccountCardProps {
 
 export function CloudAccountCard({ account, methods, trust, regions }: CloudAccountCardProps) {
   const { label, tone } = statusOf(account);
-  const usesKey = account.hasCredentials && account.credentialKind === 'key';
-  const keyAge = usesKey ? keyAgeDays(account.credentialsUpdatedAt, Date.now()) : null;
   const details = [account.accountId, account.credentialHint, account.regions.join(', ')].filter(
     Boolean,
   );
@@ -55,21 +52,9 @@ export function CloudAccountCard({ account, methods, trust, regions }: CloudAcco
           </p>
         )}
         {account.canWrite && <WriteAccessWarning />}
-        {isKeyOld(keyAge) && (
-          <p className="text-[13px] text-warning" role="status">
-            This key is {keyAge} days old. Switch the account to a role, or rotate the key: create a new one in IAM,
-            use Replace access key, then delete the old one.
-          </p>
-        )}
-        {(account.lastSyncedAt || keyAge !== null) && (
+        {account.lastSyncedAt && (
           <p className="text-[13px] text-muted-foreground">
-            {account.lastSyncedAt && (
-              <>
-                Last synced <Time value={account.lastSyncedAt} withZone />
-              </>
-            )}
-            {account.lastSyncedAt && keyAge !== null && ' · '}
-            {keyAgeText(keyAge)}
+            Last synced <Time value={account.lastSyncedAt} withZone />
           </p>
         )}
         <div className="flex flex-wrap items-center gap-2">

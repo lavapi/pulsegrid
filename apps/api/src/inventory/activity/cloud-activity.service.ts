@@ -2,13 +2,12 @@ import type { CloudActivityPage } from '@pulsegrid/shared';
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { TenantDatabase } from '../../database/tenant-database';
-import { AccountCredentials } from '../connection/account-credentials';
+import { AccountCredentials, NOT_CONNECTED } from '../connection/account-credentials';
 import type { ActivityQuery } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 
 const ACCOUNT_MISSING = 'That cloud account is no longer connected.';
 const NOT_SUPPORTED = "This provider can't show activity yet.";
-const NO_CREDENTIALS = 'This account has no access key. Add one under Integrations.';
 
 @Injectable()
 export class CloudActivityService {
@@ -33,7 +32,7 @@ export class CloudActivityService {
     }
     const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
-      throw new ConflictException(NO_CREDENTIALS);
+      throw new ConflictException(NOT_CONNECTED);
     }
     try {
       const page = await provider.activitySource.read({ credentials, regions: account.regions }, query);

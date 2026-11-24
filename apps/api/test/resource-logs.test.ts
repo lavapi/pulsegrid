@@ -3,10 +3,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { CredentialVault } from '../src/inventory/connection/credential-vault';
 import { awsProvider } from '../src/inventory/providers/aws/aws.provider';
 import { CLOUD_PROVIDER_LIST, type CloudProvider, type LogResult } from '../src/inventory/providers/provider';
-import { setExtraPermissions, signIn, startTestApp, type TestContext, user } from './support/test-app';
+import { setExtraPermissions, signIn, startTestApp, type TestContext, user, TEST_ROLE } from './support/test-app';
 import { newEnvironment } from '../src/inventory/environments/account-environment';
 
-const KEY = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 'never-shown' };
 const LINE = { id: '1', timestamp: '2026-11-06T12:00:00.000Z', stream: 's', message: 'sensitive log line' };
 const read = vi.fn<() => Promise<LogResult>>();
 const provider: CloudProvider = {
@@ -39,7 +38,7 @@ describe('service logs', () => {
         ...row,
         name: 'Account',
         regions: ['eu-central-1'],
-        encrypted_credentials: context.app.get(CredentialVault).seal(row, KEY),
+        encrypted_credentials: context.app.get(CredentialVault).seal(row, TEST_ROLE),
         credential_hint: null,
         can_write: false,
         last_error: null,
@@ -127,7 +126,7 @@ describe('service logs', () => {
   it('shows a readable message when AWS refuses', async () => {
     read.mockRejectedValue(Object.assign(new Error('raw aws text'), { name: 'AccessDeniedException' }));
     const { body } = await logs(await addService('Staging')).expect(200);
-    expect(body.error).toContain("This key doesn't allow that");
+    expect(body.error).toContain("The account's PulseGrid role doesn't allow that");
     expect(JSON.stringify(body)).not.toContain('raw aws text');
   });
 
