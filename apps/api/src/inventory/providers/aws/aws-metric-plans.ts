@@ -38,6 +38,8 @@ export interface MetricDefinition {
   metric?: string;
   /** A CloudWatch search, for metrics whose dimensions vary, such as the CloudWatch agent's. */
   search?: string;
+  /** For a search: one line per value of this dimension, named by it, such as one per disk path. */
+  splitBy?: string;
   limit?: number;
   warnAbove?: number;
   scale?: (value: number) => number;
@@ -427,8 +429,9 @@ const ecsServicePlan = async (input: PlanInput): Promise<MetricPlan> => {
   };
 };
 
-const agentSearch = (metric: string, instanceId: string, extra = ''): string =>
-  `Namespace="CWAgent" MetricName="${metric}" InstanceId="${instanceId}"${extra}`;
+/** The agent's metric with exactly these dimensions, so the same value reported with extra ones isn't counted twice. */
+const agentSearch = (metric: string, instanceId: string, dimensions: readonly string[] = []): string =>
+  `{CWAgent,${['InstanceId', ...dimensions].join(',')}} MetricName="${metric}" InstanceId="${instanceId}"`;
 
 const withAgentNote = ({ charts, capacity }: PlanOutcome): PlanOutcome =>
   charts.some(({ id }) => id === 'memory')
@@ -444,10 +447,10 @@ const ec2InstancePlan = async (input: PlanInput): Promise<MetricPlan> => {
   const type = text(details['instanceType']);
   const [spec, disks] = await Promise.all([
     type ? instanceSpec(input, type) : null,
-    diskSizes(input, strings(details['volumeIds']), text(details['rootVolumeId'])),
+    diskSizes(input, strings(details['volumeIds'])),
   ]);
   const memorySearch = agentSearch('mem_used_percent', nativeId);
-  const diskSearch = agentSearch('disk_used_percent', nativeId, ' path="/"');
+  const diskSearch = agentSearch('disk_used_percent', nativeId, ['path']);
   return {
     namespace: EC2,
     targets: [{ label: name, dimensions: { InstanceId: nativeId } }],
@@ -456,14 +459,7 @@ const ec2InstancePlan = async (input: PlanInput): Promise<MetricPlan> => {
       spec
         ? usedOf({ id: 'memory', label: 'Memory used', search: memorySearch }, spec.memoryBytes, fromPercent(spec.memoryBytes))
         : { ...share('memory', 'Memory used', 90), search: memorySearch },
-      disks?.rootBytes
-        ? usedOf(
-            { id: 'disk', label: 'Root disk used', search: diskSearch },
-            disks.rootBytes,
-            fromPercent(disks.rootBytes),
-            STORAGE_WARN_SHARE,
-          )
-        : { ...share('disk', 'Root disk used', 85), search: diskSearch },
+      { ...share('disk', 'Disk used', STORAGE_WARN_SHARE * 100), search: diskSearch, splitBy: 'path', note: 'per disk' },
     ],
     capacity: facts([
       ['Instance type', type],

@@ -67,7 +67,7 @@ export function ResourceCard({ resource, run, load }: ResourceCardProps) {
             ))}
           </dl>
         </div>
-        {hasCardLoad(resource.type) && <CardLoad type={resource.type} charts={load} />}
+        {hasCardLoad(resource.type) && <CardLoad resource={resource} charts={load} />}
         {run && <ActivityStrip run={run} />}
       </Card>
     </Link>

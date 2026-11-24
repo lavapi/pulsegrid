@@ -304,8 +304,20 @@ describe('AWS_METRIC_SOURCE', () => {
     expect(result.capacity).toContainEqual({ label: 'Memory per task', value: '1 GB' });
   });
 
-  it('shows a server with the CloudWatch agent as used out of total memory and root disk', async () => {
-    answerAll();
+  it('shows a server with the CloudWatch agent: memory out of total, and every disk by its path', async () => {
+    cloudWatch.on(GetMetricDataCommand).callsFake(({ MetricDataQueries = [] }: { MetricDataQueries: MetricDataQuery[] }) => ({
+      MetricDataResults: MetricDataQueries.flatMap(({ Id, MetricStat, Expression, Label }) => {
+        const point = (label: string, value: number) => ({ Id, Label: label, Timestamps: [until], Values: [value] });
+        if (Expression?.includes('disk_used_percent')) {
+          expect(Label).toBe("${PROP('Dim.path')}");
+          return [point('/', 40), point('/data', 64)];
+        }
+        if (Expression?.includes('mem_used_percent')) {
+          return [point('mem_used_percent', 25)];
+        }
+        return [point(MetricStat?.Metric?.MetricName ?? '', 12)];
+      }),
+    }));
     instanceType('m5.large', 2, 8192);
     ec2.on(DescribeVolumesCommand).resolves({
       Volumes: [
@@ -315,20 +327,23 @@ describe('AWS_METRIC_SOURCE', () => {
     });
     const result = await read(
       'ec2-instance',
-      { instanceType: 'm5.large', volumeIds: ['vol-root', 'vol-data'], rootVolumeId: 'vol-root' },
+      { instanceType: 'm5.large', volumeIds: ['vol-root', 'vol-data'] },
       'api-1',
       'i-0abc12345def67890',
     );
     expect(sentQueries().flatMap(({ Expression }) => (Expression ? [Expression] : []))).toEqual([
-      `SEARCH('Namespace="CWAgent" MetricName="mem_used_percent" InstanceId="i-0abc12345def67890"', 'Average', 60)`,
-      `SEARCH('Namespace="CWAgent" MetricName="disk_used_percent" InstanceId="i-0abc12345def67890" path="/"', 'Average', 60)`,
+      `SEARCH('{CWAgent,InstanceId} MetricName="mem_used_percent" InstanceId="i-0abc12345def67890"', 'Average', 60)`,
+      `SEARCH('{CWAgent,InstanceId,path} MetricName="disk_used_percent" InstanceId="i-0abc12345def67890"', 'Average', 60)`,
     ]);
     const byId = Object.fromEntries(result.charts.map((chart) => [chart.id, chart]));
     expect(byId['cpu']).toMatchObject({ note: 'of 2 vCPUs' });
     expect(byId['memory']).toMatchObject({ total: 8 * GIB });
     expect(byId['memory']?.series[0]?.points[0]?.value).toBe(2 * GIB);
-    expect(byId['disk']).toMatchObject({ total: 30 * GIB });
-    expect(byId['disk']?.series[0]?.points[0]?.value).toBe(12 * GIB);
+    expect(byId['disk']).toMatchObject({ unit: 'percent', limit: 100, warnAbove: 85, note: 'per disk' });
+    expect(byId['disk']?.series.map(({ label, points }) => [label, points[0]?.value])).toEqual([
+      ['/', 40],
+      ['/data', 64],
+    ]);
     expect(result.capacity).toEqual([
       { label: 'Instance type', value: 'm5.large' },
       { label: 'vCPUs', value: '2' },
