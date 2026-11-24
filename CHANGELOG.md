@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-11-24
+
+### Added
+
+- EC2 cards show **CPU**, **Memory used** and the fullest **Disk used**, named by its path, in the combined card request. Without the CloudWatch agent they show CPU and say that memory and disk need the agent.
+
+### Changed
+
+- EC2 pages chart every disk the CloudWatch agent reports, one line per path, as a share of the disk, instead of only `/`. Servers whose agent reports only data disks, such as `/data`, now show them. The agent's metrics are matched on their exact dimensions, so a disk reported twice isn't counted twice.
+- Cards with several nodes name the node they show, such as "Engine CPU · Node 0002", instead of "busiest node".
+
 ## [0.29.0] - 2026-11-24
 
 ### Added

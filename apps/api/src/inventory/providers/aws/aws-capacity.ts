@@ -19,7 +19,6 @@ export interface TaskSize {
 
 export interface DiskSizes {
   totalBytes: number;
-  rootBytes: number | null;
   count: number;
 }
 
@@ -95,7 +94,6 @@ export const taskSize = async ({ credentials, region }: Lookup, taskDefinition: 
 export const diskSizes = async (
   { credentials, region }: Lookup,
   volumeIds: readonly string[],
-  rootVolumeId: string | null,
 ): Promise<DiskSizes | null> => {
   if (volumeIds.length === 0) {
     return null;
@@ -105,10 +103,8 @@ export const diskSizes = async (
       new DescribeVolumesCommand({ VolumeIds: [...volumeIds] }),
     );
     const sizeOf = (size: number | undefined) => (size ?? 0) * BYTES_PER_GIB;
-    const root = Volumes.find(({ VolumeId }) => VolumeId === rootVolumeId);
     return {
       totalBytes: Volumes.reduce((sum, { Size }) => sum + sizeOf(Size), 0),
-      rootBytes: root ? sizeOf(root.Size) : null,
       count: Volumes.length,
     };
   } catch {
