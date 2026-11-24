@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-11-24
+
 - AWS accounts now connect only through a role: access keys, the IP lock card and the key age warning are gone. Any account still on a key asks to be connected again. Run `pnpm db:migrate`.
 
 ## [0.31.0] - 2026-11-24
