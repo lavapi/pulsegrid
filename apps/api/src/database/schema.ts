@@ -268,6 +268,7 @@ export interface CloudAccountsTable {
   tag_filter: ColumnType<TagFilter, string | undefined, string>;
   provider: string;
   encrypted_credentials: string | null;
+  credential_kind: Generated<'key' | 'role'>;
   credential_hint: string | null;
   /** When the key was last set, to remind people to rotate it. */
   credentials_updated_at: Date | null;

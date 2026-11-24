@@ -105,7 +105,7 @@ export class ExperimentsService {
   }
 
   private async fromAws(target: ExperimentTarget, blockedReason: string | null): Promise<AwsExperiments> {
-    const credentials = this.gateway.credentials(target);
+    const credentials = await this.gateway.credentials(target);
     if (!credentials) {
       return { templates: [], experiments: [], error: blockedReason };
     }

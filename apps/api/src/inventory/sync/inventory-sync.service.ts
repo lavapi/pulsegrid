@@ -5,7 +5,7 @@ import { DATABASE } from '../../database/database.module';
 import type { CloudAccountRow, Database } from '../../database/schema';
 import { TenantDatabase } from '../../database/tenant-database';
 import { chunk } from '../../common/chunk';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import {
   type CloudCredentials,
   type CloudProvider,
@@ -41,7 +41,7 @@ export class InventorySyncService {
     @Inject(DATABASE) private readonly db: Kysely<Database>,
     private readonly database: TenantDatabase,
     private readonly store: ResourceStore,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
     private readonly providers: ProviderRegistry,
   ) {}
 
@@ -70,7 +70,7 @@ export class InventorySyncService {
     const account = await this.database.run(tenantId, (trx) =>
       trx.selectFrom('cloud_accounts').selectAll().where('id', '=', accountId).executeTakeFirst(),
     );
-    const credentials = account && this.vault.open(account);
+    const credentials = account && await this.accountCredentials.of(account);
     if (!account || !credentials) {
       return;
     }

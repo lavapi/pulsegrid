@@ -1,3 +1,4 @@
+import type { CredentialKind } from './cloud-providers';
 import type { TagFilter } from './tag-filter';
 import type { HealthCounts } from './environments';
 import {
@@ -100,6 +101,8 @@ export interface CloudAccount {
   lastSyncedAt: string | null;
   syncIssues: SyncIssue[];
   hasCredentials: boolean;
+  /** How the account is connected: a role PulseGrid assumes, or an access key. */
+  credentialKind: CredentialKind;
   credentialHint: string | null;
   /** When the key was last set; keys older than KEY_ROTATION_DAYS should be rotated. */
   credentialsUpdatedAt: string | null;

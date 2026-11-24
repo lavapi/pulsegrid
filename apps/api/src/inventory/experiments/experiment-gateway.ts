@@ -3,7 +3,7 @@ import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundExce
 import { AuditService } from '../../audit/audit.service';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { TenantDatabase } from '../../database/tenant-database';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import type { CloudCredentials, ExperimentContext, ExperimentSource } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { experimentAccess, NO_CREDENTIALS } from './experiment-access';
@@ -34,7 +34,7 @@ export class ExperimentGateway {
   constructor(
     private readonly database: TenantDatabase,
     private readonly providers: ProviderRegistry,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
     private readonly audit: AuditService,
     private readonly starter: ExperimentStarter,
   ) {}
@@ -59,8 +59,8 @@ export class ExperimentGateway {
     }
   }
 
-  credentials(target: ExperimentTarget): CloudCredentials | null {
-    return this.vault.open(target.account);
+  async credentials(target: ExperimentTarget): Promise<CloudCredentials | null> {
+    return await this.accountCredentials.of(target.account);
   }
 
   async call<T>(
@@ -71,7 +71,7 @@ export class ExperimentGateway {
     if (!target.account.regions.includes(region)) {
       throw new NotFoundException(REGION_MISSING);
     }
-    const credentials = this.credentials(target);
+    const credentials = await this.credentials(target);
     if (!credentials) {
       throw new ConflictException(NO_CREDENTIALS);
     }

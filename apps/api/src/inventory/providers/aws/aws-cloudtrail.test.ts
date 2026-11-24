@@ -1,7 +1,7 @@
 import { CloudTrailClient, LookupEventsCommand } from '@aws-sdk/client-cloudtrail';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { actionLabel, actorOf, AWS_ACTIVITY_SOURCE } from './aws-cloudtrail';
+import { actionLabel, actorOf, AWS_ACTIVITY_SOURCE, byPulseGrid } from './aws-cloudtrail';
 
 const trail = mockClient(CloudTrailClient);
 const context = {
@@ -93,3 +93,23 @@ describe('AWS_ACTIVITY_SOURCE', () => {
     expect(events[0]?.actor).toBe('alex');
   });
 });
+
+describe('byPulseGrid', () => {
+  const ROLE_ARN = 'arn:aws:iam::210987654321:role/PulseGridAccess';
+  const key = { accessKeyId: 'AKIAABCDEFGHIJKLMNOP', secretAccessKey: 's' };
+  const role = { accessKeyId: 'ASIANOWNOWNOWNOWNOW1', secretAccessKey: 's', sessionToken: 't', roleArn: ROLE_ARN };
+
+  it("knows PulseGrid's key", () => {
+    expect(byPulseGrid({ accessKeyId: 'AKIAABCDEFGHIJKLMNOP' }, key)).toBe(true);
+    expect(byPulseGrid({ accessKeyId: 'AKIASOMEONEELSE00000' }, key)).toBe(false);
+  });
+
+  it("knows any session of PulseGrid's role, not only the current one", () => {
+    const earlier = { accessKeyId: 'ASIAANHOURAGO0000000', sessionContext: { sessionIssuer: { arn: ROLE_ARN } } };
+    expect(byPulseGrid(earlier, role)).toBe(true);
+    const otherRole = { accessKeyId: 'ASIAOTHER00000000000', sessionContext: { sessionIssuer: { arn: `${ROLE_ARN}2` } } };
+    expect(byPulseGrid(otherRole, role)).toBe(false);
+    expect(byPulseGrid(undefined, role)).toBe(false);
+  });
+});
+

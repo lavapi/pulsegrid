@@ -2,7 +2,7 @@ import type { CloudActivityPage } from '@pulsegrid/shared';
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { TenantDatabase } from '../../database/tenant-database';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import type { ActivityQuery } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 
@@ -17,7 +17,7 @@ export class CloudActivityService {
   constructor(
     private readonly database: TenantDatabase,
     private readonly providers: ProviderRegistry,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
   ) {}
 
   async read(auth: AuthContext, accountId: string, query: ActivityQuery): Promise<CloudActivityPage> {
@@ -31,7 +31,7 @@ export class CloudActivityService {
     if (!provider.activitySource) {
       throw new ConflictException(NOT_SUPPORTED);
     }
-    const credentials = this.vault.open(account);
+    const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
       throw new ConflictException(NO_CREDENTIALS);
     }

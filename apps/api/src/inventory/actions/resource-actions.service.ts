@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
 import { isUniqueViolation } from '../../database/errors';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { ResourceAccess } from '../resources/resource-access';
 import { ActionQueue } from './action-queue';
@@ -29,7 +29,7 @@ export class ResourceActionsService {
   constructor(
     private readonly access: ResourceAccess,
     private readonly providers: ProviderRegistry,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
     private readonly runs: ActionRunStore,
     private readonly queue: ActionQueue,
   ) {}
@@ -66,7 +66,7 @@ export class ResourceActionsService {
       await this.access.record(auth, 'access.denied', resource.id, ipAddress, metadata);
       throw new ForbiddenException(blockedReason);
     }
-    const credentials = this.vault.open(account);
+    const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
       throw new ConflictException(NO_CREDENTIALS);
     }

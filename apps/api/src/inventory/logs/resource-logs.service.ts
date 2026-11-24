@@ -1,7 +1,7 @@
 import { type LogAccess, type LogView, LOG_RANGES } from '@pulsegrid/shared';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { AuthContext } from '../../auth/session/auth-context';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { ResourceAccess } from '../resources/resource-access';
 import { LogReads } from './log-reads';
@@ -37,7 +37,7 @@ export class ResourceLogsService {
   constructor(
     private readonly access: ResourceAccess,
     private readonly providers: ProviderRegistry,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
     private readonly views: LogReads,
   ) {}
 
@@ -57,7 +57,7 @@ export class ResourceLogsService {
     if (!access.allowed) {
       return empty(access);
     }
-    const credentials = this.vault.open(account);
+    const credentials = await this.accountCredentials.of(account);
     if (!credentials) {
       return empty(access, NO_CREDENTIALS);
     }

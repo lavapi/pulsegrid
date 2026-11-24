@@ -3,7 +3,7 @@ import type { Kysely } from 'kysely';
 import { DATABASE } from '../../database/database.module';
 import type { CloudAccountRow, Database } from '../../database/schema';
 import { TenantDatabase } from '../../database/tenant-database';
-import { CredentialVault } from '../connection/credential-vault';
+import { AccountCredentials } from '../connection/account-credentials';
 import type { CostEntry, CostSource } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
 import { costPeriod, currentMonth, previousMonth } from './cost-months';
@@ -25,7 +25,7 @@ export class CostRefreshService {
   constructor(
     @Inject(DATABASE) private readonly db: Kysely<Database>,
     private readonly database: TenantDatabase,
-    private readonly vault: CredentialVault,
+    private readonly accountCredentials: AccountCredentials,
     private readonly providers: ProviderRegistry,
   ) {}
 
@@ -48,7 +48,7 @@ export class CostRefreshService {
 
   private async refreshAccount(tenantId: string, account: CloudAccountRow, now: Date): Promise<void> {
     const source = this.providers.get(account.provider).costSource;
-    const credentials = this.vault.open(account);
+    const credentials = await this.accountCredentials.of(account);
     if (!source || !credentials) {
       return;
     }

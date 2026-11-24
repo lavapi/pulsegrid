@@ -1,10 +1,38 @@
 # Connect AWS accounts
 
-The dashboard reads each AWS account with an access key. Admins add keys under **Settings > Integrations > AWS**, with one key for each account. To add another cloud, see [cloud-providers.md](cloud-providers.md).
+The dashboard reads each AWS account through a **role** in that account, which PulseGrid takes on with its own ECS task role. Nothing secret is stored, the credentials last an hour and renew themselves, and access ends when you delete the role. An IAM user's access key still works for accounts that can't use a role. Admins connect accounts under **Settings > Integrations > AWS**. To add another cloud, see [cloud-providers.md](cloud-providers.md).
 
 Everyone in the project sees its connected accounts. Dashboard roles control what people can do, not which accounts they see.
 
+## Create a role (recommended)
+
+1. Open **Settings > Integrations > AWS** and choose **Role**. The page shows this project's **External ID** and the role's **trust policy**, ready to copy.
+2. In the AWS account, create a role, `PulseGridAccess` for example, with that trust policy. It lets only PulseGrid's task roles take on the role, and only with this project's External ID:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Principal": { "AWS": ["<PulseGrid API task role ARN>", "<PulseGrid worker task role ARN>"] },
+         "Action": "sts:AssumeRole",
+         "Condition": { "StringEquals": { "sts:ExternalId": "<External ID from the page>" } }
+       }
+     ]
+   }
+   ```
+
+3. Attach the [PulseGrid policy](#the-pulsegrid-policy) to the role.
+4. Copy the role's ARN into the page and select **Test role**.
+
+The External ID is the same for every account in a project and different in every other project, so another PulseGrid project can't be pointed at your role. It's derived from `TOKEN_ENCRYPTION_KEY`; changing that key changes it.
+
+PulseGrid's task roles each need `sts:AssumeRole` on the roles it takes on, for example `arn:aws:iam::*:role/PulseGridAccess`. Set `PULSEGRID_TASK_ROLE_ARNS` on the API to their ARNs, separated by commas, so the page shows the exact trust policy. In CloudTrail, PulseGrid's calls appear as sessions of the role named `pulsegrid`.
+
 ## Create a key
+
+Use a key only where a role isn't possible.
 
 1. In the AWS account, create a dedicated IAM user for the dashboard. Don't use a personal user or an admin user.
 2. Attach the [PulseGrid policy](#the-pulsegrid-policy), which is also shown on the **AWS** integration page. Every account uses the same policy, production included. It allows the list and describe actions, logs and costs PulseGrid reads, and the actions it can take: force deploys, reboots, failover tests and app secret values. It can't read S3 files or create or delete resources. Who can take which action, in staging and in production, is set by roles in PulseGrid.
@@ -135,12 +163,12 @@ Pipelines use a GitHub token rather than AWS. It needs **Actions: Read and write
 ## Add the account
 
 1. Go to **Settings > Integrations > AWS**.
-2. Enter a name, the Access Key ID and the Secret Access Key.
+2. Enter a name, then the role ARN, or for a key, the Access Key ID and the Secret Access Key.
 3. Choose an environment and the regions to read.
-4. Select **Test credentials**. The page shows the account the key belongs to and which services it can read.
+4. Select **Test role** or **Test credentials**. The page shows the account and which services it can read. A role PulseGrid can't take on is refused with what to check in its trust policy.
 5. Select **Save integration**. The first sync starts straight away.
 
-Testing a key lists any actions from the PulseGrid policy that it lacks, because the pages and actions that need them won't work. If a key can delete or create resources, the page also shows a warning, because PulseGrid never needs that. Both checks need `iam:SimulatePrincipalPolicy`, which is in the policy. Without it, PulseGrid can't tell.
+Testing a role or key lists any actions from the PulseGrid policy that it lacks, because the pages and actions that need them won't work. If a key can delete or create resources, the page also shows a warning, because PulseGrid never needs that. Both checks need `iam:SimulatePrincipalPolicy`, which is in the policy. Without it, PulseGrid can't tell.
 
 An account that already has data but no key shows **Needs credentials**. It keeps its data but stops syncing. Adding a key for the same AWS account takes it over and keeps its resources and environment.
 
@@ -345,16 +373,24 @@ Writing adds, edits or deletes one key and saves a new version in AWS. **Edit** 
 - A secret encrypted with its own KMS key must also allow the IAM user.
 - Running services usually read secrets when they start, so force deploy them after a change.
 
+## Switch an account from a key to a role
+
+1. Create the role as in [Create a role](#create-a-role-recommended).
+2. Select **Switch to a role** on the account's card, and enter the role ARN. It must be in the same AWS account.
+3. PulseGrid checks the role, then replaces the stored key with the role. Delete the access key, and the IAM user if nothing else uses it, in AWS.
+
 ## How keys are stored
 
-Secrets are encrypted with AES-256-GCM using `TOKEN_ENCRYPTION_KEY`. They're never returned by the API and never written to logs or the audit log. The dashboard only shows a masked Access Key ID, such as `AKIA…MNOP`.
+A role connection stores only the role ARN and External ID. For keys, secrets are encrypted with AES-256-GCM using `TOKEN_ENCRYPTION_KEY`. They're never returned by the API and never written to logs or the audit log. The dashboard only shows a masked Access Key ID, such as `AKIA…MNOP`.
 
 If you lose `TOKEN_ENCRYPTION_KEY`, stored keys can't be read, and you'll need to add them again.
 
 ## Rotate a key
 
+Better still, switch the account to a role, which needs no rotation.
+
 1. Create a second access key on the IAM user.
-2. Select **Replace credentials** on the account, and enter the new key. It must belong to the same AWS account.
+2. Select **Replace access key** on the account, and enter the new key. It must belong to the same AWS account.
 3. Delete the old key in AWS. The dashboard can't do this for you.
 
 Each account's card shows how old its key is. From 90 days, the card asks you to rotate it.
