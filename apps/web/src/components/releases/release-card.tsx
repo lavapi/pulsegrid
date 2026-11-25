@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { domainLinkLabel } from '@/lib/domains';
 import { appPath, runPath } from '@/lib/pipelines';
-import { RELEASE_STATES } from '@/lib/releases';
+import { releaseStateView } from '@/lib/releases';
 import { RemoveLinkButton } from './remove-link-button';
 import { StageLine } from './stage-line';
 
@@ -23,10 +23,16 @@ function RunSummary({ release: { pipelineName, run } }: { release: Release }) {
   );
 }
 
-export function ReleaseCard({ release, canManage }: { release: Release; canManage: boolean }) {
+interface ReleaseCardProps {
+  release: Release;
+  canManage: boolean;
+  production: boolean;
+}
+
+export function ReleaseCard({ release, canManage, production }: ReleaseCardProps) {
   const { appId, appName, serviceName, serviceDisplayName, environmentName, run, state, stages } = release;
   const { readyAt, matchedBy, issue, servicePath, appDomains } = release;
-  const view = RELEASE_STATES[state];
+  const view = releaseStateView(state, production);
   return (
     <Card className="px-5 py-4">
       <div className="flex flex-wrap items-center gap-2">

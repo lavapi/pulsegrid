@@ -91,8 +91,12 @@ describe('releases', () => {
   });
   const link = (body: object, cookie = admin) =>
     http().post('/api/releases/targets').set('Cookie', cookie).send(body);
-  const overview = async (cookie = admin) =>
-    ((await http().get('/api/releases').set('Cookie', cookie).expect(200)) as { body: ReleasesOverview }).body;
+  const list = (accountId: string, cookie = admin) =>
+    http().get(`/api/releases?account=${accountId}`).set('Cookie', cookie);
+  const overview = async (cookie = admin, accountId = stagingAccount) =>
+    ((await list(accountId, cookie).expect(200)) as { body: ReleasesOverview }).body;
+  const choices = (accountId: string, cookie = admin) =>
+    http().get(`/api/releases/choices?account=${accountId}`).set('Cookie', cookie);
 
   const addAccount = async ({ tenant }: TestTenant, name: string, environment: string): Promise<string> => {
     const row = { tenant_id: tenant.id, provider: 'aws', account_id: `5000${name}` };
@@ -235,22 +239,53 @@ describe('releases', () => {
     await link(target(stagingAccount), viewer).expect(403);
     await link(target(stagingAccount)).expect(204);
     expect((await overview(viewer)).releases).toHaveLength(1);
-    await http().get('/api/releases/choices').set('Cookie', viewer).expect(403);
+    await choices(stagingAccount, viewer).expect(403);
     const { id } = await context.owner.selectFrom('release_targets').select('id').executeTakeFirstOrThrow();
     await http().delete(`/api/releases/targets/${id}`).set('Cookie', viewer).expect(403);
     await http().delete(`/api/releases/targets/${id}`).set('Cookie', admin).expect(204);
     expect((await overview()).releases).toEqual([]);
   });
 
-  it('offers and accepts non-production services only', async () => {
-    const { body } = (await http().get('/api/releases/choices').set('Cookie', admin).expect(200)) as {
-      body: ReleaseChoices;
-    };
-    expect(body.pipelines).toEqual([{ appId, workflowId: 'deploy', label: 'api: Deploy' }]);
-    expect(body.services).toEqual([
+  it("offers only the account's own services, production included", async () => {
+    const staging = (await choices(stagingAccount).expect(200)) as { body: ReleaseChoices };
+    expect(staging.body.pipelines).toEqual([{ appId, workflowId: 'deploy', label: 'api: Deploy' }]);
+    expect(staging.body.services).toEqual([
       { accountId: stagingAccount, nativeId: SERVICE, label: 'api', description: 'Staging · main' },
     ]);
-    await link(target(productionAccount)).expect(404);
+    const production = (await choices(productionAccount).expect(200)) as { body: ReleaseChoices };
+    expect(production.body.services).toEqual([
+      { accountId: productionAccount, nativeId: SERVICE, label: 'api', description: 'Production · main' },
+    ]);
+  });
+
+  it('shows a link only on the account of its service', async () => {
+    await link(target(productionAccount)).expect(204);
+    expect((await overview(admin, productionAccount)).releases).toMatchObject([{ environmentName: 'Production' }]);
+    expect((await overview(admin, stagingAccount)).releases).toEqual([]);
+
+    await link(target(stagingAccount)).expect(204);
+    expect((await overview(admin, stagingAccount)).releases).toMatchObject([{ environmentName: 'Staging' }]);
+    expect((await overview(admin, productionAccount)).releases).toHaveLength(1);
+  });
+
+  it('refuses a service that runs in another account', async () => {
+    await context.owner
+      .updateTable('resources')
+      .set({ native_id: 'arn:production-only' })
+      .where('cloud_account_id', '=', productionAccount)
+      .execute();
+    const { body } = await link(target(stagingAccount, 'arn:production-only')).expect(404);
+    expect(body.message).toBe("That service isn't in this account.");
+    await context.owner
+      .updateTable('resources')
+      .set({ native_id: SERVICE })
+      .where('cloud_account_id', '=', productionAccount)
+      .execute();
+  });
+
+  it('asks which account to show', async () => {
+    const { body } = await http().get('/api/releases').set('Cookie', admin).expect(400);
+    expect(body.message).toBe('Choose an account to see its releases.');
   });
 
   it('refuses a duplicate link and a pipeline that does not exist', async () => {
@@ -285,7 +320,7 @@ describe('releases', () => {
 
   it('stays inside the workspace', async () => {
     await link(target(stagingAccount)).expect(204);
-    expect((await overview(other)).configured).toBe(false);
+    await list(stagingAccount, other).expect(404);
     await link(target(stagingAccount), other).expect(404);
   });
 });

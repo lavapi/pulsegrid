@@ -54,7 +54,7 @@ describe('selectableAccounts', () => {
 });
 
 describe('followsAccountSwitcher', () => {
-  it.each(['/', '/infrastructure', '/infrastructure/ecs', '/pipelines'])('includes %s', (path) => {
+  it.each(['/', '/infrastructure', '/infrastructure/ecs', '/pipelines', '/releases'])('includes %s', (path) => {
     expect(followsAccountSwitcher(path)).toBe(true);
   });
 
