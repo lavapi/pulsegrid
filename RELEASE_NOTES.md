@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-11-25
+
 - Staging and production have separate releases: the Releases page shows only the selected account's, and you can now link production services.
 
 ## [0.32.0] - 2026-11-24
