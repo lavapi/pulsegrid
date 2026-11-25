@@ -32,7 +32,7 @@ export function LinkServiceButton({ choices }: { choices: ReleaseChoices }) {
         </Button>
       }
       title="Link a pipeline to a service"
-      description="Choose a pipeline and the ECS service it deploys to. Only non-production services are listed."
+      description="Choose a pipeline and the ECS service it deploys to. Only services in the selected account are listed, and the link shows only there."
       confirmLabel="Link"
       canConfirm={pipeline !== '' && service !== ''}
       pending={pending}
@@ -55,7 +55,7 @@ export function LinkServiceButton({ choices }: { choices: ReleaseChoices }) {
         <SearchableList
           label="Deploys to"
           placeholder="Search services"
-          emptyMessage="No non-production ECS services found"
+          emptyMessage="No ECS services found in this account"
           options={choices.services.map(({ accountId, nativeId, label, description }) => ({
             value: encodeChoice(accountId, nativeId),
             label,

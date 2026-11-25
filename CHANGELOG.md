@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-11-25
+
+### Changed
+
+- Releases follows the account switcher and shows only the selected account's releases. A link belongs to the account of its service, and the link dialog offers only that account's services. `GET /api/releases` and `/api/releases/choices` now need `account`.
+- Production services can be linked too. A finished production release shows **Ready** instead of **Ready for testing**.
+
 ## [0.32.0] - 2026-11-24
 
 ### Removed
