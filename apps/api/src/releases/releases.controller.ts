@@ -8,6 +8,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
@@ -19,6 +20,8 @@ import { ZodPipe } from '../common/zod.pipe';
 import { ReleasesService } from './releases.service';
 
 const INVALID_TARGET = 'Choose a pipeline and a service.';
+const INVALID_ACCOUNT = 'Choose an account to see its releases.';
+const accountSchema = z.object({ account: z.string().uuid() });
 const linkSchema = z.object({
   appId: z.string().uuid(),
   workflowId: z.string().regex(/^[\w-]{1,100}$/),
@@ -31,14 +34,20 @@ export class ReleasesController {
   constructor(private readonly releases: ReleasesService) {}
 
   @Get()
-  overview(@CurrentAuth() auth: AuthContext): Promise<ReleasesOverview> {
-    return this.releases.overview(auth.tenantId);
+  overview(
+    @CurrentAuth() auth: AuthContext,
+    @Query(new ZodPipe(accountSchema, INVALID_ACCOUNT)) { account }: z.infer<typeof accountSchema>,
+  ): Promise<ReleasesOverview> {
+    return this.releases.overview(auth.tenantId, account);
   }
 
   @Get('choices')
   @RequirePermission('pipeline_apps.manage')
-  choices(@CurrentAuth() auth: AuthContext): Promise<ReleaseChoices> {
-    return this.releases.choices(auth.tenantId);
+  choices(
+    @CurrentAuth() auth: AuthContext,
+    @Query(new ZodPipe(accountSchema, INVALID_ACCOUNT)) { account }: z.infer<typeof accountSchema>,
+  ): Promise<ReleaseChoices> {
+    return this.releases.choices(auth.tenantId, account);
   }
 
   @Post('targets')

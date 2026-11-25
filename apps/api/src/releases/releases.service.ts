@@ -27,7 +27,8 @@ const DEPLOY_TYPE = 'ecs-service';
 const SERVICE_GONE = "We can't find this service any more. Sync the account, or remove this link.";
 const TARGET_MISSING = 'That link no longer exists.';
 const TARGET_EXISTS = 'That pipeline already deploys to that service.';
-const SERVICE_MISSING = "That service isn't available. Only non-production services can be linked.";
+const SERVICE_MISSING = "That service isn't in this account.";
+const ACCOUNT_MISSING = 'That cloud account is no longer connected.';
 const PIPELINE_MISSING = 'That pipeline no longer exists.';
 const GIT_FAILED = "We couldn't read this pipeline just now.";
 
@@ -74,11 +75,13 @@ export class ReleasesService {
     private readonly audit: AuditService,
   ) {}
 
-  async overview(tenantId: string): Promise<ReleasesOverview> {
+  /** The releases of one account; each link belongs to the account of its service. */
+  async overview(tenantId: string, accountId: string): Promise<ReleasesOverview> {
+    await this.requireAccount(tenantId, accountId);
     if (!(await this.pipelines.isConnected(tenantId))) {
       return { configured: false, releases: [] };
     }
-    const { targets, domains } = await this.targets(tenantId);
+    const { targets, domains } = await this.targets(tenantId, accountId);
     const appDomains = ({ environment_id: id }: TargetRow): EnvironmentDomain[] =>
       (id ? (domains.get(id) ?? []) : []).filter(({ kind }) => kind === 'app');
     const releases: Release[] = [];
@@ -90,14 +93,15 @@ export class ReleasesService {
     return { configured: true, releases: newestFirst(releases) };
   }
 
-  async choices(tenantId: string): Promise<ReleaseChoices> {
+  async choices(tenantId: string, accountId: string): Promise<ReleaseChoices> {
+    await this.requireAccount(tenantId, accountId);
     const [pipelines, services] = await Promise.all([
       this.pipelines.pipelineChoices(tenantId),
-      this.serviceChoices(tenantId),
+      this.serviceChoices(tenantId, accountId),
     ]);
     return {
       pipelines,
-      services: services.map(({ accountId, nativeId, name, displayName, cluster, environment }) => ({
+      services: services.map(({ nativeId, name, displayName, cluster, environment }) => ({
         accountId,
         nativeId,
         label: displayName ?? name,
@@ -111,10 +115,8 @@ export class ReleasesService {
     if (!pipelines.some(({ appId, workflowId }) => appId === target.appId && workflowId === target.workflowId)) {
       throw new NotFoundException(PIPELINE_MISSING);
     }
-    const services = await this.serviceChoices(auth.tenantId);
-    const service = services.find(
-      ({ accountId, nativeId }) => accountId === target.accountId && nativeId === target.nativeId,
-    );
+    const services = await this.serviceChoices(auth.tenantId, target.accountId);
+    const service = services.find(({ nativeId }) => nativeId === target.nativeId);
     if (!service) {
       throw new NotFoundException(SERVICE_MISSING);
     }
@@ -174,7 +176,19 @@ export class ReleasesService {
     });
   }
 
-  private targets(tenantId: string): Promise<{ targets: TargetRow[]; domains: Map<string, EnvironmentDomain[]> }> {
+  private async requireAccount(tenantId: string, accountId: string): Promise<void> {
+    const account = await this.database.run(tenantId, (trx) =>
+      trx.selectFrom('cloud_accounts').select('id').where('id', '=', accountId).executeTakeFirst(),
+    );
+    if (!account) {
+      throw new NotFoundException(ACCOUNT_MISSING);
+    }
+  }
+
+  private targets(
+    tenantId: string,
+    accountId: string,
+  ): Promise<{ targets: TargetRow[]; domains: Map<string, EnvironmentDomain[]> }> {
     return this.database.run(tenantId, async (trx) => ({
       domains: await domainsByEnvironment(trx),
       targets: await trx
@@ -199,11 +213,12 @@ export class ReleasesService {
           'environments.id as environment_id',
           'environments.name as environment_name',
         ])
+        .where('release_targets.cloud_account_id', '=', accountId)
         .execute(),
     }));
   }
 
-  private async serviceChoices(tenantId: string) {
+  private async serviceChoices(tenantId: string, accountId: string) {
     const rows = await this.database.run(tenantId, (trx) =>
       trx
         .selectFrom('resources')
@@ -215,7 +230,6 @@ export class ReleasesService {
             .onRef('resource_display_names.native_id', '=', 'resources.native_id'),
         )
         .select([
-          'resources.cloud_account_id',
           'resources.native_id',
           'resources.name',
           'resource_display_names.display_name',
@@ -223,20 +237,18 @@ export class ReleasesService {
           'environments.name as environment_name',
         ])
         .where('resources.type', '=', DEPLOY_TYPE)
-        .where('environments.is_production', '=', false)
+        .where('resources.cloud_account_id', '=', accountId)
         .orderBy('resources.name')
         .execute(),
     );
     return rows.map(
       ({
-        cloud_account_id: accountId,
         native_id: nativeId,
         name,
         display_name: displayName,
         details,
         environment_name: environment,
       }) => ({
-        accountId,
         nativeId,
         name,
         displayName,

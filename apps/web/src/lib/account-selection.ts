@@ -23,7 +23,6 @@ const UNSCOPED_PATHS = [
   '/costs',
   '/environments',
   '/production-releases',
-  '/releases',
   '/settings',
 ];
 
@@ -31,7 +30,6 @@ const UNSCOPED_PATHS = [
 const SCOPE_LABELS: [path: string, label: string][] = [
   ['/costs', 'Across all your accounts'],
   ['/environments', 'Across all your accounts'],
-  ['/releases', 'Across all your accounts'],
   ['/production-releases', 'Production account'],
 ];
 

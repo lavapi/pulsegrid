@@ -46,9 +46,9 @@ The Pipelines page follows the account switcher. An account in Staging shows Sta
 
 ## Releases
 
-**Releases** shows each change from build to ready for testing, in one line per app. Everyone can see it. It refreshes every 5 seconds while something is moving. It only shows progress, so there are no deploy buttons here.
+**Releases** shows each change in the selected account from build to ready, in one line per app. Staging and production each show only their own: a link belongs to the account of its service. Everyone can see it. It refreshes every 5 seconds while something is moving. It only shows progress, so there are no deploy buttons here.
 
-To add a line, people whose role has **Manage pipeline apps** select **Link a service**, then choose a pipeline and the ECS service it deploys to. Only non-production services are listed for now. EC2 servers and production aren't covered yet.
+To add a line, people whose role has **Manage pipeline apps** select **Link a service**, then choose a pipeline and the ECS service it deploys to. Only services in the selected account are listed, production included. EC2 servers aren't covered yet.
 
 Build, Test and Image come from the jobs of the latest run, or from its steps if the pipeline has a single job. They're sorted by name, so a job called `unit-tests` counts as Test and one called `push-image` counts as Image. Anything else counts as Build, and a stage with nothing in it isn't shown.
 

@@ -12,6 +12,12 @@ export const RELEASE_STATES: Record<ReleaseState, { label: string; tone: Tone }>
   not_deployed: { label: 'Not deployed', tone: 'warning' },
 };
 
+/** What "ready" means depends on the environment: staging is for testing, production is not. */
+export const readyLabel = (production: boolean): string => (production ? 'Ready' : RELEASE_STATES.ready.label);
+
+export const releaseStateView = (state: ReleaseState, production: boolean): { label: string; tone: Tone } =>
+  state === 'ready' ? { ...RELEASE_STATES.ready, label: readyLabel(production) } : RELEASE_STATES[state];
+
 export const releaseCounts = (releases: readonly Release[]) => ({
   inProgress: releases.filter(({ state }) => isActiveRelease(state)).length,
   ready: releases.filter(({ state }) => state === 'ready').length,
