@@ -1,0 +1,6 @@
+region         = "eu-central-1"
+domain_name    = "push.example.com"
+apns_key_id    = "ABC123DEFG"
+apns_team_id   = "TEAM123456"
+apns_bundle_id = "com.example.app"
+budget_email   = "ops@example.com"

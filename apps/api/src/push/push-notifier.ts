@@ -1,8 +1,8 @@
+import type { PushMessage, PushSender } from '@pulsegrid/push';
 import type { UserPermission } from '@pulsegrid/shared';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'kysely';
 import { TenantDatabase } from '../database/tenant-database';
-import type { ApnsClient, PushMessage } from './apns-client';
 import { PushDevicesStore } from './push-devices.store';
 
 export const APNS_CLIENT = Symbol('APNS_CLIENT');
@@ -16,7 +16,7 @@ export class PushNotifier {
   private readonly logger = new Logger(PushNotifier.name);
 
   constructor(
-    @Inject(APNS_CLIENT) private readonly apns: ApnsClient | null,
+    @Inject(APNS_CLIENT) private readonly apns: PushSender | null,
     private readonly devices: PushDevicesStore,
     private readonly database: TenantDatabase,
   ) {}

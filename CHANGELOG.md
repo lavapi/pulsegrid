@@ -20,10 +20,12 @@ All notable changes to this project are documented in this file. The format is b
 - Push notifications through Apple's push service, for database access requests and their answers, and for production releases waiting for a decision. Phones register with `PUT /api/devices/push`. They're sent when `APNS_TEAM_ID`, `APNS_KEY_ID`, `APNS_BUNDLE_ID` and `APNS_PRIVATE_KEY` are set.
 - Sign-in, Google included, can return to a page on this site with `?next=`.
 - Migration 0046 adds the app's sessions, sign-in codes and push devices. Run `pnpm db:migrate`.
+- The push relay in `apps/push-relay`, with its Terraform in `infra/terraform/push-relay`: a small Lambda behind API Gateway that sends notifications to the iPhone app for servers without their own Apple key. Each server registers itself once (`POST /v1/installations`) and sends with its own secret (`POST /v1/notifications`), up to a daily limit. It keeps no notification text. See `docs/push-relay.md`.
 
 ### Changed
 
 - A test builds the whole worker, so a job missing a dependency fails the tests instead of a deploy.
+- The Apple push code moved to the new `packages/push` package, shared by the API and the relay. The API image builds it first.
 
 ## [0.36.0] - 2026-11-26
 

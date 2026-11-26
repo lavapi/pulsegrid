@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { PushEnvironment } from '@pulsegrid/push';
 import type { Kysely } from 'kysely';
 import { DATABASE } from '../database/database.module';
-import type { Database, PushEnvironment } from '../database/schema';
+import type { Database } from '../database/schema';
 
 export interface PushDevice {
   id: string;
