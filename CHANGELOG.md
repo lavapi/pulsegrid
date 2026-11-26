@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- Signing in from the iPhone app: the app opens the usual sign-in page in the system browser, which hands it a one-time code at `pulsegrid://signed-in`. The app swaps the code, with its PKCE secret, for its own token (`POST /api/auth/device/codes`, `POST /api/auth/device/token`). The API accepts that token as `Authorization: Bearer`. App sign-ins last 30 days from their last use.
+- **Your account → Devices** lists phones signed in to the app, with **Sign out** (`GET` and `DELETE /api/account/devices`).
+- Push notifications through Apple's push service, for database access requests and their answers, and for production releases waiting for a decision. Phones register with `PUT /api/devices/push`. They're sent when `APNS_TEAM_ID`, `APNS_KEY_ID`, `APNS_BUNDLE_ID` and `APNS_PRIVATE_KEY` are set.
+- Sign-in, Google included, can return to a page on this site with `?next=`.
+- Migration 0046 adds the app's sessions, sign-in codes and push devices. Run `pnpm db:migrate`.
+
+### Changed
+
+- A test builds the whole worker, so a job missing a dependency fails the tests instead of a deploy.
+
 ## [0.36.0] - 2026-11-26
 
 ### Added

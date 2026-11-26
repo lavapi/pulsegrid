@@ -8,15 +8,16 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { GoogleButton, OrDivider } from './google-button';
 import { useAuthAction } from './use-auth-action';
 
-const goHome = () => window.location.assign('/');
+/** Where sign-in goes once it's done: home, or the page that asked, such as the iPhone app's hand-off. */
+const goTo = (next: string) => () => window.location.assign(next);
 
-function TwoFactorForm() {
+function TwoFactorForm({ next }: { next: string }) {
   const { pending, post } = useAuthAction();
   const [code, setCode] = useState('');
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    post('/auth/two-factor', { code }, goHome);
+    post('/auth/two-factor', { code }, goTo(next));
   };
 
   return (
@@ -41,9 +42,11 @@ function TwoFactorForm() {
 export function SignInForm({
   google,
   initialTwoFactor,
+  next = '/',
 }: {
   google: boolean;
   initialTwoFactor: boolean;
+  next?: string;
 }) {
   const { pending, post } = useAuthAction();
   const [email, setEmail] = useState('');
@@ -51,7 +54,7 @@ export function SignInForm({
   const [twoFactor, setTwoFactor] = useState(initialTwoFactor);
 
   if (twoFactor) {
-    return <TwoFactorForm />;
+    return <TwoFactorForm next={next} />;
   }
 
   const submit = (event: FormEvent) => {
@@ -60,7 +63,7 @@ export function SignInForm({
       if (twoFactorRequired) {
         setTwoFactor(true);
       } else {
-        goHome();
+        goTo(next)();
       }
     });
   };
@@ -69,7 +72,7 @@ export function SignInForm({
     <>
       {google && (
         <>
-          <GoogleButton />
+          <GoogleButton next={next} />
           <OrDivider />
         </>
       )}

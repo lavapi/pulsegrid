@@ -1,9 +1,10 @@
 import { Button } from '@/components/ui/button';
 
-export function GoogleButton() {
+export function GoogleButton({ next = '/' }: { next?: string }) {
+  const href = next === '/' ? '/api/auth/google' : `/api/auth/google?next=${encodeURIComponent(next)}`;
   return (
     <Button asChild className="w-full">
-      <a href="/api/auth/google">Continue with Google</a>
+      <a href={href}>Continue with Google</a>
     </Button>
   );
 }
