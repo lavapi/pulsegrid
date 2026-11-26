@@ -1,6 +1,7 @@
-import type { ProjectList } from '@pulsegrid/shared';
+import { hasPermission, type ProjectList } from '@pulsegrid/shared';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { AccessRequestAlerts } from '@/components/alerts/access-request-alerts';
 import { AppShell } from '@/components/shell/app-shell';
 import { SyncProgressProvider } from '@/components/sync/sync-progress-provider';
 import { getAccountContext } from '@/lib/account-context';
@@ -29,6 +30,7 @@ export default async function WorkspaceLayout({ children }: { children: ReactNod
       accounts={accounts}
       selectedId={selected?.id ?? null}
     >
+      <AccessRequestAlerts canApprove={hasPermission(user, 'production.database_access.grant')} />
       <SyncProgressProvider>{children}</SyncProgressProvider>
     </AppShell>
   );

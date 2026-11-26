@@ -24,6 +24,8 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   permission?: UserPermission;
+  /** Shown only to people without this permission, who get another entry for the same thing. */
+  withoutPermission?: UserPermission;
   superAdminOnly?: boolean;
   /** An API path answering { count }, shown as a number beside the entry. */
   countPath?: string;
@@ -45,6 +47,12 @@ export const MAIN_NAV: NavItem[] = [
     countPath: '/production-releases/waiting',
   },
   { href: '/failover-tests', label: 'Failover tests', icon: FlaskConical },
+  {
+    href: '/database-access',
+    label: 'Database access',
+    icon: DatabaseZap,
+    withoutPermission: 'production.database_access.grant',
+  },
   { href: '/costs', label: 'Costs', icon: CircleDollarSign, permission: 'costs.view' },
   { href: '/activity', label: 'Activity', icon: History, permission: 'activity.view' },
 ];
@@ -66,13 +74,16 @@ export const SETTINGS_NAV: NavItem[] = [
     label: 'Database access',
     icon: DatabaseZap,
     permission: 'production.database_access.grant',
+    countPath: '/database-access/requests/waiting',
   },
 ];
 
 export const allowedNav = (items: NavItem[], { permissions, isOwner }: NavAccess): NavItem[] =>
   items.filter(
-    ({ permission, superAdminOnly }) =>
-      (!superAdminOnly || isOwner) && (!permission || permissions.includes(permission)),
+    ({ permission, withoutPermission, superAdminOnly }) =>
+      (!superAdminOnly || isOwner) &&
+      (!permission || permissions.includes(permission)) &&
+      (!withoutPermission || !permissions.includes(withoutPermission)),
   );
 
 export const isActivePath = (pathname: string, href: string): boolean =>

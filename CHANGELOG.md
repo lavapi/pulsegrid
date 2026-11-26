@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- Database access requests: people without **Grant production database access** can ask for read-only access from **Database access** in the main menu, for 1 to 8 hours with a reason. One request can wait per person; it can be cancelled, and it expires after 24 hours unanswered.
+- Approvers see waiting requests on **Settings > Database access** with a count in the menu, and approve (with their authenticator code, running the usual grant workflow) or decline with an optional reason. Every step is recorded in Activity.
+- Alerts while a dashboard tab is open: a chime, a message and a browser notification for approvers on each new request, and for requesters when theirs is answered. **Turn on browser notifications** asks the browser for permission.
+- Endpoints: `GET /api/database-access/mine`, `POST /api/database-access/requests`, `POST /api/database-access/requests/:id/cancel`, and for approvers `GET /api/database-access/requests`, `GET /api/database-access/requests/waiting`, `POST /api/database-access/requests/:id/approve` and `/decline`. Migration 0045 adds `database_access_requests`. Run `pnpm db:migrate`.
+
 ## [0.35.0] - 2026-11-26
 
 ### Removed
