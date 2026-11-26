@@ -2,7 +2,30 @@
 
 The PulseGrid iPhone app shows the dashboard on a phone. It sends push notifications for database access requests and their answers, and for production releases waiting for a decision.
 
-PulseGrid stays private, so the phone reaches it the same way a laptop does: through the company VPN. When PulseGrid can't be reached, the app says to turn on the VPN.
+Every company runs its own PulseGrid, so the app has no server built in. On first launch it asks for the address people open PulseGrid at in a browser, such as `pulsegrid.example.com`. It checks that the address answers as a PulseGrid that's been set up, then keeps it. **Change server** on the sign-in screen and under More signs out and asks again.
+
+A PulseGrid that's only on the company network is reached the same way a laptop reaches it: through the company VPN. Whenever the app can't reach the server, it says to turn on the VPN.
+
+## Screens
+
+- **Overview:** health by service for the selected account, and what's degraded.
+- **Releases:** what is deployed where, for the selected account.
+- **Production:** for people who decide production releases, finish or roll back the release waiting in its hold.
+- **Access:** approvers approve, with their authenticator code, or decline database access requests. Everyone else requests access and follows their request.
+- **More:** pipelines running and failed, Activity, the project switcher, notifications, the server and sign out.
+
+The account switcher sits at the top of the screens that follow it, as on the web. Every screen refreshes when pulled down. The app locks with Face ID, or the phone's passcode, whenever it goes to the background.
+
+## Building the app
+
+The app is in `apps/ios`, for iOS 17.4 and later. It needs Xcode 27; nothing else is installed. The Xcode project picks up every file in `PulseGrid/` and `PulseGridTests/` by itself, and build settings live in `Config/*.xcconfig`.
+
+```bash
+cd apps/ios
+xcodebuild -project PulseGrid.xcodeproj -scheme PulseGrid -destination 'platform=iOS Simulator,name=iPhone 18 Pro' test
+```
+
+To check screens against a local API without signing in, a debug build accepts `-server <url> -PulseGridToken <app token> -PulseGridOpen <path>` as launch arguments. Release builds ignore them.
 
 ## How the app signs in
 
