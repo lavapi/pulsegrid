@@ -78,6 +78,15 @@ export class ReleasesService {
   /** The releases of one account; each link belongs to the account of its service. */
   async overview(tenantId: string, accountId: string): Promise<ReleasesOverview> {
     await this.requireAccount(tenantId, accountId);
+    return this.releasesOf(tenantId, accountId);
+  }
+
+  /** Every account's releases, for work that isn't about one page, such as telling people a deploy finished. */
+  async everyRelease(tenantId: string): Promise<Release[]> {
+    return (await this.releasesOf(tenantId, null)).releases;
+  }
+
+  private async releasesOf(tenantId: string, accountId: string | null): Promise<ReleasesOverview> {
     if (!(await this.pipelines.isConnected(tenantId))) {
       return { configured: false, releases: [] };
     }
@@ -187,7 +196,7 @@ export class ReleasesService {
 
   private targets(
     tenantId: string,
-    accountId: string,
+    accountId: string | null,
   ): Promise<{ targets: TargetRow[]; domains: Map<string, EnvironmentDomain[]> }> {
     return this.database.run(tenantId, async (trx) => ({
       domains: await domainsByEnvironment(trx),
@@ -213,7 +222,7 @@ export class ReleasesService {
           'environments.id as environment_id',
           'environments.name as environment_name',
         ])
-        .where('release_targets.cloud_account_id', '=', accountId)
+        .$if(accountId !== null, (query) => query.where('release_targets.cloud_account_id', '=', accountId ?? ''))
         .execute(),
     }));
   }

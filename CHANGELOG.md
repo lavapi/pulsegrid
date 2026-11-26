@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-11-26
+
+### Added
+
+- Personal Slack notifications: a message to the author when their pull request is ready to merge or its checks failed, and to the person who started a deploy when it is ready or failed. The worker polls GitHub once a minute with ETags, so no webhook or public address is needed. Each message is sent once per commit or run and recorded in `notifications_sent` for 30 days.
+- **Settings → Integrations → Slack** connects a Slack app by its bot token (checked with Slack, stored encrypted) and shows the app manifest to create it from. It has a test message and Disconnect. `GET`, `PUT` and `DELETE /api/integrations/slack` need `integrations.manage`.
+- **Your account → Notifications** saves a GitHub username (checked on GitHub, unique per project) and four switches, shows whether Slack can reach you, and sends a test message: `GET` and `PUT /api/notifications/me`, `POST /api/notifications/me/test`.
+- Migration 0043 adds `slack_apps`, `notification_settings` and `notifications_sent`. Run `pnpm db:migrate`.
+
 ## [0.33.0] - 2026-11-25
 
 ### Changed
