@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-11-26
+
+### Removed
+
+- Personal Slack notifications from 0.34.0: the Slack app connection under Integrations, the Notifications card under Your account, their endpoints, the worker's minute-by-minute check, and the GitHub pull request reads it used. Migration 0044 drops `slack_apps`, `notification_settings` and `notifications_sent` with their data. Run `pnpm db:migrate`.
+
 ## [0.34.0] - 2026-11-26
 
 ### Added

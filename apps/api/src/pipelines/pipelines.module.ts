@@ -23,6 +23,6 @@ import { PipelinesService } from './pipelines.service';
     PipelineCache,
     PipelinesService,
   ],
-  exports: [GitConnectionsService, PipelineCache, PipelinesService],
+  exports: [PipelineCache, PipelinesService],
 })
 export class PipelinesModule {}
