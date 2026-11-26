@@ -306,9 +306,37 @@ export interface ResourcesTable {
   last_seen_at: Date;
 }
 
+export interface SlackAppsTable {
+  tenant_id: string;
+  encrypted_token: string;
+  workspace: string;
+  updated_by_email: string | null;
+  updated_at: ColumnType<Date, Date | undefined, Date>;
+}
+
+export interface NotificationSettingsTable {
+  tenant_id: string;
+  user_id: string;
+  github_login: string | null;
+  pr_ready: Generated<boolean>;
+  pr_failed: Generated<boolean>;
+  deploy_ready: Generated<boolean>;
+  deploy_failed: Generated<boolean>;
+  updated_at: ColumnType<Date, Date | undefined, Date>;
+}
+
+export interface NotificationsSentTable {
+  tenant_id: string;
+  key: string;
+  sent_at: Generated<Date>;
+}
+
 export interface Database {
   tenants: TenantsTable;
   resource_display_names: ResourceDisplayNamesTable;
+  slack_apps: SlackAppsTable;
+  notification_settings: NotificationSettingsTable;
+  notifications_sent: NotificationsSentTable;
   database_access_grants: DatabaseAccessGrantsTable;
   accounts: AccountsTable;
   account_identities: AccountIdentitiesTable;

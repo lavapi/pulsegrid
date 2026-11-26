@@ -26,3 +26,4 @@ export * from './sync-progress';
 export * from './infrastructure-map';
 export * from './roles';
 export * from './production-releases';
+export * from './notifications';

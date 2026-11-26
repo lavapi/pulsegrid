@@ -29,6 +29,23 @@ export class GitProviderError extends Error {
   }
 }
 
+export interface GitPullRequest {
+  repository: string;
+  number: number;
+  title: string;
+  author: string;
+  headSha: string;
+  draft: boolean;
+  url: string;
+}
+
+/** Where a pull request's checks stand on its latest commit, and whether GitHub would let it merge. */
+export interface PullRequestChecks {
+  outcome: 'none' | 'pending' | 'passed' | 'failed';
+  failed: string[];
+  mergeable: 'clean' | 'blocked' | 'conflicts' | 'behind' | 'unknown';
+}
+
 export interface GitClient {
   checkAccess(organization: string): Promise<GitAccessCheck>;
   listRepositories(organization: string): Promise<GitRepository[]>;
@@ -47,6 +64,9 @@ export interface GitClient {
   ): Promise<void>;
   rerun(repository: string, runId: string, failedOnly: boolean): Promise<void>;
   cancel(repository: string, runId: string): Promise<void>;
+  listOpenPullRequests(repository: string): Promise<GitPullRequest[]>;
+  pullRequestChecks(repository: string, number: number, headSha: string): Promise<PullRequestChecks>;
+  userExists(login: string): Promise<boolean>;
 }
 
 export interface GitProvider {

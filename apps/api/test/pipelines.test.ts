@@ -86,6 +86,9 @@ const provider: GitClient = {
   cancel: async (repository, runId) => {
     state.actions.push(`cancel:${repository}:${runId}`);
   },
+  listOpenPullRequests: async () => [],
+  pullRequestChecks: async () => ({ outcome: 'none', failed: [], mergeable: 'unknown' }),
+  userExists: async () => true,
 };
 
 const gitProvider: GitProvider = {
