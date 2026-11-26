@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-11-26
+
 ### Added
 
 - Database access requests: people without **Grant production database access** can ask for read-only access from **Database access** in the main menu, for 1 to 8 hours with a reason. One request can wait per person; it can be cancelled, and it expires after 24 hours unanswered.
