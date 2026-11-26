@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-11-26
+
 ### Added
 
 - Personal Slack notifications: a message to the author when their pull request is ready to merge or its checks failed, and to the person who started a deploy when it is ready or failed. The worker polls GitHub once a minute with ETags, so no webhook or public address is needed. Each message is sent once per commit or run and recorded in `notifications_sent` for 30 days.
