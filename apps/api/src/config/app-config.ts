@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ApnsSettings } from '../push/apns-client';
+import type { ApnsSettings } from '@pulsegrid/push';
 import type { RedisSettings } from '../redis/redis-connection';
 
 const envSchema = z.object({

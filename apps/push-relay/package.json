@@ -1,0 +1,23 @@
+{
+  "name": "@pulsegrid/push-relay",
+  "version": "0.36.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "esbuild src/handler.ts --bundle --platform=node --target=node22 --format=cjs --external:@aws-sdk/* --outfile=dist/handler.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1165.0",
+    "@aws-sdk/client-ssm": "^3.1165.0",
+    "@pulsegrid/push": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "aws-sdk-client-mock": "^4.1.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.12"
+  }
+}

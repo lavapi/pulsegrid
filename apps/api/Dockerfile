@@ -3,7 +3,7 @@ WORKDIR /repo
 RUN corepack enable
 COPY . .
 RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @pulsegrid/shared build && pnpm --filter @pulsegrid/api build
+RUN pnpm --filter "./packages/*" build && pnpm --filter @pulsegrid/api build
 RUN pnpm --filter @pulsegrid/api deploy --prod /deploy
 
 FROM node:22-alpine

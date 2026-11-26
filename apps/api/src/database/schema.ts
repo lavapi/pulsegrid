@@ -1,3 +1,4 @@
+import type { PushEnvironment } from '@pulsegrid/push';
 import type {
   ActionRunStatus,
   CloudAccountStatus,
@@ -58,8 +59,6 @@ export interface DeviceSignInCodesTable {
   expires_at: Date;
   created_at: CreatedAt;
 }
-
-export type PushEnvironment = 'sandbox' | 'production';
 
 export interface PushDevicesTable {
   id: Generated<string>;

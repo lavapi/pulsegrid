@@ -1,6 +1,6 @@
 import { connect } from 'node:http2';
 import { createPrivateKey, type KeyObject, sign } from 'node:crypto';
-import type { PushEnvironment } from '../database/schema';
+import type { PushEnvironment, PushMessage, PushResult, PushSender } from './push-sender';
 
 const HOSTS: Record<PushEnvironment, string> = {
   production: 'https://api.push.apple.com',
@@ -17,18 +17,6 @@ export interface ApnsSettings {
   /** The .p8 key from Apple, as PEM text. */
   privateKey: string;
 }
-
-export interface PushMessage {
-  title: string;
-  body: string;
-  /** The app screen to open when it is tapped, such as "/settings/database-access". */
-  path: string;
-  /** Replaces an earlier notification about the same thing instead of adding another. */
-  collapseId: string;
-}
-
-/** What Apple said: sent, the phone no longer takes notifications (forget it), or anything else. */
-export type PushResult = 'sent' | 'gone' | 'failed';
 
 export type Http2Post = (
   host: string,
@@ -67,7 +55,7 @@ const http2Post: Http2Post = (host, path, headers, body) =>
   });
 
 /** Sends notifications to iPhones through Apple's push service, signed with the team's key. */
-export class ApnsClient {
+export class ApnsClient implements PushSender {
   private readonly key: KeyObject;
   private token: { value: string; madeAt: number } | null = null;
 

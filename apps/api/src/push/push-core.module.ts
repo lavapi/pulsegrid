@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ApnsClient } from '@pulsegrid/push';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
-import { ApnsClient } from './apns-client';
 import { PushDevicesStore } from './push-devices.store';
 import { APNS_CLIENT, PushNotifier } from './push-notifier';
 
