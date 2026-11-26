@@ -42,6 +42,7 @@ import * as removeSecurityAlerts from './migrations/0040_remove_security_alerts'
 import * as credentialKind from './migrations/0041_credential_kind';
 import * as awsRolesOnly from './migrations/0042_aws_roles_only';
 import * as slackNotifications from './migrations/0043_slack_notifications';
+import * as removeSlackNotifications from './migrations/0044_remove_slack_notifications';
 
 const MIGRATIONS: Record<string, Migration> = {
   '0001_foundation': foundation,
@@ -87,6 +88,7 @@ const MIGRATIONS: Record<string, Migration> = {
   '0041_credential_kind': credentialKind,
   '0042_aws_roles_only': awsRolesOnly,
   '0043_slack_notifications': slackNotifications,
+  '0044_remove_slack_notifications': removeSlackNotifications,
 };
 
 const ensureAppRole = async (db: Kysely<unknown>, password: string): Promise<void> => {
