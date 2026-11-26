@@ -16,6 +16,12 @@ import { ALLOW_PENDING_PASSWORD } from './allow-pending-password.decorator';
 import { ALLOW_PENDING_TWO_FACTOR } from './allow-pending-two-factor.decorator';
 import { IS_PUBLIC } from './public.decorator';
 
+/** The iPhone app sends its sign-in as a bearer token instead of a cookie. */
+const bearerToken = (header: string | undefined): string | null => {
+  const match = /^Bearer ([A-Za-z0-9_-]{20,100})$/.exec(header ?? '');
+  return match?.[1] ?? null;
+};
+
 const SIGNED_OUT_MESSAGE = 'Your session has ended. Please sign in again.';
 const TWO_FACTOR_MESSAGE = 'Turn on two-factor authentication to continue.';
 const PASSWORD_MESSAGE = 'Choose a new password to continue.';
@@ -34,7 +40,7 @@ export class SessionGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const token = decodeSessionCookie(request.cookies?.[SESSION_COOKIE]);
+    const token = bearerToken(request.headers.authorization) ?? decodeSessionCookie(request.cookies?.[SESSION_COOKIE]);
     const person = token && (await this.sessions.resolve(token));
     if (!person) {
       throw new UnauthorizedException(SIGNED_OUT_MESSAGE);

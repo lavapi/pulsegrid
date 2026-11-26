@@ -1,10 +1,11 @@
 import { DynamoDBClient, GetItemCommand, ScanCommand } from '@aws-sdk/client-dynamodb';
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
+import type { ProductionRelease } from '@pulsegrid/shared';
 import { Inject, Injectable } from '@nestjs/common';
 import { assumedRoleCredentials } from '../common/assumed-role';
 import { MESSAGES, ProductionReleaseError } from './production-releases-errors';
 import { PRODUCTION_RELEASES_SETUP, type ProductionReleasesSetup } from './production-releases.settings';
-import type { ReleaseItem } from './release-records';
+import { ACTIVE_ID, activeReleaseId, type ReleaseItem, toRelease } from './release-records';
 
 const SESSION_NAME = 'pulsegrid-production-releases';
 const MAX_SCAN_PAGES = 20;
@@ -52,6 +53,13 @@ export class ProductionReleasesAws {
       new GetItemCommand({ TableName: setup.table, Key: { id: { S: id } }, ConsistentRead: true }),
     );
     return item;
+  }
+
+  /** The release in progress, which the ACTIVE marker points to, or null between releases. */
+  async current(): Promise<ProductionRelease | null> {
+    const id = activeReleaseId(await this.item(ACTIVE_ID));
+    const item = id ? await this.item(id) : undefined;
+    return item ? toRelease(item) : null;
   }
 
   async allItems(): Promise<ReleaseItem[]> {

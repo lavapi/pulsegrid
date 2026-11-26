@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ApnsSettings } from '../push/apns-client';
 import type { RedisSettings } from '../redis/redis-connection';
 
 const envSchema = z.object({
@@ -17,6 +18,11 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   NODE_ENV: z.string().optional(),
+  // Apple push notifications for the iPhone app. Without all four, nothing is sent.
+  APNS_KEY_ID: z.string().regex(/^[A-Z0-9]{10}$/).optional(),
+  APNS_TEAM_ID: z.string().regex(/^[A-Z0-9]{10}$/).optional(),
+  APNS_BUNDLE_ID: z.string().min(1).optional(),
+  APNS_PRIVATE_KEY: z.string().includes('PRIVATE KEY').optional(),
   TOKEN_ENCRYPTION_KEY: z
     .string()
     .refine((key) => Buffer.from(key, 'base64').length === 32, 'Must be 32 bytes in base64'),
@@ -30,6 +36,7 @@ export interface AppConfig {
   port: number;
   tokenEncryptionKey: Buffer;
   google: { clientId: string; clientSecret: string } | null;
+  apns: ApnsSettings | null;
 }
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -50,6 +57,16 @@ export const loadAppConfig = (env: NodeJS.ProcessEnv): AppConfig => {
     google:
       parsed.GOOGLE_CLIENT_ID && parsed.GOOGLE_CLIENT_SECRET
         ? { clientId: parsed.GOOGLE_CLIENT_ID, clientSecret: parsed.GOOGLE_CLIENT_SECRET }
+        : null,
+    apns:
+      parsed.APNS_KEY_ID && parsed.APNS_TEAM_ID && parsed.APNS_BUNDLE_ID && parsed.APNS_PRIVATE_KEY
+        ? {
+            keyId: parsed.APNS_KEY_ID,
+            teamId: parsed.APNS_TEAM_ID,
+            bundleId: parsed.APNS_BUNDLE_ID,
+            // Secrets stored as one line keep their line breaks as \n.
+            privateKey: parsed.APNS_PRIVATE_KEY.replace(/\\n/g, '\n'),
+          }
         : null,
   };
 };

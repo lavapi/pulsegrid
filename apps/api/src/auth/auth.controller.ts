@@ -1,4 +1,4 @@
-import type { AuthMethods, CurrentUser, SignInResult } from '@pulsegrid/shared';
+import { type AuthMethods, type CurrentUser, safeNext, type SignInResult } from '@pulsegrid/shared';
 import {
   Body,
   Controller,
@@ -33,6 +33,7 @@ import {
   CHALLENGE_COOKIE,
   encodeSessionCookie,
   GOOGLE_STATE_COOKIE,
+  NEXT_COOKIE,
   SESSION_COOKIE,
 } from './session/session-cookie';
 import { SessionService } from './session/session.service';
@@ -142,16 +143,18 @@ export class AuthController {
   @Public()
   @UseGuards(ThrottlerGuard)
   @Get('auth/google')
-  async startGoogle(@Res() response: Response): Promise<void> {
+  async startGoogle(@Query('next') next: unknown, @Res() response: Response): Promise<void> {
     const started = await this.google.start();
     if (!started) {
       response.redirect('/login?error=google_failed');
       return;
     }
-    response.cookie(GOOGLE_STATE_COOKIE, started.state, {
-      ...this.cookieOptions(),
-      maxAge: STATE_TTL_SECONDS * 1000,
-    });
+    const stateCookie = { ...this.cookieOptions(), maxAge: STATE_TTL_SECONDS * 1000 };
+    response.cookie(GOOGLE_STATE_COOKIE, started.state, stateCookie);
+    const after = safeNext(next);
+    if (after) {
+      response.cookie(NEXT_COOKIE, after, stateCookie);
+    }
     response.redirect(started.url);
   }
 
@@ -165,7 +168,9 @@ export class AuthController {
     @Res() response: Response,
   ): Promise<void> {
     const expected = cookieValue(request, GOOGLE_STATE_COOKIE);
+    const after = safeNext(cookieValue(request, NEXT_COOKIE));
     response.clearCookie(GOOGLE_STATE_COOKIE, this.cookieOptions());
+    response.clearCookie(NEXT_COOKIE, this.cookieOptions());
     if (typeof state !== 'string' || typeof code !== 'string' || !expected || !sameText(state, expected)) {
       response.redirect('/login?error=google_failed');
       return;
@@ -176,7 +181,8 @@ export class AuthController {
       return;
     }
     const { twoFactorRequired } = this.respond(result.outcome, response);
-    response.redirect(twoFactorRequired ? '/login?step=two-factor' : '/');
+    const onward = after ? `&next=${encodeURIComponent(after)}` : '';
+    response.redirect(twoFactorRequired ? `/login?step=two-factor${onward}` : (after ?? '/'));
   }
 
   @AllowPendingPassword()

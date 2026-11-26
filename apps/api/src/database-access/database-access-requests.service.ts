@@ -11,6 +11,7 @@ import { AuditService } from '../audit/audit.service';
 import type { AuthContext } from '../auth/session/auth-context';
 import { FreshCodeCheck } from '../auth/two-factor/fresh-code';
 import { TenantDatabase } from '../database/tenant-database';
+import { PushNotifier } from '../push/push-notifier';
 import { DatabaseAccessRequestsStore, type RequestRow, toRequest } from './database-access-requests.store';
 import { DatabaseAccessService, hoursIn } from './database-access.service';
 import { DatabaseAccessStore, toGrant } from './database-access.store';
@@ -19,6 +20,9 @@ const NOT_HERE = 'Database access is requested in the project that has the Produ
 const HAS_ACCESS = 'You already have database access. Ask an approver to extend it.';
 const ANSWERED = 'Someone already answered this request.';
 const NOT_WAITING = 'This request is no longer waiting.';
+const APPROVER = 'production.database_access.grant';
+
+const hoursText = (hours: number): string => `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
 
 /** Requests from people who can't grant access, and approvers' answers. Approving runs an ordinary grant. */
 @Injectable()
@@ -30,6 +34,7 @@ export class DatabaseAccessRequestsService {
     private readonly codes: FreshCodeCheck,
     private readonly database: TenantDatabase,
     private readonly audit: AuditService,
+    private readonly push: PushNotifier,
   ) {}
 
   async mine(auth: AuthContext): Promise<MyDatabaseAccess> {
@@ -67,6 +72,12 @@ export class DatabaseAccessRequestsService {
       reason: input.reason.trim(),
     });
     await this.record(auth, row, 'database_access.access_requested', ipAddress, { hours: row.hours, reason: row.reason });
+    this.push.toPermission(auth.tenantId, APPROVER, {
+      title: 'Database access request',
+      body: `${row.requested_by_name} asks for ${hoursText(row.hours)}: ${row.reason}`,
+      path: '/settings/database-access',
+      collapseId: `db-request-${row.id}`,
+    });
     return toRequest(row);
   }
 
@@ -108,6 +119,12 @@ export class DatabaseAccessRequestsService {
       throw error;
     }
     await this.record(auth, row, 'database_access.request_approved', ipAddress, { hours });
+    this.push.toUser(auth.tenantId, row.requested_by_user_id, {
+      title: 'Database access approved',
+      body: `${auth.email} approved ${hoursText(hours)}. It's ready to use in a minute or two.`,
+      path: '/database-access',
+      collapseId: `db-request-${row.id}`,
+    });
     return toRequest(await this.requests.get(auth.tenantId, id));
   }
 
@@ -124,6 +141,12 @@ export class DatabaseAccessRequestsService {
       throw new ConflictException(ANSWERED);
     }
     await this.record(auth, row, 'database_access.request_declined', ipAddress, { reason });
+    this.push.toUser(auth.tenantId, row.requested_by_user_id, {
+      title: 'Database access declined',
+      body: reason ? `${auth.email} declined: ${reason}` : `${auth.email} declined your request.`,
+      path: '/database-access',
+      collapseId: `db-request-${row.id}`,
+    });
     return toRequest(await this.requests.get(auth.tenantId, id));
   }
 

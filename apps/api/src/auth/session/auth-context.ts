@@ -1,4 +1,5 @@
 import type { UserPermission } from '@pulsegrid/shared';
+import type { SessionClient } from '../../database/schema';
 
 export interface ProjectAccess {
   tenantId: string;
@@ -9,6 +10,8 @@ export interface ProjectAccess {
 
 export interface PersonContext {
   sessionId: string;
+  /** The browser, or the iPhone app. */
+  client: SessionClient;
   accountId: string;
   email: string;
   displayName: string;
