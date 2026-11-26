@@ -1,8 +1,14 @@
-import { type DatabaseAccessGrant, type DatabaseAccessView, hasPermission } from '@pulsegrid/shared';
+import {
+  type DatabaseAccessGrant,
+  type DatabaseAccessRequest,
+  type DatabaseAccessView,
+  hasPermission,
+} from '@pulsegrid/shared';
 import { redirect } from 'next/navigation';
 import { GrantForm } from '@/components/database-access/grant-form';
 import { GrantHistory } from '@/components/database-access/grant-history';
 import { GrantList } from '@/components/database-access/grant-list';
+import { RequestList } from '@/components/database-access/request-list';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { apiGet, getCurrentUser } from '@/lib/server-api';
@@ -35,10 +41,14 @@ export default async function DatabaseAccessPage() {
       </>
     );
   }
-  const history = await apiGet<DatabaseAccessGrant[]>('/database-access/history');
+  const [history, requests] = await Promise.all([
+    apiGet<DatabaseAccessGrant[]>('/database-access/history'),
+    apiGet<DatabaseAccessRequest[]>('/database-access/requests'),
+  ]);
   return (
     <>
       <PageHeader title="Database access" description={DESCRIPTION} />
+      <RequestList requests={requests} maxHours={view.maxHours} />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <GrantForm maxHours={view.maxHours} />
         <GrantList

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-11-26
+
+- People without database access permission can now request it from **Database access** in the menu. Approvers get a sound, a message and a browser notification for each request, and approve it with their authenticator code or decline it. Requesters are notified of the answer. Run `pnpm db:migrate`.
+
 ## [0.35.0] - 2026-11-26
 
 - Personal Slack notifications are removed: the Slack page under Integrations and the Notifications card under Your account are gone, and their stored data is deleted. Run `pnpm db:migrate`.

@@ -1,6 +1,6 @@
 import type { DatabaseAccessGrant } from '@pulsegrid/shared';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import type { Selectable, Updateable } from 'kysely';
+import { type Selectable, sql, type Updateable } from 'kysely';
 import { isUniqueViolation } from '../database/errors';
 import type {
   DatabaseAccessChange,
@@ -91,6 +91,18 @@ export class DatabaseAccessStore {
   open(tenantId: string): Promise<GrantRow[]> {
     return this.database.run(tenantId, (trx) =>
       trx.selectFrom('database_access_grants').selectAll().where('status', 'in', OPEN).orderBy('expires_at').execute(),
+    );
+  }
+
+  /** The grant in progress or active for this user name, if there is one. */
+  openFor(tenantId: string, userName: string): Promise<GrantRow | undefined> {
+    return this.database.run(tenantId, (trx) =>
+      trx
+        .selectFrom('database_access_grants')
+        .selectAll()
+        .where('status', 'in', OPEN)
+        .where(sql<boolean>`lower(user_name) = lower(${userName})`)
+        .executeTakeFirst(),
     );
   }
 

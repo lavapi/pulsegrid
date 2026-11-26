@@ -76,3 +76,55 @@ export interface ExtendDatabaseAccessInput {
 export interface RevokeDatabaseAccessInput {
   code: string;
 }
+
+/** A request nobody answers expires after this long. */
+export const DATABASE_ACCESS_REQUEST_HOURS = 24;
+
+export type DatabaseAccessRequestStatus = 'pending' | 'approved' | 'declined' | 'cancelled' | 'expired';
+
+/** Someone without the grant permission asking for read-only access, for an approver to approve or decline. */
+export interface DatabaseAccessRequest {
+  id: string;
+  requestedBy: string;
+  requestedByEmail: string;
+  /** The Identity Center user name access would be granted to. */
+  userName: string;
+  hours: number;
+  reason: string;
+  status: DatabaseAccessRequestStatus;
+  createdAt: string;
+  /** When a waiting request expires unanswered. */
+  expiresAt: string;
+  decidedBy: string | null;
+  decidedAt: string | null;
+  declineReason: string | null;
+  grantId: string | null;
+}
+
+export interface RequestDatabaseAccessInput {
+  userName: string;
+  hours: number;
+  reason: string;
+}
+
+export interface ApproveDatabaseAccessRequestInput {
+  hours: number;
+  code: string;
+}
+
+export interface DeclineDatabaseAccessRequestInput {
+  reason: string | null;
+}
+
+/** What a person sees of their own access: their latest request and the grant it led to. */
+export type MyDatabaseAccess =
+  | {
+      ready: true;
+      maxHours: number;
+      /** Their sign-in email, which is usually their Identity Center user name. */
+      suggestedUserName: string;
+      request: DatabaseAccessRequest | null;
+      grant: DatabaseAccessGrant | null;
+      connect: DatabaseAccessConnect | null;
+    }
+  | { ready: false; message: string };

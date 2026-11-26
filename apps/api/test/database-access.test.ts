@@ -1,82 +1,40 @@
-import { GetScheduleCommand, ListSchedulesCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
-import { DescribeExecutionCommand, SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
-import { mockClient } from 'aws-sdk-client-mock';
-import { Secret, TOTP } from 'otpauth';
+import { GetScheduleCommand, ListSchedulesCommand } from '@aws-sdk/client-scheduler';
+import { StartExecutionCommand } from '@aws-sdk/client-sfn';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { newTotpSecret } from '../src/auth/two-factor/totp';
 import { MESSAGES } from '../src/database-access/database-access-errors';
 import { WORKFLOW_POLL } from '../src/database-access/database-access-tenants';
 import { DatabaseAccessJobs } from '../src/database-access/database-access.jobs';
 import { DatabaseAccessQueue } from '../src/database-access/database-access.queue';
-import { DATABASE_ACCESS_SETUP, loadDatabaseAccessSetup } from '../src/database-access/database-access.settings';
+import { DATABASE_ACCESS_SETUP } from '../src/database-access/database-access.settings';
 import { TenantDatabase } from '../src/database/tenant-database';
-import { CredentialVault } from '../src/inventory/connection/credential-vault';
-import { TokenCipher } from '../src/inventory/connection/token-cipher';
-import { setExtraPermissions, signIn, startTestApp, type TestContext, user, TEST_ROLE } from './support/test-app';
+import {
+  ACCOUNT,
+  authenticatorFor,
+  connectProduction,
+  GRANT_ARN,
+  REVOKE_ARN,
+  runEnds,
+  scheduler,
+  SETUP,
+  sfn,
+} from './support/database-access';
+import { setExtraPermissions, signIn, startTestApp, type TestContext, user } from './support/test-app';
 
-const ACCOUNT = '860000000001';
-const GRANT_ARN = `arn:aws:states:eu-central-1:${ACCOUNT}:stateMachine:db-access-grant`;
-const REVOKE_ARN = `arn:aws:states:eu-central-1:${ACCOUNT}:stateMachine:db-access-revoke`;
-const SETUP = loadDatabaseAccessSetup({
-  DB_ACCESS_GRANT_STATE_MACHINE_ARN: GRANT_ARN,
-  DB_ACCESS_REVOKE_STATE_MACHINE_ARN: REVOKE_ARN,
-  DB_ACCESS_SCHEDULE_GROUP: 'db-access',
-  DB_ACCESS_SSO_START_URL: 'https://example.awsapps.com/start',
-  DB_ACCESS_TUNNEL_INSTANCE_ID: 'i-0abc',
-  DB_ACCESS_READER_ENDPOINT: 'db.cluster-ro-x.eu-central-1.rds.amazonaws.com',
-  DB_ACCESS_DATABASE: 'game',
-});
 const USER = 'pat@example.test';
 const HOUR = 3_600_000;
 
-const sfn = mockClient(SFNClient);
-const scheduler = mockClient(SchedulerClient);
 const queue = { follow: vi.fn(), expireAt: vi.fn(), cancelExpiry: vi.fn(), scheduleReconcile: vi.fn(), close: vi.fn() };
-
-/** The workflow run ends the way the test says, and reports the end time it was given. */
-const runEnds = (status: string, extra: { error?: string; output?: object } = {}) => {
-  let input: { userName?: string; expiresAt?: string } = {};
-  sfn.on(StartExecutionCommand).callsFake(({ input: given }: { input: string }) => {
-    input = JSON.parse(given) as typeof input;
-    return { executionArn: `arn:exec:${Date.now()}` };
-  });
-  sfn.on(DescribeExecutionCommand).callsFake(() => ({
-    status,
-    error: extra.error,
-    output:
-      status === 'SUCCEEDED'
-        ? JSON.stringify(
-            extra.output ?? {
-              userName: input.userName,
-              userId: 'u1',
-              expiresAt: input.expiresAt,
-              signInsStopped: true,
-            },
-          )
-        : undefined,
-  }));
-};
 
 describe('database access', () => {
   let context: TestContext;
   let granter: string;
   let viewer: string;
-  let granterAccount: string;
-  let secret: string;
+  let freshCode: () => Promise<string>;
   const http = () => request(context.app.getHttpServer());
   const jobs = () => context.app.get(DatabaseAccessJobs);
   const tenantId = () => context.acme.tenant.id;
 
-  /** A code for now; the last used step is cleared so each step of a test can use one. */
-  const freshCode = async () => {
-    await context.owner
-      .updateTable('accounts')
-      .set({ totp_last_step: null })
-      .where('id', '=', granterAccount)
-      .execute();
-    return new TOTP({ secret: Secret.fromBase32(secret), period: 30 }).generate();
-  };
   const post = async (path: string, body: Record<string, unknown>) =>
     http()
       .post(`/api/database-access${path}`)
@@ -118,28 +76,8 @@ describe('database access', () => {
     );
     granter = await signIn(context, context.acme, user('gus', 'developer'));
     viewer = await signIn(context, context.acme, user('vic', 'viewer'));
-    const account = await context.owner
-      .selectFrom('accounts')
-      .select('id')
-      .where('email', '=', 'gus@example.test')
-      .executeTakeFirstOrThrow();
-    granterAccount = account.id;
-    secret = newTotpSecret();
-    await context.owner
-      .updateTable('accounts')
-      .set({ totp_secret: context.app.get(TokenCipher).encrypt(secret, `totp:${account.id}`) })
-      .where('id', '=', account.id)
-      .execute();
-    const production = { tenant_id: tenantId(), provider: 'aws', account_id: ACCOUNT };
-    await context.owner
-      .insertInto('cloud_accounts')
-      .values({
-        ...production,
-        name: 'Production',
-        regions: ['eu-central-1'],
-        encrypted_credentials: context.app.get(CredentialVault).seal(production, TEST_ROLE),
-      })
-      .execute();
+    freshCode = await authenticatorFor(context, 'gus@example.test');
+    await connectProduction(context, context.acme);
   });
   afterAll(() => context.close());
   beforeEach(async () => {

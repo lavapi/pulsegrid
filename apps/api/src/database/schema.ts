@@ -246,6 +246,26 @@ export interface DatabaseAccessGrantsTable {
   updated_at: ColumnType<Date, Date | undefined, Date>;
 }
 
+export type DatabaseAccessRequestStatus = 'pending' | 'approved' | 'declined' | 'cancelled' | 'expired';
+
+export interface DatabaseAccessRequestsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  requested_by_user_id: string;
+  requested_by_email: string;
+  requested_by_name: string;
+  user_name: string;
+  hours: number;
+  reason: string;
+  status: DatabaseAccessRequestStatus;
+  decided_by_email: string | null;
+  decided_at: Date | null;
+  decline_reason: string | null;
+  grant_id: string | null;
+  created_at: CreatedAt;
+  updated_at: ColumnType<Date, Date | undefined, Date>;
+}
+
 export interface ResourceDisplayNamesTable {
   tenant_id: string;
   cloud_account_id: string;
@@ -310,6 +330,7 @@ export interface Database {
   tenants: TenantsTable;
   resource_display_names: ResourceDisplayNamesTable;
   database_access_grants: DatabaseAccessGrantsTable;
+  database_access_requests: DatabaseAccessRequestsTable;
   accounts: AccountsTable;
   account_identities: AccountIdentitiesTable;
   users: UsersTable;

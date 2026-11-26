@@ -10,6 +10,35 @@ Granting, extending and revoking need the **Grant production database access** p
 
 The page appears in the project that has the Production account connected. People with the permission in another project see that it isn't set up there.
 
+## Requesting access
+
+People without the permission ask for access instead. They find **Database access** in the main menu of the project that has the Production account connected.
+
+1. They enter how long they need (1 to 8 hours) and why. Their Identity Center user name is filled in with their sign-in email, and they can change it.
+2. Each person can have one request waiting at a time, and can cancel it. They can't ask while they already have access; an approver extends it instead.
+3. A request nobody answers expires after 24 hours.
+
+People with the permission see waiting requests at the top of **Settings > Database access**, oldest first, and a count beside the menu entry.
+
+- **Approve:** the approver can change the hours, then enters a fresh code from their authenticator app. This runs the same grant workflow as granting by hand, so the same errors apply. If AWS won't start the grant, the request goes back to waiting.
+- **Decline:** with an optional reason, which the requester sees. They can ask again.
+- Only one answer counts. If two approvers answer at once, the second is told someone already answered.
+
+Requests, cancellations, approvals and declines are recorded in Activity.
+
+### Alerts
+
+While any dashboard tab is open, even in the background, PulseGrid checks every 15 seconds:
+
+- **Approvers** get an alert for each new request, including ones that came in while the dashboard was closed.
+- **Requesters** get an alert when their request is approved or declined.
+
+An alert is a short chime, a message in the corner with **Open**, and a browser notification. Each alert comes once per browser.
+
+- **Browser notifications** need permission. Use **Turn on browser notifications** on the page; browsers only ask after a click. If they were blocked, allow them in the browser's site settings.
+- **The chime** plays only after the person has clicked somewhere in that tab, because browsers block sound until then.
+- **With the browser closed**, nothing arrives; the request waits on the page and in the menu count.
+
 ## What happens
 
 **Grant.** Enter the person's IAM Identity Center user name (usually their email), how long (1 to 8 hours) and why. PulseGrid starts the grant workflow with `{"userName", "expiresAt"}` and follows the run, usually 1 to 2 minutes because it runs a database task. When it succeeds, the grant becomes active with the user id and end time the workflow returns. When it fails, nothing is active and the page says why:
