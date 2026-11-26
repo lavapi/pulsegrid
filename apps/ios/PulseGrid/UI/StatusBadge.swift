@@ -1,0 +1,57 @@
+import SwiftUI
+
+enum Tone {
+    case good, warning, bad, neutral, active
+
+    var color: Color {
+        switch self {
+        case .good: .green
+        case .warning: .orange
+        case .bad: .red
+        case .neutral: .secondary
+        case .active: .blue
+        }
+    }
+
+    static func ofRelease(_ state: String) -> Tone {
+        switch state {
+        case "ready": .good
+        case "building", "deploying": .active
+        case "failed": .bad
+        case "cancelled": .warning
+        default: .neutral
+        }
+    }
+
+    static func ofPipeline(_ status: String) -> Tone {
+        switch status {
+        case "success": .good
+        case "running", "queued": .active
+        case "failure": .bad
+        case "cancelled": .warning
+        default: .neutral
+        }
+    }
+}
+
+struct StatusBadge: View {
+    let text: String
+    let tone: Tone
+
+    var body: some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .foregroundStyle(tone.color)
+            .background(tone.color.opacity(0.14), in: .capsule)
+    }
+}
+
+extension String {
+    /// "not_deployed" → "Not deployed".
+    var sentenceCased: String {
+        let words = replacingOccurrences(of: "_", with: " ").lowercased()
+        return words.prefix(1).uppercased() + words.dropFirst()
+    }
+}
