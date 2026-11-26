@@ -9,6 +9,5 @@ import { ReleasesService } from './releases.service';
   imports: [AuditModule, InventoryCoreModule, PipelinesModule],
   controllers: [ReleasesController],
   providers: [ReleasesService],
-  exports: [ReleasesService],
 })
 export class ReleasesModule {}

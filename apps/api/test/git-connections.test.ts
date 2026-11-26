@@ -40,9 +40,6 @@ const clientFor = (token: string): GitClient => ({
   startRun: async () => undefined,
   rerun: async () => undefined,
   cancel: async () => undefined,
-  listOpenPullRequests: async () => [],
-  pullRequestChecks: async () => ({ outcome: 'none', failed: [], mergeable: 'unknown' }),
-  userExists: async () => true,
 });
 
 const otherGit: GitProvider = {
