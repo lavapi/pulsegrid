@@ -20,8 +20,8 @@ import {
 import type { ReleasesService } from '../src/releases/releases.service';
 import { signIn, startTestApp, type TestContext, user } from './support/test-app';
 
-const GOOD_TOKEN = 'xoxb-1234567890-abcdefghijklmnop';
-const BAD_TOKEN = 'xoxb-0000000000-revokedrevokedrev';
+const GOOD_TOKEN = 'xoxb-test-token-slack-accepts';
+const BAD_TOKEN = 'xoxb-test-token-slack-revoked';
 const REPOSITORY = 'acme-org/api';
 
 const slack = {
@@ -199,7 +199,7 @@ describe('notifications', () => {
 
     it('refuses a token Slack rejects, or one that is not a bot token, with a readable message', async () => {
       expect((await connectSlack(BAD_TOKEN).expect(400)).body.message).toBe('This token was revoked in Slack.');
-      expect((await connectSlack('xoxp-1234567890-abcdefghijklmnop').expect(400)).body.message).toBe(
+      expect((await connectSlack('xoxp-test-token-not-a-bot-one').expect(400)).body.message).toBe(
         'Paste the Bot User OAuth Token. It starts with xoxb-.',
       );
       expect((await http().get('/api/integrations/slack').set('Cookie', admin).expect(200)).body.connected).toBe(false);
