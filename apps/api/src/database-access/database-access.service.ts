@@ -30,7 +30,7 @@ const NOT_HERE = "Database access isn't available in this project.";
 const ONLY_ACTIVE = 'Only active access can be changed.';
 const AT_MOST = `Access can last at most ${DATABASE_ACCESS_MAX_HOURS} hours from now.`;
 
-const hoursIn = (hours: number): number => {
+export const hoursIn = (hours: number): number => {
   if (!Number.isInteger(hours) || hours < 1 || hours > DATABASE_ACCESS_MAX_HOURS) {
     throw new BadRequestException(`Choose between 1 and ${DATABASE_ACCESS_MAX_HOURS} hours.`);
   }
@@ -39,6 +39,13 @@ const hoursIn = (hours: number): number => {
 
 const connectOf = ({ connect, accountId, region }: DatabaseAccessSettings): DatabaseAccessConnect | null =>
   connect && { ...connect, accountId, region, localPort: DATABASE_ACCESS_LOCAL_PORT };
+
+/** What a grant needs once its code is confirmed, whether typed by an approver or taken from a request. */
+export interface GrantDetails {
+  userName: string;
+  reason: string;
+  hours: number;
+}
 
 /** Grants, extensions and revokes asked for on the page. The AWS workflows do the work; the worker follows them. */
 @Injectable()
@@ -77,8 +84,24 @@ export class DatabaseAccessService {
     };
   }
 
+  /** Whether access can be granted in this project: set up, with the Production account connected here. */
+  async isReady(auth: AuthContext): Promise<boolean> {
+    return this.setup.ready && (await this.tenants.owns(auth.tenantId));
+  }
+
+  /** How people connect, once the settings for it are there. */
+  connect(): DatabaseAccessConnect | null {
+    return this.setup.ready ? connectOf(this.setup.settings) : null;
+  }
+
+  async requireReady(auth: AuthContext): Promise<void> {
+    if (!(await this.isReady(auth))) {
+      throw new NotFoundException(NOT_HERE);
+    }
+  }
+
   async history(auth: AuthContext): Promise<DatabaseAccessGrant[]> {
-    await this.ready(auth);
+    await this.requireReady(auth);
     return (await this.store.history(auth.tenantId)).map(toGrant);
   }
 
@@ -87,14 +110,20 @@ export class DatabaseAccessService {
     input: GrantDatabaseAccessInput,
     ipAddress: string | undefined,
   ): Promise<DatabaseAccessGrant> {
-    await this.ready(auth);
+    await this.requireReady(auth);
     const hours = hoursIn(input.hours);
     await this.codes.confirm(auth.accountId, input.code);
+    return toGrant(await this.start(auth, { userName: input.userName, reason: input.reason, hours }, ipAddress));
+  }
+
+  /** Starts the grant workflow and has the worker follow it. The caller has checked the project and the code. */
+  async start(auth: AuthContext, details: GrantDetails, ipAddress: string | undefined): Promise<GrantRow> {
+    const hours = hoursIn(details.hours);
     const row = await this.store.create(auth.tenantId, {
       grantedByUserId: auth.userId,
       grantedByEmail: auth.email,
-      userName: input.userName.trim(),
-      reason: input.reason.trim(),
+      userName: details.userName.trim(),
+      reason: details.reason.trim(),
       expiresAt: new Date(Date.now() + hours * MS_PER_HOUR),
     });
     try {
@@ -105,7 +134,7 @@ export class DatabaseAccessService {
       throw this.toHttp(error);
     }
     await this.record(auth, row, 'database_access.grant_requested', ipAddress, { hours, reason: row.reason });
-    return toGrant(row);
+    return row;
   }
 
   async extend(
@@ -114,7 +143,7 @@ export class DatabaseAccessService {
     input: ExtendDatabaseAccessInput,
     ipAddress: string | undefined,
   ): Promise<DatabaseAccessGrant> {
-    await this.ready(auth);
+    await this.requireReady(auth);
     const hours = hoursIn(input.hours);
     const grant = await this.active(auth, id);
     const latest = Date.now() + DATABASE_ACCESS_MAX_HOURS * MS_PER_HOUR;
@@ -136,7 +165,7 @@ export class DatabaseAccessService {
     input: RevokeDatabaseAccessInput,
     ipAddress: string | undefined,
   ): Promise<DatabaseAccessGrant> {
-    await this.ready(auth);
+    await this.requireReady(auth);
     const grant = await this.active(auth, id);
     await this.codes.confirm(auth.accountId, input.code);
     await this.change(auth, grant, 'revoke', null);
@@ -174,12 +203,6 @@ export class DatabaseAccessService {
   private async started(auth: AuthContext, grant: GrantRow, kind: WorkflowKind, executionArn: string): Promise<void> {
     await this.store.setExecution(auth.tenantId, grant.id, executionArn);
     await this.queue.follow({ tenantId: auth.tenantId, grantId: grant.id, kind });
-  }
-
-  private async ready(auth: AuthContext): Promise<void> {
-    if (!this.setup.ready || !(await this.tenants.owns(auth.tenantId))) {
-      throw new NotFoundException(NOT_HERE);
-    }
   }
 
   private async active(auth: AuthContext, id: string): Promise<GrantRow> {
