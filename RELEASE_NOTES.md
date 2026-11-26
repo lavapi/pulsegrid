@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Get a personal Slack message when your pull request is ready to merge or its checks failed, and when a deploy you started finishes. An admin connects a Slack app under Integrations, then each person adds their GitHub username under Your account. See `docs/notifications.md`. Run `pnpm db:migrate`.
+
 ## [0.33.0] - 2026-11-25
 
 - Staging and production have separate releases: the Releases page shows only the selected account's, and you can now link production services.

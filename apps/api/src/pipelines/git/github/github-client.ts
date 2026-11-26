@@ -6,13 +6,17 @@ import type {
   PipelineStatus,
   PipelineStep,
 } from '@pulsegrid/shared';
+import { createHash } from 'node:crypto';
 import {
   GitProviderError,
   type GitClient,
+  type GitPullRequest,
+  type PullRequestChecks,
   type GitRepository,
   type GitRepositoryInfo,
   type GitWorkflow,
 } from '../git-provider';
+import { type CheckRun, type CommitStatus, checksOf } from './pull-request-checks';
 import { parseWorkflowDefinition } from './workflow-definition';
 
 const API_ROOT = 'https://api.github.com';
@@ -21,6 +25,22 @@ const PAGE_SIZE = 100;
 const MAX_REPOSITORY_PAGES = 5;
 const RUNS_PER_REQUEST = 50;
 const WORKFLOW_FOLDER = '.github/workflows/';
+const MAX_REMEMBERED = 2_000;
+
+/**
+ * Answers kept with their ETag, so asking again with If-None-Match gets a 304 when nothing changed, which GitHub
+ * doesn't count against the token's rate limit. Keyed by a hash of the token, never the token itself.
+ */
+const remembered = new Map<string, { etag: string; body: unknown }>();
+
+interface GitHubPullRequest {
+  number: number;
+  title: string;
+  draft?: boolean;
+  html_url: string;
+  user: { login: string } | null;
+  head: { sha: string };
+}
 
 interface GitHubAccessRepository {
   permissions?: { push?: boolean };
@@ -295,6 +315,64 @@ export class GitHubClient implements GitClient {
 
   cancel(repository: string, runId: string): Promise<void> {
     return this.post(`/repos/${repository}/actions/runs/${encodeURIComponent(runId)}/cancel`, {});
+  }
+
+  async listOpenPullRequests(repository: string): Promise<GitPullRequest[]> {
+    const pulls = await this.getIfChanged<GitHubPullRequest[]>(
+      `/repos/${repository}/pulls?state=open&per_page=${PAGE_SIZE}`,
+    );
+    return pulls.map((pull) => ({
+      repository,
+      number: pull.number,
+      title: pull.title,
+      author: pull.user?.login ?? '',
+      headSha: pull.head.sha,
+      draft: Boolean(pull.draft),
+      url: pull.html_url,
+    }));
+  }
+
+  async pullRequestChecks(repository: string, number: number, headSha: string): Promise<PullRequestChecks> {
+    const [pull, { check_runs: runs }, { statuses }] = await Promise.all([
+      this.getIfChanged<{ mergeable_state?: string }>(`/repos/${repository}/pulls/${number}`),
+      this.getIfChanged<{ check_runs: CheckRun[] }>(
+        `/repos/${repository}/commits/${headSha}/check-runs?per_page=${PAGE_SIZE}`,
+      ),
+      this.getIfChanged<{ statuses: CommitStatus[] }>(`/repos/${repository}/commits/${headSha}/status`),
+    ]);
+    return checksOf(runs, statuses, pull.mergeable_state ?? null);
+  }
+
+  async userExists(login: string): Promise<boolean> {
+    const response = await this.request(`/users/${encodeURIComponent(login)}`);
+    if (response.status === 404) {
+      return false;
+    }
+    if (!response.ok) {
+      throw errorFor(response.status, response.headers.get('x-ratelimit-remaining') === '0');
+    }
+    return true;
+  }
+
+  private async getIfChanged<T>(path: string): Promise<T> {
+    const key = `${createHash('sha256').update(this.token).digest('hex').slice(0, 16)}:${path}`;
+    const known = remembered.get(key);
+    const response = await this.request(path, known ? { headers: { 'if-none-match': known.etag } } : {});
+    if (response.status === 304 && known) {
+      return known.body as T;
+    }
+    if (!response.ok) {
+      throw errorFor(response.status, response.headers.get('x-ratelimit-remaining') === '0');
+    }
+    const body = (await response.json()) as T;
+    const etag = response.headers.get('etag');
+    if (etag) {
+      if (remembered.size >= MAX_REMEMBERED) {
+        remembered.clear();
+      }
+      remembered.set(key, { etag, body });
+    }
+    return body;
   }
 
   private async post(path: string, body: unknown): Promise<void> {
