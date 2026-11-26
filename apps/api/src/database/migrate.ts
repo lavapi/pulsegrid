@@ -45,6 +45,7 @@ import * as slackNotifications from './migrations/0043_slack_notifications';
 import * as removeSlackNotifications from './migrations/0044_remove_slack_notifications';
 import * as databaseAccessRequests from './migrations/0045_database_access_requests';
 import * as deviceSignIn from './migrations/0046_device_sign_in';
+import * as pushRelay from './migrations/0047_push_relay';
 
 const MIGRATIONS: Record<string, Migration> = {
   '0001_foundation': foundation,
@@ -93,6 +94,7 @@ const MIGRATIONS: Record<string, Migration> = {
   '0044_remove_slack_notifications': removeSlackNotifications,
   '0045_database_access_requests': databaseAccessRequests,
   '0046_device_sign_in': deviceSignIn,
+  '0047_push_relay': pushRelay,
 };
 
 const ensureAppRole = async (db: Kysely<unknown>, password: string): Promise<void> => {

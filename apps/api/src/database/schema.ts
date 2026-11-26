@@ -70,6 +70,14 @@ export interface PushDevicesTable {
   updated_at: ColumnType<Date, Date | undefined, Date>;
 }
 
+export interface PushRelayInstallationsTable {
+  relay_url: string;
+  installation_id: string;
+  /** The relay's secret for this server, encrypted with TOKEN_ENCRYPTION_KEY. */
+  secret_encrypted: string;
+  created_at: CreatedAt;
+}
+
 export interface AccountsTable {
   id: Generated<string>;
   email: string;
@@ -361,6 +369,7 @@ export interface Database {
   database_access_requests: DatabaseAccessRequestsTable;
   device_sign_in_codes: DeviceSignInCodesTable;
   push_devices: PushDevicesTable;
+  push_relay_installations: PushRelayInstallationsTable;
   accounts: AccountsTable;
   account_identities: AccountIdentitiesTable;
   users: UsersTable;

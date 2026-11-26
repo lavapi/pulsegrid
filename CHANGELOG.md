@@ -22,6 +22,9 @@ All notable changes to this project are documented in this file. The format is b
 - Migration 0046 adds the app's sessions, sign-in codes and push devices. Run `pnpm db:migrate`.
 - The push relay in `apps/push-relay`, with its Terraform in `infra/terraform/push-relay`: a small Lambda behind API Gateway that sends notifications to the iPhone app for servers without their own Apple key. Each server registers itself once (`POST /v1/installations`) and sends with its own secret (`POST /v1/notifications`), up to a daily limit. It keeps no notification text. See `docs/push-relay.md`.
 
+- Push notifications work without an Apple key: the API and the worker send them through LavaPi's push relay (`PUSH_RELAY_URL`, default `https://push-pulsegrid.lavapi.com`, empty to turn notifications off). The server registers with the relay by itself, and keeps its relay secret encrypted. With the `APNS_*` settings, it still sends to Apple directly.
+- Migration 0047 adds the server's push relay registration. Run `pnpm db:migrate`.
+
 ### Changed
 
 - A test builds the whole worker, so a job missing a dependency fails the tests instead of a deploy.

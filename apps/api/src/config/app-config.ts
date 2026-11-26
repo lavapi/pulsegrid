@@ -2,6 +2,9 @@ import { z } from 'zod';
 import type { ApnsSettings } from '@pulsegrid/push';
 import type { RedisSettings } from '../redis/redis-connection';
 
+/** LavaPi's push relay, for the iPhone app as published in the App Store. */
+export const DEFAULT_PUSH_RELAY_URL = 'https://push-pulsegrid.lavapi.com';
+
 const envSchema = z.object({
   PUBLIC_URL: z
     .string()
@@ -23,6 +26,11 @@ const envSchema = z.object({
   APNS_TEAM_ID: z.string().regex(/^[A-Z0-9]{10}$/).optional(),
   APNS_BUNDLE_ID: z.string().min(1).optional(),
   APNS_PRIVATE_KEY: z.string().includes('PRIVATE KEY').optional(),
+  // Without an Apple key, notifications go through this relay. Empty turns them off.
+  PUSH_RELAY_URL: z
+    .union([z.literal(''), z.string().url()])
+    .default(DEFAULT_PUSH_RELAY_URL)
+    .transform((url) => url.replace(/\/+$/, '')),
   TOKEN_ENCRYPTION_KEY: z
     .string()
     .refine((key) => Buffer.from(key, 'base64').length === 32, 'Must be 32 bytes in base64'),
@@ -37,6 +45,7 @@ export interface AppConfig {
   tokenEncryptionKey: Buffer;
   google: { clientId: string; clientSecret: string } | null;
   apns: ApnsSettings | null;
+  pushRelayUrl: string | null;
 }
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -68,5 +77,6 @@ export const loadAppConfig = (env: NodeJS.ProcessEnv): AppConfig => {
             privateKey: parsed.APNS_PRIVATE_KEY.replace(/\\n/g, '\n'),
           }
         : null,
+    pushRelayUrl: parsed.PUSH_RELAY_URL || null,
   };
 };

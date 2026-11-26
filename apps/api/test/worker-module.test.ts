@@ -12,6 +12,7 @@ describe('the worker', () => {
       DATABASE_URL: appUrl,
       REDIS_URL: 'redis://localhost:6379/1',
       TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
+      PUSH_RELAY_URL: '',
     });
     const moduleRef = await Test.createTestingModule({ imports: [WorkerModule] }).compile();
     expect(moduleRef.get(ProductionReleaseAlertsWorker)).toBeDefined();

@@ -141,6 +141,7 @@ export const startTestApp = async (
     REDIS_URL: 'redis://localhost:6379/1',
     SESSION_TTL_HOURS: '8',
     TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
+    PUSH_RELAY_URL: '',
   });
 
   const google: TestContext['google'] = { profile: null };
