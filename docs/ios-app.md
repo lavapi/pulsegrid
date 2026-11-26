@@ -48,7 +48,13 @@ The app registers its phone with `PUT /api/devices/push` after the person allows
 | A request was approved or declined | The person who asked |
 | A production release is waiting for a decision | People with **Finish or roll back production releases**, once per release |
 
-The API and the worker send notifications through Apple's push service when these four settings are present. Without them, nothing is sent, and nothing else changes.
+Notifications for the App Store app work with no settings. The API and the worker send them through LavaPi's push relay (`https://push-pulsegrid.lavapi.com`), which holds the app's Apple key. The first time it sends, the server registers with the relay by itself and keeps its relay secret encrypted in the database. The relay passes each notification on to Apple and keeps no copy of it. See [Push relay](push-relay.md).
+
+| Setting | What it does |
+|---|---|
+| `PUSH_RELAY_URL` | The relay to send through. Leave it out for LavaPi's relay, set it to your own relay, or set it empty to send no notifications |
+
+With your own build of the app, your own Apple key is needed. Set these four settings, and the server sends to Apple directly instead of through the relay.
 
 | Setting | What it is |
 |---|---|

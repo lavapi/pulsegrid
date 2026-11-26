@@ -1,13 +1,21 @@
 import { Module } from '@nestjs/common';
-import { ApnsClient } from '@pulsegrid/push';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
+import { TokenCipher } from '../inventory/connection/token-cipher';
 import { PushDevicesStore } from './push-devices.store';
-import { APNS_CLIENT, PushNotifier } from './push-notifier';
+import { PUSH_SENDER, PushNotifier } from './push-notifier';
+import { pushSenderFor } from './push-sender-choice';
+import { RelayInstallationsStore } from './relay-installations.store';
 
 /** Sending push notifications, for the API and the worker. */
 @Module({
   providers: [
-    { provide: APNS_CLIENT, inject: [APP_CONFIG], useFactory: (config: AppConfig) => config.apns && new ApnsClient(config.apns) },
+    { provide: TokenCipher, inject: [APP_CONFIG], useFactory: (config: AppConfig) => new TokenCipher(config.tokenEncryptionKey) },
+    RelayInstallationsStore,
+    {
+      provide: PUSH_SENDER,
+      inject: [APP_CONFIG, RelayInstallationsStore],
+      useFactory: (config: AppConfig, installations: RelayInstallationsStore) => pushSenderFor(config, installations),
+    },
     PushDevicesStore,
     PushNotifier,
   ],

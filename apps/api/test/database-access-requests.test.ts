@@ -6,7 +6,7 @@ import { WORKFLOW_POLL } from '../src/database-access/database-access-tenants';
 import { DatabaseAccessJobs } from '../src/database-access/database-access.jobs';
 import { DatabaseAccessQueue } from '../src/database-access/database-access.queue';
 import { DATABASE_ACCESS_SETUP } from '../src/database-access/database-access.settings';
-import { APNS_CLIENT } from '../src/push/push-notifier';
+import { PUSH_SENDER } from '../src/push/push-notifier';
 import { authenticatorFor, connectProduction, runEnds, SETUP, sfn } from './support/database-access';
 import { setExtraPermissions, signIn, startTestApp, type TestContext, user } from './support/test-app';
 
@@ -51,7 +51,7 @@ describe('database access requests', () => {
         .useValue({ intervalMs: 0, timeoutMs: 1000 })
         .overrideProvider(DatabaseAccessQueue)
         .useValue(queue)
-        .overrideProvider(APNS_CLIENT)
+        .overrideProvider(PUSH_SENDER)
         .useValue(apns),
     );
     approver = await signIn(context, context.acme, user('gus', 'developer'));

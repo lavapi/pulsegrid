@@ -5,18 +5,18 @@ import { sql } from 'kysely';
 import { TenantDatabase } from '../database/tenant-database';
 import { PushDevicesStore } from './push-devices.store';
 
-export const APNS_CLIENT = Symbol('APNS_CLIENT');
+export const PUSH_SENDER = Symbol('PUSH_SENDER');
 
 /**
  * Push notifications to people's iPhones. Sending never holds up or fails the action that caused it: it runs on
- * its own, and failures are only logged. Without Apple push settings, nothing is sent.
+ * its own, and failures are only logged. It sends through Apple or the push relay (see pushSenderFor).
  */
 @Injectable()
 export class PushNotifier {
   private readonly logger = new Logger(PushNotifier.name);
 
   constructor(
-    @Inject(APNS_CLIENT) private readonly apns: PushSender | null,
+    @Inject(PUSH_SENDER) private readonly sender: PushSender | null,
     private readonly devices: PushDevicesStore,
     private readonly database: TenantDatabase,
   ) {}
@@ -51,9 +51,9 @@ export class PushNotifier {
   }
 
   private async send(accountIds: readonly string[], message: PushMessage): Promise<void> {
-    if (!this.apns) return;
+    if (!this.sender) return;
     for (const device of await this.devices.forAccounts(accountIds)) {
-      const result = await this.apns.send(device.apnsToken, device.environment, message);
+      const result = await this.sender.send(device.apnsToken, device.environment, message);
       if (result === 'gone') await this.devices.forget(device.id);
       if (result === 'failed') this.logger.warn(`A push notification wasn't delivered: ${message.collapseId}`);
     }
