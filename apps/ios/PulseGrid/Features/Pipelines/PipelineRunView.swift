@@ -30,7 +30,7 @@ struct PipelineRunView: View {
                 }
                 RunActionsSection(detail: detail, reload: reload)
                 Section("Jobs") {
-                    if detail.jobs.isEmpty { Text("No jobs yet").foregroundStyle(.secondary) }
+                    if detail.jobs.isEmpty { Text("No jobs yet").foregroundStyle(.secondary) } else { SegmentLine(jobs: detail.jobs).padding(.vertical, 4) }
                     ForEach(detail.jobs) { job in
                         Label {
                             HStack {

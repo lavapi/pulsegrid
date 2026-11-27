@@ -15,7 +15,7 @@ struct MainTabs: View {
                 TabRoot(tab: .services, route: $route) { ServicesView() }
             }
             Tab("Deploys", systemImage: "shippingbox", value: AppTab.deploys) {
-                TabRoot(tab: .deploys, route: $route) { ReleasesView() }
+                TabRoot(tab: .deploys, route: $route) { DeploysView() }
             }
             Tab("Access", systemImage: "cylinder.split.1x2", value: AppTab.access) {
                 TabRoot(tab: .access, route: $route, followsAccount: false) { AccessView() }
