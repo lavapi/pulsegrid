@@ -6,6 +6,8 @@ import { DATABASE } from '../src/database/database.module';
 import type { Database } from '../src/database/schema';
 import { TenantDatabase } from '../src/database/tenant-database';
 import { ServiceHealthAlerts } from '../src/inventory/health/service-health-alerts';
+import { CostAlerts } from '../src/inventory/costs/cost-alerts';
+import { DatabaseAccessEndingAlerts } from '../src/database-access/database-access-ending-alerts';
 import { newEnvironment } from '../src/inventory/environments/account-environment';
 import type { GitClient } from '../src/pipelines/git/git-provider';
 import { PipelineRunAlerts } from '../src/pipelines/pipeline-run-alerts';
@@ -60,6 +62,7 @@ describe('notifications', () => {
         unhealthy_staging: false,
         failed_pipelines: true,
         failover_tests: true,
+        cost_increases: true,
       });
       const changed = await http().put('/api/account/notifications').set('Cookie', ada).send({ unhealthy_staging: true, failed_pipelines: false }).expect(200);
       expect(changed.body).toMatchObject({ unhealthy_staging: true, failed_pipelines: false, database_access: true });
@@ -249,6 +252,86 @@ describe('notifications', () => {
       await alerts.check();
       expect(await watching()).toHaveLength(0);
       expect(client.getRun).not.toHaveBeenCalledWith('acme/api', '60');
+    });
+  });
+
+  describe('rising costs', () => {
+    const push = { toPermission: vi.fn() };
+    let alerts: CostAlerts;
+    let accountId: string;
+    const now = new Date('2026-11-10T12:00:00Z');
+
+    beforeAll(async () => {
+      alerts = new CostAlerts(context.app.get(TenantDatabase), context.app.get(REDIS), push as unknown as PushNotifier);
+      accountId = (
+        await context.owner
+          .insertInto('cloud_accounts')
+          .values({ tenant_id: tenantId(), provider: 'aws', account_id: '700000000099', name: 'Staging', regions: ['eu-central-1'] })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      const cost = (month: string, service: string, amount: number) => ({ tenant_id: tenantId(), cloud_account_id: accountId, month, service, category: null, amount, currency: 'USD' });
+      await context.owner
+        .insertInto('cloud_costs')
+        .values([cost('2026-11', 'Amazon RDS', 300), cost('2026-11', 'Amazon ECS', 100), cost('2026-10', 'Amazon RDS', 500), cost('2026-10', 'Amazon ECS', 400)])
+        .execute();
+    });
+
+    it('tells the people who can see costs, once a month', async () => {
+      await alerts.check(tenantId(), accountId, now);
+      await alerts.check(tenantId(), accountId, now);
+      expect(push.toPermission).toHaveBeenCalledTimes(1);
+      expect(push.toPermission).toHaveBeenCalledWith(tenantId(), 'costs.view', 'cost_increases', {
+        title: 'Staging costs are rising',
+        body: 'On track for $1,200 this month, up 33% from $900. Biggest rise: Amazon RDS (+$400).',
+        path: '/costs',
+        collapseId: `costs-${accountId}-2026-11`,
+      });
+    });
+  });
+
+  describe('database access ending', () => {
+    const push = { toUser: vi.fn() };
+    let alerts: DatabaseAccessEndingAlerts;
+    let userId: string;
+    let otherId: string;
+
+    const grant = (expiresAt: Date, status: 'active' | 'expired' = 'active', person = userId) =>
+      context.owner
+        .insertInto('database_access_grants')
+        .values({ tenant_id: tenantId(), granted_by_email: 'val@example.test', user_name: person, user_id: person, reason: 'Fix a report', status, expires_at: expiresAt })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+
+    beforeAll(async () => {
+      alerts = new DatabaseAccessEndingAlerts(context.app.get<Kysely<Database>>(DATABASE), context.app.get(TenantDatabase), context.app.get(REDIS), push as unknown as PushNotifier);
+      userId = (await context.owner.selectFrom('users').select('id').where('email', '=', 'ada@example.test').executeTakeFirstOrThrow()).id;
+      otherId = (await context.owner.selectFrom('users').select('id').where('email', '=', 'val@example.test').executeTakeFirstOrThrow()).id;
+    });
+    beforeEach(async () => {
+      push.toUser.mockClear();
+      await context.owner.deleteFrom('database_access_grants').execute();
+    });
+
+    it('tells the person 15 minutes before their access ends, once for each end time', async () => {
+      const now = new Date();
+      const soon = await grant(new Date(now.getTime() + 12 * 60_000));
+      await grant(new Date(now.getTime() + 60 * 60_000), 'active', otherId);
+      await grant(new Date(now.getTime() + 5 * 60_000), 'expired');
+      await alerts.check(now);
+      await alerts.check(now);
+      expect(push.toUser).toHaveBeenCalledTimes(1);
+      expect(push.toUser).toHaveBeenCalledWith(tenantId(), userId, 'database_access', {
+        title: 'Database access ends soon',
+        body: 'Your production database access ends in 12 minutes. Ask for more time in PulseGrid if you need it.',
+        path: '/database-access',
+        collapseId: `database-access-ending-${soon.id}`,
+      });
+
+      const extended = new Date(now.getTime() + 14 * 60_000);
+      await context.owner.updateTable('database_access_grants').set({ expires_at: extended }).where('id', '=', soon.id).execute();
+      await alerts.check(now);
+      expect(push.toUser).toHaveBeenCalledTimes(2);
     });
   });
 });

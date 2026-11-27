@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- A push notification when an AWS account's costs rise sharply: from the 5th of the month, when the month is heading for at least 25% and $50 more than last month. It goes to people who can view costs, once per account a month, and names the service that rose most. A new **Costs rising sharply** switch turns it off.
+- A push notification 15 minutes before your production database access ends, and again before a new end if it's extended.
+
 ## [0.40.0] - 2026-11-27
 
 ### Added

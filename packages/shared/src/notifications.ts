@@ -6,6 +6,7 @@ export const NOTIFICATION_TOPICS = {
   unhealthy_staging: { label: 'Services turning unhealthy in staging', default: false },
   failed_pipelines: { label: 'Pipelines I started that failed', default: true },
   failover_tests: { label: 'Failover tests I started, when they finish', default: true },
+  cost_increases: { label: 'Costs rising sharply', default: true },
 } as const;
 
 export type NotificationTopic = keyof typeof NOTIFICATION_TOPICS;
