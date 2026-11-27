@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The selected account's health by service, and what needs attention.
+/// The selected account at a glance: overall health, what needs attention, and each kind of service.
 struct OverviewView: View {
     @Environment(AppModel.self) private var app
 
@@ -19,9 +19,18 @@ struct OverviewView: View {
                         return try await Snapshot(categories: categories, problems: problems.resources)
                     } content: { snapshot, reload in
                         List {
+                            Section {
+                                HealthSummary(health: .sum(snapshot.categories.map(\.health)))
+                            } header: {
+                                Text(account.title)
+                            }
                             Section("Needs attention") {
                                 if snapshot.problems.isEmpty {
-                                    Label("Everything is healthy", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                                    Label {
+                                        Text("Everything is healthy")
+                                    } icon: {
+                                        IconTile(symbol: "checkmark", color: .green)
+                                    }
                                 }
                                 ForEach(snapshot.problems) { resource in
                                     NavigationLink { ResourceDetailView(resourceId: resource.id, account: account) } label: {
@@ -30,9 +39,7 @@ struct OverviewView: View {
                                 }
                             }
                             Section("Services") {
-                                ForEach(snapshot.categories) { category in
-                                    CategoryRow(category: category)
-                                }
+                                ForEach(snapshot.categories) { CategoryRow(category: $0) }
                             }
                         }
                         .refreshable { await reload() }

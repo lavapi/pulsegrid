@@ -12,10 +12,17 @@ struct ResourceDetailView: View {
         } content: { resource, reload in
             List {
                 Section {
+                    HStack(spacing: 14) {
+                        IconTile(.type(resource.type), size: 52)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(resource.title).font(.title3.bold()).lineLimit(2)
+                            Text("\(resource.typeLabel) · \(resource.region)").font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.vertical, 4)
                     LabeledContent("Health") { StatusBadge(text: resource.health.sentenceCased, tone: .ofHealth(resource.health)) }
                     LabeledContent("Status", value: resource.status)
-                    LabeledContent("Type", value: resource.typeLabel)
-                    LabeledContent("Region", value: resource.region)
                     if let seen = resource.lastSeenAt {
                         LabeledContent("Checked") { Text(seen, format: .relative(presentation: .named)) }
                     }

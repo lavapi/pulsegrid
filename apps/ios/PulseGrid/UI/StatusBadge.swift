@@ -62,17 +62,25 @@ enum Tone {
     }
 }
 
+/// A short status in a tinted capsule with a dot, which pulses while something is in progress.
 struct StatusBadge: View {
     let text: String
     let tone: Tone
 
     var body: some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .foregroundStyle(tone.color)
-            .background(tone.color.opacity(0.14), in: .capsule)
+        HStack(spacing: 5) {
+            Image(systemName: "circle.fill")
+                .font(.system(size: 6))
+                .symbolEffect(.pulse, isActive: tone == .active)
+            Text(text)
+        }
+        .font(.caption.weight(.semibold))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .foregroundStyle(tone.color)
+        .background(tone.color.opacity(0.13), in: .capsule)
+        .fixedSize()
+        .accessibilityElement(children: .combine)
     }
 }
 
