@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-11-27
+
+- Get an iPhone notification when an AWS account's costs rise sharply: from the 5th of the month, when the month is heading for at least 25% and $50 more than last month, once a month at most. People who can view costs get it, and can turn it off under Notifications.
+- Get an iPhone notification 15 minutes before your production database access ends.
+- The iPhone app is now version 1.4.0.
+
 ## [0.40.0] - 2026-11-27
 
 - Get an iPhone notification when a failover test you started finishes: a single test with its result, or a group run once, with how many tests passed.
