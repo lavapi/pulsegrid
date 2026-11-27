@@ -14,6 +14,15 @@ struct AccessView: View {
                 }
             }
             .navigationTitle("Database access")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        if app.user?.can(.grantDatabaseAccess) == true { AccessHistoryView() } else { MyAccessHistoryView() }
+                    } label: {
+                        Label("History", systemImage: "clock.arrow.circlepath")
+                    }
+                }
+            }
         }
     }
 }
@@ -32,21 +41,22 @@ private struct RequestsList: View {
                 ContentUnavailableView("No one is waiting", systemImage: "tray", description: Text("You'll get a notification when someone asks for access."))
                     .refreshable { await reload() }
             } else {
-                List(requests) { request in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("\(request.requestedBy) · \(request.hours) \(request.hours == 1 ? "hour" : "hours")").font(.headline)
-                        Text(request.reason)
-                        Text("\(request.userName) · \(request.createdAt, format: .relative(presentation: .named))")
-                            .font(.caption).foregroundStyle(.secondary)
-                        HStack {
-                            Button("Decline", role: .destructive) { answering = (request, false) }
-                            Spacer()
-                            Button("Approve") { answering = (request, true) }.buttonStyle(.borderedProminent)
+                List {
+                    Section {
+                        ForEach(requests) { request in
+                            RequestCard(request: request) { approve in answering = (request, approve) }
+                                .swipeActions(edge: .trailing) {
+                                    Button { answering = (request, true) } label: { Label("Approve", systemImage: "checkmark") }.tint(.green)
+                                }
+                                .swipeActions(edge: .leading) {
+                                    Button { answering = (request, false) } label: { Label("Decline", systemImage: "xmark") }.tint(.red)
+                                }
                         }
-                        .buttonStyle(.bordered)
-                        .padding(.top, 4)
+                    } header: {
+                        Text("\(requests.count) waiting")
+                    } footer: {
+                        Text("Swipe left to approve, or right to decline.")
                     }
-                    .padding(.vertical, 4)
                 }
                 .refreshable { await reload() }
                 .sheet(isPresented: Binding(get: { answering != nil }, set: { if !$0 { answering = nil } })) {
@@ -59,6 +69,62 @@ private struct RequestsList: View {
                 }
             }
         }
+    }
+}
+
+/// Who asks, for how long and why, with the two answers.
+private struct RequestCard: View {
+    let request: DatabaseAccessRequest
+    let answer: (_ approve: Bool) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                Initials(name: request.requestedBy)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(request.requestedBy).font(.headline)
+                    Text("\(request.userName) · \(request.createdAt, format: .relative(presentation: .named))")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                StatusBadge(text: "\(request.hours) h", tone: .neutral)
+            }
+            Text(request.reason)
+                .font(.callout)
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.tertiarySystemFill), in: .rect(cornerRadius: 10, style: .continuous))
+            HStack(spacing: 10) {
+                Button(role: .destructive) { answer(false) } label: { Text("Decline").frame(maxWidth: .infinity) }
+                    .buttonStyle(.bordered)
+                Button { answer(true) } label: { Text("Approve").frame(maxWidth: .infinity) }
+                    .buttonStyle(.borderedProminent)
+            }
+            .controlSize(.regular)
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+/// A person's initials in a tinted circle.
+struct Initials: View {
+    let name: String
+    var size: CGFloat = 40
+
+    private var letters: String {
+        // An email's initials come from the part before the "@", so "vic@example.test" reads "V".
+        let person = name.split(separator: "@").first.map(String.init) ?? name
+        let words = person.split(whereSeparator: { $0 == " " || $0 == "." || $0 == "_" || $0 == "-" })
+        return words.prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
+    }
+
+    var body: some View {
+        Text(letters.isEmpty ? "?" : letters)
+            .font(.system(size: size * 0.38, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(Color.accentColor.gradient, in: .circle)
+            .accessibilityHidden(true)
     }
 }
 
@@ -110,6 +176,7 @@ private struct AnswerSheet: View {
                     Section { Text(message).foregroundStyle(.red) }
                 }
             }
+            .sensoryFeedback(.error, trigger: error) { _, new in new != nil }
             .navigationTitle(approve ? "Approve access" : "Decline request")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -158,13 +225,34 @@ private struct MyAccessView: View {
             case let .ready(maxHours, suggestedUserName, request, grant):
                 Form {
                     if let grant, grant.status == "active" || grant.status == "granting" {
-                        Section("Your access") {
-                            LabeledContent("Status") {
-                                StatusBadge(text: grant.status == "active" ? "Active" : "Granting", tone: grant.status == "active" ? .good : .active)
+                        Section {
+                            Label {
+                                HStack {
+                                    Text("Production database").font(.headline)
+                                    Spacer()
+                                    StatusBadge(text: grant.status == "active" ? "Active" : "Granting", tone: grant.status == "active" ? .good : .active)
+                                }
+                            } icon: {
+                                IconTile(symbol: "cylinder.split.1x2.fill", color: .blue)
+                            }
+                            if grant.status == "active", grant.expiresAt > .now {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text("Ends in")
+                                        Spacer()
+                                        Text(timerInterval: Date.now...grant.expiresAt, countsDown: true)
+                                            .font(.title3.weight(.semibold).monospacedDigit())
+                                    }
+                                    ProgressView(timerInterval: grant.startsAt...grant.expiresAt, countsDown: true) { EmptyView() } currentValueLabel: { EmptyView() }
+                                        .tint(.accentColor)
+                                }
+                                .padding(.vertical, 4)
                             }
                             LabeledContent("Until") { Text(grant.expiresAt, format: .dateTime.hour().minute()) }
+                        } header: {
+                            Text("Your access")
+                        } footer: {
                             Text("Connect from your computer: open Database access on the PulseGrid website and choose How to connect.")
-                                .font(.footnote).foregroundStyle(.secondary)
                         }
                     } else if let request, request.status == "pending" {
                         WaitingSection(request: request, reload: reload)
@@ -202,8 +290,16 @@ private struct WaitingSection: View {
 
     var body: some View {
         Section {
-            LabeledContent("Status") { StatusBadge(text: "Waiting", tone: .warning) }
-            Text("\(request.hours) \(request.hours == 1 ? "hour" : "hours"): \(request.reason)")
+            Label {
+                HStack {
+                    Text("Waiting for an approver").font(.headline)
+                    Spacer()
+                    StatusBadge(text: "\(request.hours) h", tone: .neutral)
+                }
+            } icon: {
+                IconTile(symbol: "hourglass", color: .orange)
+            }
+            Text(request.reason).font(.callout)
             Text("You'll get a notification when someone answers.").font(.footnote).foregroundStyle(.secondary)
             Button("Cancel request", role: .destructive) {
                 Task {

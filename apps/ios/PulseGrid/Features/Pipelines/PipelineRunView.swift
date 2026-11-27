@@ -12,27 +12,36 @@ struct PipelineRunView: View {
         } content: { detail, reload in
             List {
                 Section {
+                    HStack(spacing: 12) {
+                        PipelineStatusIcon(status: detail.run.status).font(.largeTitle)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(detail.run.title).font(.headline).lineLimit(3)
+                            BranchTag(branch: detail.run.branch)
+                        }
+                    }
+                    .padding(.vertical, 4)
                     LabeledContent("Status") { StatusBadge(text: detail.run.status.sentenceCased, tone: .ofPipeline(detail.run.status)) }
-                    LabeledContent("Branch", value: detail.run.branch)
                     LabeledContent("Commit", value: detail.run.commit)
                     if let environment = detail.environmentName { LabeledContent("Environment", value: environment) }
                     if let actor = detail.run.actor { LabeledContent("Started by", value: actor) }
                     if let started = detail.run.startedAt {
                         LabeledContent("Started") { Text(started, format: .relative(presentation: .named)) }
                     }
-                    Text(detail.run.title).font(.callout)
                 }
                 RunActionsSection(detail: detail, reload: reload)
                 Section("Jobs") {
                     if detail.jobs.isEmpty { Text("No jobs yet").foregroundStyle(.secondary) }
                     ForEach(detail.jobs) { job in
-                        HStack {
-                            Text(job.name).lineLimit(1)
-                            Spacer()
-                            if let seconds = job.durationSeconds {
-                                Text(Duration.seconds(seconds), format: .units(width: .narrow)).font(.caption).foregroundStyle(.secondary)
+                        Label {
+                            HStack {
+                                Text(job.name).lineLimit(1)
+                                Spacer()
+                                if let seconds = job.durationSeconds {
+                                    Text(Duration.seconds(seconds), format: .units(width: .narrow)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                                }
                             }
-                            StatusBadge(text: job.status.sentenceCased, tone: .ofPipeline(job.status))
+                        } icon: {
+                            PipelineStatusIcon(status: job.status)
                         }
                     }
                 }

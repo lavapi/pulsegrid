@@ -81,4 +81,20 @@ nonisolated struct Resource: Decodable, Identifiable, Sendable {
 
 nonisolated struct ResourcePage: Decodable, Sendable {
     let resources: [Resource]
+    var nextCursor: String?
+}
+
+extension APIClient {
+    /// Every resource in a category, read page by page.
+    func allResources(account: String, category: String, search: String = "") async throws -> [Resource] {
+        var query = ["account": account, "category": category, "limit": "100"]
+        if !search.isEmpty { query["q"] = search }
+        var resources: [Resource] = []
+        repeat {
+            let page: ResourcePage = try await get("resources", query: query)
+            resources += page.resources
+            query["cursor"] = page.nextCursor
+        } while query["cursor"] != nil
+        return resources
+    }
 }

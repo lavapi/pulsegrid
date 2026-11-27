@@ -16,12 +16,14 @@ struct Loaded<Value, Content: View>: View {
                     .safeAreaInset(edge: .top) {
                         if let error { RefreshBanner(error: error).padding(.horizontal) }
                     }
+                    .transition(.opacity)
             } else if let error {
                 ErrorView(error: error) { Task { await reload() } }
             } else {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                SkeletonList()
             }
         }
+        .animation(.easeOut(duration: 0.2), value: value == nil)
         .task(id: id) { await reload() }
     }
 

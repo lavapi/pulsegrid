@@ -12,12 +12,18 @@ struct ResourceDetailView: View {
         } content: { resource, reload in
             List {
                 Section {
+                    ResourceHeader(resource: resource)
                     LabeledContent("Health") { StatusBadge(text: resource.health.sentenceCased, tone: .ofHealth(resource.health)) }
                     LabeledContent("Status", value: resource.status)
-                    LabeledContent("Type", value: resource.typeLabel)
-                    LabeledContent("Region", value: resource.region)
                     if let seen = resource.lastSeenAt {
                         LabeledContent("Checked") { Text(seen, format: .relative(presentation: .named)) }
+                    }
+                    if let clusterName = resource.clusterName, let membership = ClusterMembership.forMember(resource.type) {
+                        NavigationLink {
+                            ClusterView(account: account, membership: membership, name: clusterName, region: resource.region)
+                        } label: {
+                            LabeledContent("Cluster", value: clusterName)
+                        }
                     }
                 }
                 ResourceActionsSection(resource: resource, isProduction: account.isProduction)
@@ -44,5 +50,22 @@ struct ResourceDetailView: View {
             .navigationTitle(resource.title)
             .navigationBarTitleDisplayMode(.inline)
         }
+    }
+}
+
+/// A resource's icon, name, type and region, at the top of its page.
+struct ResourceHeader: View {
+    let resource: Resource
+
+    var body: some View {
+        HStack(spacing: 14) {
+            IconTile(.type(resource.type), size: 52)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(resource.title).font(.title3.bold()).lineLimit(2)
+                Text("\(resource.typeLabel) · \(resource.region)").font(.subheadline).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 4)
     }
 }

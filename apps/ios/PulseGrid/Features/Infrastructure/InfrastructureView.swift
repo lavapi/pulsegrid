@@ -34,20 +34,43 @@ struct InfrastructureView: View {
     }
 }
 
-/// A category's name with its health counts, shared by Overview and Infrastructure.
+/// A category with its icon, and its problems when there are any, shared by Overview and Infrastructure.
 struct CategoryRow: View {
     let category: ServiceCategorySummary
 
     var body: some View {
-        HStack {
-            Text(category.label).font(.body.weight(.medium))
-            Spacer()
-            HealthBadges(health: category.health)
+        Label {
+            HStack {
+                Text(category.label).font(.body.weight(.medium))
+                Spacer()
+                CompactHealth(health: category.health)
+            }
+        } icon: {
+            IconTile(.category(category.category))
         }
     }
 }
 
-/// One category's resources, searchable by name.
+/// Problems as badges, or a quiet count with a check when everything is healthy.
+struct CompactHealth: View {
+    let health: HealthCounts
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if health.degraded > 0 { StatusBadge(text: "\(health.degraded) degraded", tone: .bad) }
+            if health.stopped > 0 { StatusBadge(text: "\(health.stopped) stopped", tone: .warning) }
+            if health.degraded == 0 && health.stopped == 0 {
+                Label("\(health.total)", systemImage: "checkmark.circle.fill")
+                    .labelStyle(.titleAndIcon)
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.green)
+                    .accessibilityLabel("All \(health.total) healthy")
+            }
+        }
+    }
+}
+
+/// One category's resources, searchable by name: clusters first, each opening its members, then everything else.
 struct CategoryResourcesView: View {
     @Environment(AppModel.self) private var app
     let account: CloudAccount
@@ -56,16 +79,15 @@ struct CategoryResourcesView: View {
 
     var body: some View {
         Loaded(id: "\(account.id)-\(category.id)-\(search)") {
-            var query = ["account": account.id, "category": category.category, "limit": "100"]
-            if !search.isEmpty { query["q"] = search }
-            return try await app.api.get("resources", query: query) as ResourcePage
-        } content: { page, reload in
+            try await app.api.allResources(account: account.id, category: category.category, search: search)
+        } content: { resources, reload in
             List {
-                if page.resources.isEmpty {
+                if resources.isEmpty {
                     Text(search.isEmpty ? "Nothing here" : "No matches").foregroundStyle(.secondary)
-                }
-                ForEach(page.resources) { resource in
-                    NavigationLink { ResourceDetailView(resourceId: resource.id, account: account) } label: { ResourceRow(resource: resource) }
+                } else if search.isEmpty {
+                    grouped(ResourceInventory(resources))
+                } else {
+                    rows(resources)
                 }
             }
             .refreshable { await reload() }
@@ -73,20 +95,54 @@ struct CategoryResourcesView: View {
         .searchable(text: $search, prompt: "Search by name")
         .navigationTitle(category.label)
     }
+
+    @ViewBuilder private func grouped(_ inventory: ResourceInventory) -> some View {
+        if inventory.clusters.isEmpty {
+            rows(inventory.standalone)
+        } else {
+            Section("Clusters") {
+                ForEach(inventory.clusters) { cluster in
+                    NavigationLink {
+                        ClusterView(account: account, membership: cluster.membership, name: cluster.resource.name, region: cluster.resource.region)
+                    } label: {
+                        ClusterRow(cluster: cluster)
+                    }
+                }
+            }
+            if !inventory.standalone.isEmpty {
+                Section("Not in a cluster") { rows(inventory.standalone) }
+            }
+        }
+    }
+
+    private func rows(_ resources: [Resource]) -> some View {
+        ForEach(resources) { resource in
+            NavigationLink { ResourceDetailView(resourceId: resource.id, account: account) } label: { ResourceRow(resource: resource) }
+        }
+    }
 }
 
-/// A resource's name, type, status and health in a list.
+/// A resource with its type's icon, its type and status, and its health when it isn't healthy.
 struct ResourceRow: View {
     let resource: Resource
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack {
-                Text(resource.title).font(.body.weight(.medium)).lineLimit(1)
-                Spacer()
-                StatusBadge(text: resource.health.sentenceCased, tone: .ofHealth(resource.health))
+        Label {
+            // Large text puts the badge under the name, so the name keeps its room.
+            let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout())
+            layout {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(resource.title).font(.body.weight(.medium)).lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
+                    Text("\(resource.typeLabel) · \(resource.status)").font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                }
+                if !typeSize.isAccessibilitySize { Spacer() }
+                if resource.health != "healthy" {
+                    StatusBadge(text: resource.health.sentenceCased, tone: .ofHealth(resource.health))
+                }
             }
-            Text("\(resource.typeLabel) · \(resource.status) · \(resource.region)").font(.caption).foregroundStyle(.secondary)
+        } icon: {
+            IconTile(.type(resource.type))
         }
     }
 }

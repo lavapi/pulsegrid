@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-11-27
+
+### Added
+
+- `GET /api/database-access/mine/history`: a person's own database access requests, newest first, each with the grant it led to. Anyone can read their own; the approvers' history is unchanged.
+- iPhone app: ECS, RDS and ElastiCache list their clusters first. Tap a cluster to see its services, instances or nodes with their health, and open each one from there. A service's page links back to its cluster, and lists show every resource, not just the first 100.
+- iPhone app: approvers see the database access history under **Access → History**, grouped by day: who had access, for how long and why, who granted it, and how it ended.
+- iPhone app: everyone else sees their own requests under **Access → History**: what they asked for and why, and whether it was declined, went unanswered, or how the access ended. The app is now version 1.6.0.
+
+### Changed
+
+- The iPhone app has a new design, made with native components throughout. It uses the brand's indigo, Settings-style icons for each kind of service, a health summary with a gauge, status badges with a dot, and the list's outline while loading. Access requests read as cards you can swipe to approve or decline, your own access counts down live, and releases show their stages. Pipelines, failover tests and activity show status icons, activity is grouped by day, costs show the change from last month, and More is grouped into Work, History and You. It works with large text and on small iPhones. The app is now version 1.5.0.
+
 ## [0.41.0] - 2026-11-27
 
 ### Added

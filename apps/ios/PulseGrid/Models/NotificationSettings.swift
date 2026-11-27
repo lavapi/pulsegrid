@@ -1,4 +1,4 @@
-import Foundation
+import SwiftUI
 
 /// What a person can get push notifications about, in the order the app lists them (NOTIFICATION_TOPICS).
 nonisolated enum NotificationTopic: String, CaseIterable, Identifiable, Sendable {
@@ -55,5 +55,31 @@ nonisolated struct NotificationChange: Encodable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode([topic.rawValue: on])
+    }
+}
+
+extension NotificationTopic {
+    var symbol: String {
+        switch self {
+        case .databaseAccess: "cylinder.split.1x2.fill"
+        case .productionReleases: "flag.checkered"
+        case .unhealthyProduction: "exclamationmark.triangle.fill"
+        case .unhealthyStaging: "exclamationmark.triangle"
+        case .failedPipelines: "arrow.triangle.pull"
+        case .failoverTests: "bolt.shield.fill"
+        case .costIncreases: "dollarsign"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .databaseAccess: .blue
+        case .productionReleases: .orange
+        case .unhealthyProduction: .red
+        case .unhealthyStaging: .pink
+        case .failedPipelines: .indigo
+        case .failoverTests: .orange
+        case .costIncreases: .green
+        }
     }
 }

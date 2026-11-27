@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-11-27
+
+- The iPhone app (1.6.0) opens clusters: ECS, RDS and ElastiCache list their clusters first, and a cluster shows its services, instances or nodes with their health.
+- See database access history in the iPhone app under **Access → History**. Approvers see every grant; everyone else sees their own requests and how each one ended.
+- The iPhone app has a new design, made with native components throughout.
+
 ## [0.41.0] - 2026-11-27
 
 - Get an iPhone notification when an AWS account's costs rise sharply: from the 5th of the month, when the month is heading for at least 25% and $50 more than last month, once a month at most. People who can view costs get it, and can turn it off under Notifications.

@@ -43,7 +43,11 @@ private struct CloudActivityList: View {
             if events.isEmpty && !loading && notice == nil && error == nil {
                 Text("Nothing found").foregroundStyle(.secondary)
             }
-            ForEach(events) { CloudActivityRow(event: $0) }
+            ForEach(DayGroup.grouping(events, by: \.occurredAt)) { group in
+                Section(group.title) {
+                    ForEach(group.items) { CloudActivityRow(event: $0) }
+                }
+            }
             if before != nil {
                 Button(loading ? "Loading…" : "Load older") { Task { await load(more: true) } }.disabled(loading)
             }
@@ -81,18 +85,22 @@ private struct CloudActivityRow: View {
     let event: CloudActivityEvent
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(event.label).font(.body.weight(.medium)).lineLimit(2)
-                Spacer()
-                if let code = event.errorCode { StatusBadge(text: code, tone: .bad) }
+        Label {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(event.label).font(.body.weight(.medium)).lineLimit(2)
+                    Spacer()
+                    if let code = event.errorCode { StatusBadge(text: code, tone: .bad) }
+                }
+                if let resource = event.resource { Text(resource).font(.caption.monospaced()).lineLimit(1) }
+                HStack(spacing: 4) {
+                    if event.viaDashboard { Image(systemName: "square.grid.2x2").accessibilityLabel("Through PulseGrid") }
+                    Text("\(event.actor) · \(event.occurredAt, format: .dateTime.hour().minute()) · \(event.region)").lineLimit(1)
+                }
+                .font(.caption).foregroundStyle(.secondary)
             }
-            if let resource = event.resource { Text(resource).font(.caption.monospaced()).lineLimit(1) }
-            HStack(spacing: 4) {
-                if event.viaDashboard { Image(systemName: "square.grid.2x2").accessibilityLabel("Through PulseGrid") }
-                Text("\(event.actor) · \(event.occurredAt, format: .relative(presentation: .named)) · \(event.region)").lineLimit(1)
-            }
-            .font(.caption).foregroundStyle(.secondary)
+        } icon: {
+            IconTile(symbol: event.errorCode == nil ? "cloud.fill" : "exclamationmark.icloud.fill", color: event.errorCode == nil ? .cyan : .red)
         }
     }
 }

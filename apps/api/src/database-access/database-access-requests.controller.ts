@@ -1,4 +1,4 @@
-import type { DatabaseAccessRequest, MyDatabaseAccess } from '@pulsegrid/shared';
+import type { DatabaseAccessRequest, MyDatabaseAccess, MyDatabaseAccessHistoryEntry } from '@pulsegrid/shared';
 import { Body, Controller, Get, Header, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request } from 'express';
@@ -37,6 +37,13 @@ export class DatabaseAccessRequestsController {
   @Throttle(READ_LIMIT)
   mine(@CurrentAuth() auth: AuthContext): Promise<MyDatabaseAccess> {
     return this.requests.mine(auth);
+  }
+
+  @Get('mine/history')
+  @Header('Cache-Control', 'no-store')
+  @Throttle(READ_LIMIT)
+  myHistory(@CurrentAuth() auth: AuthContext): Promise<MyDatabaseAccessHistoryEntry[]> {
+    return this.requests.myHistory(auth);
   }
 
   @Post('requests')
