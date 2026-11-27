@@ -42,12 +42,9 @@ struct MoreView: View {
                     }
                 }
                 Section {
-                    LabeledContent("Notifications", value: push.statusText)
-                    if push.canAsk {
-                        Button("Turn on notifications") { Task { await push.ask() } }
+                    NavigationLink { NotificationSettingsView() } label: {
+                        LabeledContent("Notifications", value: push.statusText)
                     }
-                } footer: {
-                    Text("Database access requests and their answers, and production releases waiting for a decision.")
                 }
                 Section {
                     LabeledContent("Server", value: app.server?.host() ?? "")
@@ -63,6 +60,8 @@ struct MoreView: View {
                 case .environments: EnvironmentsView()
                 case .costs: CostsView()
                 case .failoverTests: FailoverTestsView()
+                case .notifications: NotificationSettingsView()
+                case .pipelineRun(let appId, let runId): PipelineRunView(appId: appId, runId: runId)
                 }
             }
         }
@@ -71,13 +70,20 @@ struct MoreView: View {
 
 /// The pages under More that a link can open, by their web path.
 enum MorePage: Hashable {
-    case environments, costs, failoverTests
+    case environments, costs, failoverTests, notifications
+    case pipelineRun(appId: String, runId: String)
 
     init?(path: String) {
+        let parts = path.split(separator: "/").map(String.init)
+        if parts.count == 4, parts[0] == "pipelines", parts[1] == "runs" {
+            self = .pipelineRun(appId: parts[2], runId: parts[3])
+            return
+        }
         switch path {
         case _ where path.hasPrefix("/environments"): self = .environments
         case _ where path.hasPrefix("/costs"): self = .costs
         case _ where path.hasPrefix("/failover-tests"): self = .failoverTests
+        case _ where path.hasPrefix("/account/notifications"): self = .notifications
         default: return nil
         }
     }

@@ -1,0 +1,41 @@
+import Foundation
+import Testing
+@testable import PulseGrid
+
+struct NotificationSettingsTests {
+    @Test func readsTheChoicesAndIgnoresTopicsItDoesntKnow() throws {
+        let settings = try JSONCoding.decoder.decode(NotificationSettings.self, from: Data(#"""
+        {"database_access":true,"production_releases":true,"unhealthy_production":true,"unhealthy_staging":false,"failed_pipelines":false,"something_new":true}
+        """#.utf8))
+        #expect(settings.isOn(.unhealthyProduction))
+        #expect(!settings.isOn(.unhealthyStaging) && !settings.isOn(.failedPipelines))
+        #expect(settings.choices.count == 5)
+    }
+
+    @Test func sendsOneChangeAsTheServerTakesIt() throws {
+        let json = try JSONSerialization.jsonObject(with: JSONCoding.encoder.encode(NotificationChange(topic: .unhealthyStaging, on: true))) as? [String: Bool]
+        #expect(json == ["unhealthy_staging": true])
+        #expect(NotificationSettings(choices: [:]).setting(.failedPipelines, to: true).isOn(.failedPipelines))
+    }
+
+    @Test func listsEveryTopicTheServerHas() {
+        #expect(NotificationTopic.allCases.map(\.rawValue) == ["database_access", "production_releases", "unhealthy_production", "unhealthy_staging", "failed_pipelines"])
+    }
+}
+
+struct NotificationLinkTests {
+    @Test func opensAFailedRunFromItsNotification() {
+        #expect(MorePage(path: "/pipelines/runs/app-1/987") == .pipelineRun(appId: "app-1", runId: "987"))
+        #expect(MainTabs.tab(for: "/pipelines/runs/app-1/987") == .more)
+        #expect(MorePage(path: "/pipelines/runs/app-1") == nil)
+    }
+
+    @Test func opensAnUnhealthyServiceFromItsNotification() {
+        #expect(MainTabs.tab(for: "/infrastructure/r1") == .infrastructure)
+        #expect(MainTabs.resourceId(in: "/infrastructure/r1") == "r1")
+    }
+
+    @Test func opensTheNotificationSettings() {
+        #expect(MorePage(path: "/account/notifications") == .notifications)
+    }
+}
