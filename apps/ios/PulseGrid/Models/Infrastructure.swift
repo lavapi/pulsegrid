@@ -14,8 +14,13 @@ nonisolated struct ServiceCategorySummary: Decodable, Identifiable {
 
     var id: String { category }
 
+    var label: String { Self.label(of: category) }
+
+    /// The categories in the order the app lists them.
+    static let order = ["ecs", "rds", "elasticache", "ec2", "load-balancing", "s3", "secrets-manager", "vpc"]
+
     /// The names the web uses for each category.
-    var label: String {
+    static func label(of category: String) -> String {
         [
             "ecs": "ECS", "rds": "RDS", "elasticache": "ElastiCache", "ec2": "EC2", "s3": "S3",
             "secrets-manager": "Secrets Manager", "load-balancing": "Load Balancing", "vpc": "VPC",
@@ -70,6 +75,18 @@ nonisolated struct Resource: Decodable, Identifiable, Sendable {
     /// Databases with Performance Insights and logs the API reads.
     var hasDatabaseActivity: Bool { ["rds-cluster", "rds-instance"].contains(type) }
 
+    /// The service category the type belongs to, such as "rds" for "rds-instance", as the API groups them.
+    var category: String {
+        switch type {
+        case "load-balancer": "load-balancing"
+        case "vpc", "subnet", "security-group": "vpc"
+        case "secrets-manager-secret": "secrets-manager"
+        default: String(type.split(separator: "-").first ?? "")
+        }
+    }
+
+    var isHealthy: Bool { health == "healthy" }
+
     /// "ecs-service" → "ECS service", as the web names them.
     var typeLabel: String {
         let words = type.split(separator: "-").map(String.init)
@@ -85,9 +102,10 @@ nonisolated struct ResourcePage: Decodable, Sendable {
 }
 
 extension APIClient {
-    /// Every resource in a category, read page by page.
-    func allResources(account: String, category: String, search: String = "") async throws -> [Resource] {
-        var query = ["account": account, "category": category, "limit": "100"]
+    /// Every resource in a category, or in the whole account, read page by page.
+    func allResources(account: String, category: String? = nil, search: String = "") async throws -> [Resource] {
+        var query = ["account": account, "limit": "100"]
+        if let category { query["category"] = category }
         if !search.isEmpty { query["q"] = search }
         var resources: [Resource] = []
         repeat {

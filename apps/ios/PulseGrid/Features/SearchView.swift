@@ -20,9 +20,7 @@ struct SearchView: View {
                         if page.resources.isEmpty {
                             ContentUnavailableView.search(text: trimmed)
                         } else {
-                            List(page.resources) { resource in
-                                NavigationLink { ResourceDetailView(resourceId: resource.id, account: account) } label: { ResourceRow(resource: resource) }
-                            }
+                            List(page.resources) { ResourceLink(account: account, resource: $0) }
                         }
                     }
                 }

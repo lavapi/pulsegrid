@@ -86,3 +86,21 @@ struct AccessHistoryTests {
         #expect(approved.outcome == "Expired" && approved.grant?.hours == 3)
     }
 }
+
+struct ServiceSectionTests {
+    @Test func groupsByKindInTheAppsOrderWithProblemsFirst() throws {
+        let sections = ServiceSection.sections(of: [
+            try resource("c1", "ecs-cluster", "jobs"),
+            try resource("c2", "ecs-cluster", "main"),
+            try resource("s1", "ecs-service", "worker", health: "degraded", details: #"{"cluster":"main"}"#),
+            try resource("d1", "rds-instance", "a-db"),
+            try resource("d2", "rds-instance", "z-db", health: "stopped"),
+            try resource("l1", "load-balancer", "front"),
+        ])
+        #expect(sections.map(\.category) == ["ecs", "rds", "load-balancing"])
+        #expect(sections[0].inventory.clusters.map(\.resource.name) == ["main", "jobs"])
+        #expect(sections[0].problems == 1)
+        #expect(sections[1].inventory.standalone.map(\.name) == ["z-db", "a-db"])
+        #expect(ServiceSection.sections(of: [try resource("d1", "rds-instance", "a-db")], only: "ecs").isEmpty)
+    }
+}
