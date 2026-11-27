@@ -7,6 +7,8 @@ All notable changes to this project are documented in this file. The format is b
 ### Added
 
 - `GET /api/database-access/mine/history`: a person's own database access requests, newest first, each with the grant it led to. Anyone can read their own; the approvers' history is unchanged.
+- iPhone app: ECS, RDS and ElastiCache list their clusters first. Tap a cluster to see its services, instances or nodes with their health, and open each one from there. A service's page links back to its cluster, and lists show every resource, not just the first 100.
+- iPhone app: approvers see the database access history under **Access → History**, grouped by day: who had access, for how long and why, who granted it, and how it ended.
 
 ### Changed
 
