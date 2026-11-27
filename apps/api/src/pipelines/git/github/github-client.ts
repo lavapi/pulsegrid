@@ -276,28 +276,31 @@ export class GitHubClient implements GitClient {
     return response.text();
   }
 
-  startRun(
+  async startRun(
     repository: string,
     workflowId: string,
     branch: string,
     inputs: Record<string, string>,
-  ): Promise<void> {
-    return this.post(
+  ): Promise<string | null> {
+    const answer = await this.post(
       `/repos/${repository}/actions/workflows/${encodeURIComponent(workflowId)}/dispatches`,
       { ref: branch, inputs },
     );
+    const runId = (answer as { workflow_run_id?: unknown } | null)?.workflow_run_id;
+    return typeof runId === 'number' || typeof runId === 'string' ? String(runId) : null;
   }
 
-  rerun(repository: string, runId: string, failedOnly: boolean): Promise<void> {
+  async rerun(repository: string, runId: string, failedOnly: boolean): Promise<void> {
     const action = failedOnly ? 'rerun-failed-jobs' : 'rerun';
-    return this.post(`/repos/${repository}/actions/runs/${encodeURIComponent(runId)}/${action}`, {});
+    await this.post(`/repos/${repository}/actions/runs/${encodeURIComponent(runId)}/${action}`, {});
   }
 
-  cancel(repository: string, runId: string): Promise<void> {
-    return this.post(`/repos/${repository}/actions/runs/${encodeURIComponent(runId)}/cancel`, {});
+  async cancel(repository: string, runId: string): Promise<void> {
+    await this.post(`/repos/${repository}/actions/runs/${encodeURIComponent(runId)}/cancel`, {});
   }
 
-  private async post(path: string, body: unknown): Promise<void> {
+  /** GitHub's JSON answer, or null when it answered with nothing. */
+  private async post(path: string, body: unknown): Promise<unknown> {
     const response = await this.request(path, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -305,6 +308,12 @@ export class GitHubClient implements GitClient {
     });
     if (!response.ok) {
       throw writeErrorFor(response.status, response.headers.get('x-ratelimit-remaining') === '0');
+    }
+    const text = await response.text();
+    try {
+      return text ? (JSON.parse(text) as unknown) : null;
+    } catch {
+      return null;
     }
   }
 

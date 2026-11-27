@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-11-27
+
+### Added
+
+- Push notifications when a service turns degraded (production on by default, staging off; once until it recovers, quiet for 30 minutes after), and when a pipeline you started or re-ran from PulseGrid fails. Each person chooses their notifications (`GET` and `PUT /api/account/notifications`). The worker checks health every 2 minutes and followed runs every minute.
+- Migration 0048 adds notification settings and followed pipeline runs. Run `pnpm db:migrate`.
+- iPhone app: **Start a pipeline** from Pipelines: pick a branch and fill in the pipeline's inputs. It follows the same rules as the web, including who may run it on which branch, and production runs are confirmed first.
+- iPhone app: a load balancer's page opens its **Requests**: the last hour's count, error rate, response times, busiest paths and requests, filterable by 4xx or 5xx. A database's page opens **Top SQL** and **Database logs**. Production release gets a **History** of the last releases and how each ended.
+- iPhone app: **More → Notifications** turns each kind of notification on or off, saved for every phone you're signed in on. A failed-pipeline notification opens the run, and an unhealthy-service one opens the service. The app is now version 1.2.0.
+
+### Changed
+
+- Starting a pipeline reads the run ID GitHub returns, when it does. Worker jobs that repeat share one helper.
+
 ## [0.38.0] - 2026-11-27
 
 ### Added

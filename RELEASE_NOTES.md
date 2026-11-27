@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-11-27
+
+- New iPhone notifications: when a service turns unhealthy (production on by default, staging off), and when a pipeline you started from PulseGrid fails. Each person chooses theirs in the app under **More → Notifications**. Run `pnpm db:migrate`.
+- The iPhone app (1.2.0) can start pipelines, shows a load balancer's requests and a database's top SQL and logs, and has the production release history.
+
 ## [0.38.0] - 2026-11-27
 
 - The iPhone app (1.1.0) does more: an **Infrastructure** tab with each service's health, details, load, logs, and force deploy or reboot; re-run or cancel pipelines; and **Environments**, **Costs** and **Failover tests** under More, with the tests' PDF reports. No server changes.

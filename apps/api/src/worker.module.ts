@@ -6,8 +6,12 @@ import { DatabaseModule } from './database/database.module';
 import { ActionWorker } from './inventory/actions/action-worker';
 import { CostWorker } from './inventory/costs/cost-worker';
 import { ExperimentWaveWorker } from './inventory/experiments/experiment-wave-worker';
+import { ServiceHealthAlerts } from './inventory/health/service-health-alerts';
+import { ServiceHealthAlertsWorker } from './inventory/health/service-health-alerts.worker';
 import { InventoryCoreModule } from './inventory/inventory-core.module';
 import { SyncWorker } from './inventory/sync/sync-worker';
+import { PipelineRunAlertsWorker } from './pipelines/pipeline-run-alerts.worker';
+import { PipelinesCoreModule } from './pipelines/pipelines-core.module';
 import { ProductionReleaseAlerts } from './production-releases/production-release-alerts';
 import { ProductionReleaseAlertsWorker } from './production-releases/production-release-alerts.worker';
 import { ProductionReleasesCoreModule } from './production-releases/production-releases-core.module';
@@ -23,14 +27,18 @@ import { RedisModule } from './redis/redis.module';
     DatabaseAccessCoreModule,
     ProductionReleasesCoreModule,
     PushCoreModule,
+    PipelinesCoreModule,
   ],
   providers: [
     ActionWorker,
     CostWorker,
     DatabaseAccessWorker,
     ExperimentWaveWorker,
+    PipelineRunAlertsWorker,
     ProductionReleaseAlerts,
     ProductionReleaseAlertsWorker,
+    ServiceHealthAlerts,
+    ServiceHealthAlertsWorker,
     SyncWorker,
   ],
 })

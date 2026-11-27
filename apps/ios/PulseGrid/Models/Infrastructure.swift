@@ -64,6 +64,12 @@ nonisolated struct Resource: Decodable, Identifiable, Sendable {
     /// Types the API reads logs for.
     var hasLogs: Bool { type == "ecs-service" }
 
+    /// Load balancers, whose request logs the API reads.
+    var hasRequestLogs: Bool { type == "load-balancer" }
+
+    /// Databases with Performance Insights and logs the API reads.
+    var hasDatabaseActivity: Bool { ["rds-cluster", "rds-instance"].contains(type) }
+
     /// "ecs-service" → "ECS service", as the web names them.
     var typeLabel: String {
         let words = type.split(separator: "-").map(String.init)
@@ -75,87 +81,4 @@ nonisolated struct Resource: Decodable, Identifiable, Sendable {
 
 nonisolated struct ResourcePage: Decodable, Sendable {
     let resources: [Resource]
-}
-
-nonisolated struct PipelineRun: Decodable, Equatable {
-    let id: String
-    let workflowName: String
-    let repository: String
-    let number: Int
-    let title: String
-    let branch: String
-    let commit: String
-    let actor: String?
-    let status: String
-    let startedAt: Date?
-    let finishedAt: Date?
-    let url: String
-}
-
-nonisolated struct PipelineActivityItem: Decodable, Identifiable {
-    let appId: String
-    let appName: String
-    let workflowId: String
-    let name: String
-    let environmentName: String?
-    let run: PipelineRun
-
-    var id: String { "\(workflowId)-\(run.id)" }
-}
-
-nonisolated struct PipelineActivity: Decodable {
-    let configured: Bool
-    let running: [PipelineActivityItem]
-    let failed: [PipelineActivityItem]
-    let issues: [String]
-}
-
-nonisolated struct PipelineJob: Decodable, Equatable, Identifiable {
-    let id: String
-    let name: String
-    let status: String
-    let durationSeconds: Int?
-    let url: String
-}
-
-/// Whether the person may re-run or cancel a run, and why not when they can't.
-nonisolated struct PipelineActionAccess: Decodable, Equatable {
-    let canAct: Bool
-    let production: Bool
-    let reason: String?
-}
-
-nonisolated struct PipelineRunDetail: Decodable {
-    struct App: Decodable, Equatable {
-        let id: String
-        let name: String
-    }
-
-    let app: App
-    let rerunsFailedJobs: Bool
-    let run: PipelineRun
-    let jobs: [PipelineJob]
-    let access: PipelineActionAccess
-    let environmentName: String?
-
-    var isActive: Bool { ["queued", "running"].contains(run.status) }
-    var canRerunFailedJobs: Bool { rerunsFailedJobs && run.status == "failure" }
-}
-
-/// What a person can do with a finished or running pipeline run.
-nonisolated enum PipelineRunAction: Equatable {
-    case rerun(failedOnly: Bool)
-    case cancel
-
-    var title: String {
-        switch self {
-        case .rerun(failedOnly: true): "Re-run failed jobs"
-        case .rerun: "Re-run all jobs"
-        case .cancel: "Cancel run"
-        }
-    }
-
-    var path: String {
-        self == .cancel ? "pipelines/runs/cancel" : "pipelines/runs/rerun"
-    }
 }

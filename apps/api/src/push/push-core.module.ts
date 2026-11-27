@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { TokenCipher } from '../inventory/connection/token-cipher';
+import { NotificationSettingsStore } from './notification-settings.store';
 import { PushDevicesStore } from './push-devices.store';
 import { PUSH_SENDER, PushNotifier } from './push-notifier';
 import { pushSenderFor } from './push-sender-choice';
@@ -16,9 +17,10 @@ import { RelayInstallationsStore } from './relay-installations.store';
       inject: [APP_CONFIG, RelayInstallationsStore],
       useFactory: (config: AppConfig, installations: RelayInstallationsStore) => pushSenderFor(config, installations),
     },
+    NotificationSettingsStore,
     PushDevicesStore,
     PushNotifier,
   ],
-  exports: [PushDevicesStore, PushNotifier],
+  exports: [NotificationSettingsStore, PushDevicesStore, PushNotifier],
 })
 export class PushCoreModule {}

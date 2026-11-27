@@ -19,6 +19,41 @@ struct ProductionReleaseView: View {
             }
         }
         .navigationTitle("Production")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink { ProductionReleaseHistoryView() } label: { Label("History", systemImage: "clock.arrow.circlepath") }
+            }
+        }
+    }
+}
+
+/// The last production releases, with who finished or rolled each back.
+struct ProductionReleaseHistoryView: View {
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        Loaded(id: "production-history") {
+            try await app.api.get("production-releases/history") as [ProductionRelease]
+        } content: { releases, reload in
+            List {
+                if releases.isEmpty { Text("No production releases yet").foregroundStyle(.secondary) }
+                ForEach(releases, id: \.id) { release in
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack {
+                            Text(release.id).font(.body.weight(.medium)).lineLimit(1)
+                            Spacer()
+                            StatusBadge(text: release.outcome, tone: release.outcomeTone)
+                        }
+                        Text(release.components.map { "\($0.name) \($0.tag)" }.joined(separator: ", ")).font(.caption).lineLimit(2)
+                        Text([release.decidedBy ?? release.requestedBy, release.createdAt?.formatted(date: .abbreviated, time: .shortened)].compactMap { $0 }.joined(separator: " · "))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .refreshable { await reload() }
+        }
+        .navigationTitle("Release history")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

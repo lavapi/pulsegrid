@@ -39,12 +39,13 @@ export interface GitClient {
   getRepository(repository: string): Promise<GitRepositoryInfo>;
   listBranches(repository: string): Promise<string[]>;
   readDefinition(workflow: GitWorkflow, ref: string): Promise<PipelineDefinition | null>;
+  /** Starts a run; the new run's ID when the provider says it, which GitHub does in newer API versions. */
   startRun(
     repository: string,
     workflowId: string,
     branch: string,
     inputs: Record<string, string>,
-  ): Promise<void>;
+  ): Promise<string | null>;
   rerun(repository: string, runId: string, failedOnly: boolean): Promise<void>;
   cancel(repository: string, runId: string): Promise<void>;
 }

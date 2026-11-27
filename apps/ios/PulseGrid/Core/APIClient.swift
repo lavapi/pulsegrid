@@ -33,6 +33,10 @@ final class APIClient {
         try await decode(send("POST", path, query: [:], body: JSONCoding.encoder.encode(body)))
     }
 
+    func put<Response: Decodable>(_ path: String, body: some Encodable) async throws -> Response {
+        try await decode(send("PUT", path, query: [:], body: JSONCoding.encoder.encode(body)))
+    }
+
     func put(_ path: String, body: some Encodable) async throws {
         _ = try await send("PUT", path, query: [:], body: JSONCoding.encoder.encode(body))
     }
