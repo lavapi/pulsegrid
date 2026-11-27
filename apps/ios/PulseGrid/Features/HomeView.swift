@@ -144,7 +144,7 @@ private struct NeedsYouSection: View {
                 }
             }
         case .failedPipelines(let runs):
-            CardLink { PipelinesView() } content: {
+            CardButton { app.pendingPath = "/releases" } content: {
                 NeedsYouRow(symbol: "xmark.octagon.fill", color: .red,
                             title: runs.count == 1 ? "A pipeline failed" : "\(runs.count) pipelines failed",
                             detail: runs.prefix(3).map { "\($0.appName) · \($0.name)" }.joined(separator: ", ")) {
