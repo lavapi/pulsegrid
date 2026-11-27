@@ -38,8 +38,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         [.banner, .sound, .list]
     }
 
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+    /// iOS asks for the completion handler on the main thread; calling it from a background thread ends the app.
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
         let path = response.notification.request.content.userInfo["path"] as? String
-        await MainActor.run { app.pendingPath = path }
+        nonisolated(unsafe) let done = completionHandler
+        Task { @MainActor in
+            app.pendingPath = path
+            done()
+        }
     }
 }
