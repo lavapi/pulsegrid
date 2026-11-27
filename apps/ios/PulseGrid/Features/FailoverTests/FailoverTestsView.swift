@@ -23,11 +23,11 @@ struct FailoverTestsView: View {
             }
         }
         .navigationTitle("Failover tests")
+        .accountTitleMenu()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink { FailoverHistoryView() } label: { Label("History", systemImage: "clock.arrow.circlepath") }
             }
-            ToolbarItem(placement: .topBarTrailing) { AccountPicker() }
         }
     }
 }

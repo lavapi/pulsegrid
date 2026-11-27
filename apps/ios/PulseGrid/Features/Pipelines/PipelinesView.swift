@@ -36,8 +36,8 @@ struct PipelinesView: View {
             }
         }
         .navigationTitle("Pipelines")
+        .accountTitleMenu()
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) { AccountPicker() }
             if app.selectedAccount?.environmentId != nil {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { starting = true } label: { Label("Start a pipeline", systemImage: "play.fill") }

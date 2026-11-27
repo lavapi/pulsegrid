@@ -1,40 +1,41 @@
 import SwiftUI
 
-/// What is deployed where for the selected account, as on the web's Releases page.
+/// Production releases, pipelines and activity, then what is deployed where for the selected account.
 struct ReleasesView: View {
     @Environment(AppModel.self) private var app
-    @Binding var showProduction: Bool
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if let account = app.selectedAccount {
-                    Loaded(id: account.id) {
-                        try await app.api.get("releases", query: ["account": account.id]) as ReleasesOverview
-                    } content: { overview, reload in
-                        List {
+        Group {
+            if let account = app.selectedAccount {
+                Loaded(id: account.id) {
+                    try await app.api.get("releases", query: ["account": account.id]) as ReleasesOverview
+                } content: { overview, reload in
+                    List {
+                        Section {
                             if app.user?.can(.decideProductionReleases) == true {
-                                Section { NavigationLink { ProductionReleaseView() } label: { IconRow(title: "Production release", symbol: "flag.checkered", color: .orange) } }
+                                NavigationLink { ProductionReleaseView() } label: { IconRow(title: "Production release", symbol: "flag.checkered", color: .orange) }
                             }
-                            if overview.releases.isEmpty {
-                                ContentUnavailableView(
-                                    "No releases",
-                                    systemImage: "shippingbox",
-                                    description: Text("Link pipelines to services on the PulseGrid website to follow releases here.")
-                                )
+                            NavigationLink { PipelinesView() } label: { IconRow(title: "Pipelines", symbol: "arrow.triangle.pull", color: .indigo) }
+                            if app.user?.can(.viewActivity) == true {
+                                NavigationLink { ActivityView() } label: { IconRow(title: "Activity", symbol: "clock.fill", color: .blue) }
                             }
-                            ForEach(overview.releases) { ReleaseRow(release: $0) }
                         }
-                        .refreshable { await reload() }
+                        if overview.releases.isEmpty {
+                            ContentUnavailableView(
+                                "No releases",
+                                systemImage: "shippingbox",
+                                description: Text("Link pipelines to services on the PulseGrid website to follow releases here.")
+                            )
+                        }
+                        ForEach(overview.releases) { ReleaseRow(release: $0) }
                     }
-                } else {
-                    NoAccountView()
+                    .refreshable { await reload() }
                 }
+            } else {
+                NoAccountView()
             }
-            .navigationTitle("Releases")
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { AccountPicker() } }
-            .navigationDestination(isPresented: $showProduction) { ProductionReleaseView() }
         }
+        .navigationTitle("Deploys")
     }
 }
 

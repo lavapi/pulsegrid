@@ -1,36 +1,37 @@
 import SwiftUI
 
-/// The selected account's services by category, each opening its resources.
+/// The selected account's services by category, each opening its resources, then failover tests and what changed in AWS.
 struct InfrastructureView: View {
     @Environment(AppModel.self) private var app
-    @Binding var openResourceId: String?
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if let account = app.selectedAccount {
-                    Loaded(id: account.id) {
-                        try await app.api.get("resources/categories", query: ["account": account.id]) as [ServiceCategorySummary]
-                    } content: { categories, reload in
-                        List(categories) { category in
+        Group {
+            if let account = app.selectedAccount {
+                Loaded(id: account.id) {
+                    try await app.api.get("resources/categories", query: ["account": account.id]) as [ServiceCategorySummary]
+                } content: { categories, reload in
+                    List {
+                        ForEach(categories) { category in
                             NavigationLink {
                                 CategoryResourcesView(account: account, category: category)
                             } label: {
                                 CategoryRow(category: category)
                             }
                         }
-                        .refreshable { await reload() }
+                        Section {
+                            NavigationLink { FailoverTestsView() } label: { IconRow(title: "Failover tests", symbol: "bolt.shield.fill", color: .orange) }
+                            if app.user?.can(.viewActivity) == true {
+                                NavigationLink { CloudActivityView() } label: { IconRow(title: "Cloud activity", symbol: "cloud.fill", color: .cyan) }
+                            }
+                        }
                     }
-                } else {
-                    NoAccountView()
+                    .refreshable { await reload() }
                 }
-            }
-            .navigationTitle("Infrastructure")
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { AccountPicker() } }
-            .navigationDestination(item: $openResourceId) { id in
-                if let account = app.selectedAccount { ResourceDetailView(resourceId: id, account: account) }
+            } else {
+                NoAccountView()
             }
         }
+        .navigationTitle("Services")
     }
 }
 

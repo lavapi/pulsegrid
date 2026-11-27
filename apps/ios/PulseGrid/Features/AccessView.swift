@@ -5,22 +5,20 @@ struct AccessView: View {
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if app.user?.can(.grantDatabaseAccess) == true {
-                    ApproverAccessView()
-                } else {
-                    MyAccessView()
-                }
+        Group {
+            if app.user?.can(.grantDatabaseAccess) == true {
+                ApproverAccessView()
+            } else {
+                MyAccessView()
             }
-            .navigationTitle("Database access")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        if app.user?.can(.grantDatabaseAccess) == true { AccessHistoryView() } else { MyAccessHistoryView() }
-                    } label: {
-                        Label("History", systemImage: "clock.arrow.circlepath")
-                    }
+        }
+        .navigationTitle("Access")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    if app.user?.can(.grantDatabaseAccess) == true { AccessHistoryView() } else { MyAccessHistoryView() }
+                } label: {
+                    Label("History", systemImage: "clock.arrow.circlepath")
                 }
             }
         }
