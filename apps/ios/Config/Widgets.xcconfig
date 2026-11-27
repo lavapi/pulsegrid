@@ -8,3 +8,8 @@ INFOPLIST_KEY_CFBundleDisplayName = PulseGrid
 CODE_SIGN_ENTITLEMENTS = Config/Widgets.entitlements
 SKIP_INSTALL = YES
 LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks @executable_path/../../Frameworks
+
+// Release builds sign with the App Store profile, as the app does.
+CODE_SIGN_STYLE[config=Release] = Manual
+CODE_SIGN_IDENTITY[config=Release] = Apple Distribution
+PROVISIONING_PROFILE_SPECIFIER[config=Release] = PulseGrid Widgets App Store

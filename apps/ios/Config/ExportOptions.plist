@@ -16,6 +16,8 @@
 	<dict>
 		<key>com.lavapi.pulsegrid</key>
 		<string>PulseGrid App Store</string>
+		<key>com.lavapi.pulsegrid.widgets</key>
+		<string>PulseGrid Widgets App Store</string>
 	</dict>
 	<key>manageAppVersionAndBuildNumber</key>
 	<false/>
