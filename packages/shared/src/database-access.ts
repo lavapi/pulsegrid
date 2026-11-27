@@ -117,6 +117,12 @@ export interface DeclineDatabaseAccessRequestInput {
 }
 
 /** What a person sees of their own access: their latest request and the grant it led to. */
+/** One of a person's own requests and the grant it led to, for their history. */
+export interface MyDatabaseAccessHistoryEntry {
+  request: DatabaseAccessRequest;
+  grant: DatabaseAccessGrant | null;
+}
+
 export type MyDatabaseAccess =
   | {
       ready: true;

@@ -4,6 +4,7 @@ import {
   type DatabaseAccessRequest,
   type DeclineDatabaseAccessRequestInput,
   type MyDatabaseAccess,
+  type MyDatabaseAccessHistoryEntry,
   type RequestDatabaseAccessInput,
 } from '@pulsegrid/shared';
 import { ConflictException, Injectable } from '@nestjs/common';
@@ -14,7 +15,7 @@ import { TenantDatabase } from '../database/tenant-database';
 import { PushNotifier } from '../push/push-notifier';
 import { DatabaseAccessRequestsStore, type RequestRow, toRequest } from './database-access-requests.store';
 import { DatabaseAccessService, hoursIn } from './database-access.service';
-import { DatabaseAccessStore, toGrant } from './database-access.store';
+import { DatabaseAccessStore, HISTORY_SIZE, toGrant } from './database-access.store';
 
 const NOT_HERE = 'Database access is requested in the project that has the Production account connected.';
 const HAS_ACCESS = 'You already have database access. Ask an approver to extend it.';
@@ -51,6 +52,19 @@ export class DatabaseAccessRequestsService {
       grant: grant ? toGrant(grant) : null,
       connect: this.access.connect(),
     };
+  }
+
+  /** The person's own requests with the grants they led to, newest first. */
+  async myHistory(auth: AuthContext): Promise<MyDatabaseAccessHistoryEntry[]> {
+    await this.access.requireReady(auth);
+    const requests = await this.requests.historyFor(auth.tenantId, auth.userId, HISTORY_SIZE);
+    const grantIds = requests.flatMap(({ grant_id }) => (grant_id ? [grant_id] : []));
+    const grantRows = await this.grants.findMany(auth.tenantId, grantIds);
+    const grants = new Map(grantRows.map((grant) => [grant.id, grant]));
+    return requests.map((request) => {
+      const grant = request.grant_id ? grants.get(request.grant_id) : undefined;
+      return { request: toRequest(request), grant: grant ? toGrant(grant) : null };
+    });
   }
 
   async request(

@@ -100,6 +100,19 @@ export class DatabaseAccessRequestsStore {
     );
   }
 
+  /** A person's own requests, newest first. */
+  historyFor(tenantId: string, userId: string, limit: number): Promise<RequestRow[]> {
+    return this.run(tenantId, (trx) =>
+      trx
+        .selectFrom('database_access_requests')
+        .selectAll()
+        .where('requested_by_user_id', '=', userId)
+        .orderBy('created_at', 'desc')
+        .limit(limit)
+        .execute(),
+    );
+  }
+
   /** Takes a waiting request for approval; false when someone else answered it first. */
   approve(tenantId: string, id: string, by: string): Promise<boolean> {
     return this.answer(tenantId, id, 'pending', { status: 'approved', decided_by_email: by, decided_at: new Date() });
