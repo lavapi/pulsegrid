@@ -12,6 +12,7 @@ All notable changes to this project are documented in this file. The format is b
 ### Fixed
 
 - iPhone app: a wrong authenticator code shows "That code is incorrect." instead of signing you out.
+- iPhone app: tapping a notification opened the app and closed it straight away. It now opens the screen the notification is about. The app is now version 1.7.1.
 
 ## [0.42.0] - 2026-11-27
 
