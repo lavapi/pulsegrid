@@ -93,6 +93,7 @@ nonisolated struct PipelineRun: Decodable, Equatable {
 }
 
 nonisolated struct PipelineActivityItem: Decodable, Identifiable {
+    let appId: String
     let appName: String
     let workflowId: String
     let name: String
@@ -107,4 +108,54 @@ nonisolated struct PipelineActivity: Decodable {
     let running: [PipelineActivityItem]
     let failed: [PipelineActivityItem]
     let issues: [String]
+}
+
+nonisolated struct PipelineJob: Decodable, Equatable, Identifiable {
+    let id: String
+    let name: String
+    let status: String
+    let durationSeconds: Int?
+    let url: String
+}
+
+/// Whether the person may re-run or cancel a run, and why not when they can't.
+nonisolated struct PipelineActionAccess: Decodable, Equatable {
+    let canAct: Bool
+    let production: Bool
+    let reason: String?
+}
+
+nonisolated struct PipelineRunDetail: Decodable {
+    struct App: Decodable, Equatable {
+        let id: String
+        let name: String
+    }
+
+    let app: App
+    let rerunsFailedJobs: Bool
+    let run: PipelineRun
+    let jobs: [PipelineJob]
+    let access: PipelineActionAccess
+    let environmentName: String?
+
+    var isActive: Bool { ["queued", "running"].contains(run.status) }
+    var canRerunFailedJobs: Bool { rerunsFailedJobs && run.status == "failure" }
+}
+
+/// What a person can do with a finished or running pipeline run.
+nonisolated enum PipelineRunAction: Equatable {
+    case rerun(failedOnly: Bool)
+    case cancel
+
+    var title: String {
+        switch self {
+        case .rerun(failedOnly: true): "Re-run failed jobs"
+        case .rerun: "Re-run all jobs"
+        case .cancel: "Cancel run"
+        }
+    }
+
+    var path: String {
+        self == .cancel ? "pipelines/runs/cancel" : "pipelines/runs/rerun"
+    }
 }

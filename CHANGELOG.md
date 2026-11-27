@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file. The format is b
 ### Added
 
 - iPhone app: an **Infrastructure** tab lists services by category with their health. A service's page shows its status and details, load charts, recent logs for ECS services, and **Force deploy** or **Reboot** for people allowed to. **Production release** moves to the top of Releases, and a notification still opens it.
+- iPhone app: tap a pipeline run to see its jobs, and **Re-run** it (all jobs or only the failed ones) or **Cancel** it, for people allowed to run pipelines. **More → Environments** shows each environment's health, services, addresses and AWS accounts.
 
 ## [0.37.0] - 2026-11-27
 
