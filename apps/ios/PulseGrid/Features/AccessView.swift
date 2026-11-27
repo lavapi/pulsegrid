@@ -14,6 +14,13 @@ struct AccessView: View {
                 }
             }
             .navigationTitle("Database access")
+            .toolbar {
+                if app.user?.can(.grantDatabaseAccess) == true {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        NavigationLink { AccessHistoryView() } label: { Label("History", systemImage: "clock.arrow.circlepath") }
+                    }
+                }
+            }
         }
     }
 }
@@ -103,7 +110,9 @@ struct Initials: View {
     var size: CGFloat = 40
 
     private var letters: String {
-        let words = name.split(whereSeparator: { $0 == " " || $0 == "." || $0 == "@" })
+        // An email's initials come from the part before the "@", so "vic@example.test" reads "V".
+        let person = name.split(separator: "@").first.map(String.init) ?? name
+        let words = person.split(whereSeparator: { $0 == " " || $0 == "." || $0 == "_" || $0 == "-" })
         return words.prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
     }
 

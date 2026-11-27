@@ -70,7 +70,7 @@ struct CompactHealth: View {
     }
 }
 
-/// One category's resources, searchable by name.
+/// One category's resources, searchable by name: clusters first, each opening its members, then everything else.
 struct CategoryResourcesView: View {
     @Environment(AppModel.self) private var app
     let account: CloudAccount
@@ -79,22 +79,46 @@ struct CategoryResourcesView: View {
 
     var body: some View {
         Loaded(id: "\(account.id)-\(category.id)-\(search)") {
-            var query = ["account": account.id, "category": category.category, "limit": "100"]
-            if !search.isEmpty { query["q"] = search }
-            return try await app.api.get("resources", query: query) as ResourcePage
-        } content: { page, reload in
+            try await app.api.allResources(account: account.id, category: category.category, search: search)
+        } content: { resources, reload in
             List {
-                if page.resources.isEmpty {
+                if resources.isEmpty {
                     Text(search.isEmpty ? "Nothing here" : "No matches").foregroundStyle(.secondary)
-                }
-                ForEach(page.resources) { resource in
-                    NavigationLink { ResourceDetailView(resourceId: resource.id, account: account) } label: { ResourceRow(resource: resource) }
+                } else if search.isEmpty {
+                    grouped(ResourceInventory(resources))
+                } else {
+                    rows(resources)
                 }
             }
             .refreshable { await reload() }
         }
         .searchable(text: $search, prompt: "Search by name")
         .navigationTitle(category.label)
+    }
+
+    @ViewBuilder private func grouped(_ inventory: ResourceInventory) -> some View {
+        if inventory.clusters.isEmpty {
+            rows(inventory.standalone)
+        } else {
+            Section("Clusters") {
+                ForEach(inventory.clusters) { cluster in
+                    NavigationLink {
+                        ClusterView(account: account, membership: cluster.membership, name: cluster.resource.name, region: cluster.resource.region)
+                    } label: {
+                        ClusterRow(cluster: cluster)
+                    }
+                }
+            }
+            if !inventory.standalone.isEmpty {
+                Section("Not in a cluster") { rows(inventory.standalone) }
+            }
+        }
+    }
+
+    private func rows(_ resources: [Resource]) -> some View {
+        ForEach(resources) { resource in
+            NavigationLink { ResourceDetailView(resourceId: resource.id, account: account) } label: { ResourceRow(resource: resource) }
+        }
     }
 }
 
