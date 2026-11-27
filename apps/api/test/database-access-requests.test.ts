@@ -153,6 +153,24 @@ describe('database access requests', () => {
     await ask().expect(201);
   });
 
+  it('shows each person only their own requests and the grants they led to, newest first', async () => {
+    runEnds('SUCCEEDED');
+    const { body: first } = await ask().expect(201);
+    await decline(first.id, 'Use the staging copy').expect(201);
+    const { body: second } = await ask().expect(201);
+    const { body: approved } = await approve(second.id, 201);
+    await ask(otherRequester, { ...ASK, userName: 'rae@example.test' }).expect(201);
+    const history = async (cookie: string) =>
+      (await http().get('/api/database-access/mine/history').set('Cookie', cookie).expect(200)).body;
+
+    const own = await history(requester);
+    expect(own.map(({ request }: { request: { id: string } }) => request.id)).toEqual([second.id, first.id]);
+    expect(own[0]).toMatchObject({ request: { status: 'approved' }, grant: { id: approved.grantId, grantedBy: 'gus@example.test' } });
+    expect(own[1]).toMatchObject({ request: { status: 'declined', declineReason: 'Use the staging copy' }, grant: null });
+    expect(await history(approver)).toEqual([]);
+    await http().get('/api/database-access/mine/history').set('Cookie', otherProject).expect(404);
+  });
+
   it('refuses a request while the person already has access', async () => {
     runEnds('SUCCEEDED');
     const { body } = await ask().expect(201);

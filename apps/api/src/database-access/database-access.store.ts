@@ -14,7 +14,7 @@ export type GrantRow = Selectable<DatabaseAccessGrantsTable>;
 type GrantChanges = Updateable<DatabaseAccessGrantsTable>;
 
 const OPEN: DatabaseAccessStatus[] = ['granting', 'active'];
-const HISTORY_SIZE = 100;
+export const HISTORY_SIZE = 100;
 const NOT_FOUND = 'That grant no longer exists.';
 const CHANGE_RUNNING = 'A change to this access is still running. Wait for it to finish.';
 
@@ -79,6 +79,15 @@ export class DatabaseAccessStore {
       throw new NotFoundException(NOT_FOUND);
     }
     return row;
+  }
+
+  findMany(tenantId: string, ids: readonly string[]): Promise<GrantRow[]> {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.database.run(tenantId, (trx) =>
+      trx.selectFrom('database_access_grants').selectAll().where('id', 'in', ids).execute(),
+    );
   }
 
   find(tenantId: string, id: string): Promise<GrantRow | undefined> {
