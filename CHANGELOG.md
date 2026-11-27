@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-11-27
+
 ### Added
 
 - Push notifications when a service turns degraded (production on by default, staging off; once until it recovers, quiet for 30 minutes after), and when a pipeline you started or re-ran from PulseGrid fails. Each person chooses their notifications (`GET` and `PUT /api/account/notifications`). The worker checks health every 2 minutes and followed runs every minute.
