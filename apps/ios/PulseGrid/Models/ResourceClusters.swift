@@ -34,6 +34,8 @@ nonisolated struct ResourceCluster: Identifiable, Sendable {
 
     var id: String { resource.id }
 
+    var hasProblem: Bool { !resource.isHealthy || members.contains { !$0.isHealthy } }
+
     var health: HealthCounts {
         let states = members.map(\.health)
         func count(_ state: String) -> Int { states.filter { $0 == state }.count }
@@ -50,11 +52,13 @@ nonisolated struct ResourceInventory: Sendable {
     let standalone: [Resource]
 
     init(_ resources: [Resource]) {
-        clusters = resources.compactMap { cluster in
+        let all = resources.compactMap { cluster -> ResourceCluster? in
             guard let membership = ClusterMembership.forCluster(cluster.type) else { return nil }
             let members = resources.filter { $0.isMember(of: cluster, through: membership) }
             return ResourceCluster(resource: cluster, members: members, membership: membership)
         }
+        // Clusters with a problem, in themselves or a member, come first; otherwise the order stays as given.
+        clusters = all.filter(\.hasProblem) + all.filter { !$0.hasProblem }
         let grouped = Set(clusters.flatMap { [$0.id] + $0.members.map(\.id) })
         standalone = resources.filter { !grouped.contains($0.id) }
     }
@@ -76,3 +80,28 @@ extension Resource {
         type == membership.memberType && region == cluster.region && clusterName == cluster.name
     }
 }
+
+/// One kind of service on the Services tab, with its clusters and other resources, problems first.
+nonisolated struct ServiceSection: Identifiable, Sendable {
+    let category: String
+    let inventory: ResourceInventory
+    let problems: Int
+
+    var id: String { category }
+    var label: String { ServiceCategorySummary.label(of: category) }
+
+    /// The account's resources by category, in the app's order, each listing unhealthy resources before healthy ones.
+    static func sections(of resources: [Resource], only category: String? = nil) -> [ServiceSection] {
+        let sorted = resources.sorted { ($0.isHealthy ? 1 : 0, $0.title) < ($1.isHealthy ? 1 : 0, $1.title) }
+        let grouped = Dictionary(grouping: sorted, by: \.category)
+        let rank = { (category: String) in ServiceCategorySummary.order.firstIndex(of: category) ?? .max }
+        return grouped.keys
+            .filter { category == nil || $0 == category }
+            .sorted { (rank($0), $0) < (rank($1), $1) }
+            .map { key in
+                let members = grouped[key] ?? []
+                return ServiceSection(category: key, inventory: ResourceInventory(members), problems: members.filter { !$0.isHealthy }.count)
+            }
+    }
+}
+

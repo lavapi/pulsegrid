@@ -12,7 +12,7 @@ struct MainTabs: View {
                 TabRoot(tab: .home, route: $route) { HomeView() }
             }
             Tab("Services", systemImage: "server.rack", value: AppTab.services) {
-                TabRoot(tab: .services, route: $route) { InfrastructureView() }
+                TabRoot(tab: .services, route: $route) { ServicesView() }
             }
             Tab("Deploys", systemImage: "shippingbox", value: AppTab.deploys) {
                 TabRoot(tab: .deploys, route: $route) { ReleasesView() }

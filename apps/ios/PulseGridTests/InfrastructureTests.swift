@@ -76,8 +76,9 @@ extension LoadChart {
 
 struct DesignTests {
     @Test(arguments: [("ecs-service", "shippingbox.fill"), ("rds-cluster", "cylinder.split.1x2.fill"), ("load-balancer", "arrow.triangle.branch"), ("security-group", "network"), ("secrets-manager-secret", "key.fill"), ("something-new", "square.stack.3d.up.fill")])
-    func picksAnIconForEachKindOfService(type: String, symbol: String) {
-        #expect(ServiceStyle.type(type).symbol == symbol)
+    func picksAnIconForEachKindOfService(type: String, symbol: String) throws {
+        let resource = try JSONCoding.decoder.decode(Resource.self, from: Data(#"{"id":"r","type":"\#(type)","name":"n","status":"s","health":"healthy","region":"eu-central-1"}"#.utf8))
+        #expect(ServiceStyle.of(resource).symbol == symbol)
     }
 
     @Test func addsUpHealthAcrossCategories() {

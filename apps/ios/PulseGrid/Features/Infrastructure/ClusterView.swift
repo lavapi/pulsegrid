@@ -43,7 +43,7 @@ struct ClusterView: View {
                     Text("No \(cluster.membership.memberNoun)s yet").foregroundStyle(.secondary)
                 }
                 ForEach(cluster.members) { member in
-                    NavigationLink { ResourceDetailView(resourceId: member.id, account: account) } label: { ResourceRow(resource: member) }
+                    ResourceLink(account: account, resource: member)
                 }
             }
         }
@@ -72,7 +72,7 @@ struct ClusterRow: View {
                 }
             }
         } icon: {
-            IconTile(.type(cluster.resource.type))
+            IconTile(.of(cluster.resource))
         }
     }
 }

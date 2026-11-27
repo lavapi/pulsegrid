@@ -21,16 +21,8 @@ struct ServiceStyle: Equatable {
     /// For a service category, such as "rds".
     static func category(_ category: String) -> ServiceStyle { byCategory[category] ?? fallback }
 
-    /// For a resource type, such as "rds-instance", through its category.
-    static func type(_ type: String) -> ServiceStyle {
-        let category: String = switch type {
-        case "load-balancer": "load-balancing"
-        case "vpc", "subnet", "security-group": "vpc"
-        case "secrets-manager-secret": "secrets-manager"
-        default: String(type.split(separator: "-").first ?? "")
-        }
-        return Self.category(category)
-    }
+    /// For a resource, through its category.
+    static func of(_ resource: Resource) -> ServiceStyle { category(resource.category) }
 }
 
 /// A white symbol on a small colored rounded square, the icon style of iPhone Settings.

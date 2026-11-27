@@ -130,7 +130,7 @@ private struct NeedsYouSection: View {
             }
         case .unhealthy(let resource):
             CardLink { ResourceDetailView(resourceId: resource.id, account: account) } content: {
-                NeedsYouRow(symbol: ServiceStyle.type(resource.type).symbol, color: .red, title: "\(resource.title) is \(resource.health)",
+                NeedsYouRow(symbol: ServiceStyle.of(resource).symbol, color: .red, title: "\(resource.title) is \(resource.health)",
                             detail: "\(resource.typeLabel) · \(resource.status)") {
                     EmptyView()
                 }
