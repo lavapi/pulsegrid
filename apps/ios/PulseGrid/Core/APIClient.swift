@@ -24,6 +24,11 @@ final class APIClient {
         try await decode(send("GET", path, query: query, body: nil))
     }
 
+    /// A file the API sends, such as a PDF report.
+    func file(_ path: String, query: [String: String] = [:]) async throws -> Data {
+        try await send("GET", path, query: query, body: nil)
+    }
+
     func post<Response: Decodable>(_ path: String, body: some Encodable) async throws -> Response {
         try await decode(send("POST", path, query: [:], body: JSONCoding.encoder.encode(body)))
     }

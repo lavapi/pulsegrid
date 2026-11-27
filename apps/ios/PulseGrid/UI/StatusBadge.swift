@@ -41,6 +41,16 @@ enum Tone {
         }
     }
 
+    static func ofTestResult(_ result: String) -> Tone {
+        switch result {
+        case "passed": .good
+        case "failed": .bad
+        case "stopped": .warning
+        case "running": .active
+        default: .neutral
+        }
+    }
+
     static func ofPipeline(_ status: String) -> Tone {
         switch status {
         case "success": .good

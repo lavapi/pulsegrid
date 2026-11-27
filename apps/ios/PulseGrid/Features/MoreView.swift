@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Pipelines, environments, activity, and the person's own account: project, notifications, server and sign-out.
+/// Pipelines, environments, costs, failover tests, activity, and the person's own account: project, notifications, server and sign-out.
 struct MoreView: View {
     @Environment(AppModel.self) private var app
     @Environment(PushRegistrar.self) private var push
-    @Binding var showEnvironments: Bool
+    @Binding var openPage: MorePage?
 
     var body: some View {
         NavigationStack {
@@ -12,6 +12,10 @@ struct MoreView: View {
                 Section {
                     NavigationLink("Pipelines") { PipelinesView() }
                     NavigationLink("Environments") { EnvironmentsView() }
+                    if app.user?.can(.viewCosts) == true {
+                        NavigationLink("Costs") { CostsView() }
+                    }
+                    NavigationLink("Failover tests") { FailoverTestsView() }
                     if app.user?.can(.viewActivity) == true {
                         NavigationLink("Activity") { ActivityView() }
                     }
@@ -54,7 +58,27 @@ struct MoreView: View {
                 }
             }
             .navigationTitle("More")
-            .navigationDestination(isPresented: $showEnvironments) { EnvironmentsView() }
+            .navigationDestination(item: $openPage) { page in
+                switch page {
+                case .environments: EnvironmentsView()
+                case .costs: CostsView()
+                case .failoverTests: FailoverTestsView()
+                }
+            }
+        }
+    }
+}
+
+/// The pages under More that a link can open, by their web path.
+enum MorePage: Hashable {
+    case environments, costs, failoverTests
+
+    init?(path: String) {
+        switch path {
+        case _ where path.hasPrefix("/environments"): self = .environments
+        case _ where path.hasPrefix("/costs"): self = .costs
+        case _ where path.hasPrefix("/failover-tests"): self = .failoverTests
+        default: return nil
         }
     }
 }

@@ -7,7 +7,7 @@ struct MainTabs: View {
     @State private var tab: Tab = .overview
     @State private var showProduction = false
     @State private var openResourceId: String?
-    @State private var showEnvironments = false
+    @State private var morePage: MorePage?
 
     var body: some View {
         TabView(selection: $tab) {
@@ -15,14 +15,14 @@ struct MainTabs: View {
             InfrastructureView(openResourceId: $openResourceId).tabItem { Label("Infrastructure", systemImage: "server.rack") }.tag(Tab.infrastructure)
             ReleasesView(showProduction: $showProduction).tabItem { Label("Releases", systemImage: "shippingbox") }.tag(Tab.releases)
             AccessView().tabItem { Label("Access", systemImage: "cylinder.split.1x2") }.tag(Tab.access)
-            MoreView(showEnvironments: $showEnvironments).tabItem { Label("More", systemImage: "ellipsis.circle") }.tag(Tab.more)
+            MoreView(openPage: $morePage).tabItem { Label("More", systemImage: "ellipsis.circle") }.tag(Tab.more)
         }
         .onChange(of: app.pendingPath, initial: true) { _, path in
             guard let path else { return }
             tab = MainTabs.tab(for: path) ?? tab
             showProduction = path.hasPrefix("/production-releases")
             openResourceId = MainTabs.resourceId(in: path)
-            showEnvironments = path.hasPrefix("/environments")
+            morePage = MorePage(path: path)
             app.pendingPath = nil
         }
     }
@@ -33,7 +33,7 @@ struct MainTabs: View {
         if path.hasPrefix("/settings/database-access") || path.hasPrefix("/database-access") { return .access }
         if path.hasPrefix("/releases") { return .releases }
         if path.hasPrefix("/infrastructure") { return .infrastructure }
-        if path.hasPrefix("/account") || path.hasPrefix("/environments") { return .more }
+        if path.hasPrefix("/account") || MorePage(path: path) != nil { return .more }
         return nil
     }
 
