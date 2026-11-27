@@ -25,6 +25,7 @@ nonisolated enum Permission: String {
     case grantDatabaseAccess = "production.database_access.grant"
     case decideProductionReleases = "production.release.decide"
     case viewActivity = "activity.view"
+    case viewCosts = "costs.view"
 }
 
 nonisolated struct Project: Decodable, Identifiable, Equatable {

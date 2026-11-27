@@ -150,7 +150,10 @@ struct NotificationRoutingTests {
     @Test func opensTheScreenANotificationIsAbout() {
         #expect(MainTabs.tab(for: "/settings/database-access") == .access)
         #expect(MainTabs.tab(for: "/database-access") == .access)
-        #expect(MainTabs.tab(for: "/production-releases") == .production)
+        #expect(MainTabs.tab(for: "/production-releases") == .releases)
+        #expect(MainTabs.tab(for: "/infrastructure/r1") == .infrastructure)
+        #expect(MainTabs.resourceId(in: "/infrastructure/r1") == "r1")
+        #expect(MainTabs.resourceId(in: "/infrastructure") == nil)
         #expect(MainTabs.tab(for: "/somewhere-else") == nil)
     }
 }

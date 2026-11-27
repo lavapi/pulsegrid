@@ -3,6 +3,7 @@ import SwiftUI
 /// What is deployed where for the selected account, as on the web's Releases page.
 struct ReleasesView: View {
     @Environment(AppModel.self) private var app
+    @Binding var showProduction: Bool
 
     var body: some View {
         NavigationStack {
@@ -11,18 +12,20 @@ struct ReleasesView: View {
                     Loaded(id: account.id) {
                         try await app.api.get("releases", query: ["account": account.id]) as ReleasesOverview
                     } content: { overview, reload in
-                        if overview.releases.isEmpty {
-                            ContentUnavailableView(
-                                "No releases",
-                                systemImage: "shippingbox",
-                                description: Text("Link pipelines to services on the PulseGrid website to follow releases here.")
-                            )
-                        } else {
-                            List(overview.releases) { release in
-                                ReleaseRow(release: release)
+                        List {
+                            if app.user?.can(.decideProductionReleases) == true {
+                                Section { NavigationLink { ProductionReleaseView() } label: { Label("Production release", systemImage: "flag.checkered") } }
                             }
-                            .refreshable { await reload() }
+                            if overview.releases.isEmpty {
+                                ContentUnavailableView(
+                                    "No releases",
+                                    systemImage: "shippingbox",
+                                    description: Text("Link pipelines to services on the PulseGrid website to follow releases here.")
+                                )
+                            }
+                            ForEach(overview.releases) { ReleaseRow(release: $0) }
                         }
+                        .refreshable { await reload() }
                     }
                 } else {
                     NoAccountView()
@@ -30,6 +33,7 @@ struct ReleasesView: View {
             }
             .navigationTitle("Releases")
             .toolbar { ToolbarItem(placement: .topBarTrailing) { AccountPicker() } }
+            .navigationDestination(isPresented: $showProduction) { ProductionReleaseView() }
         }
     }
 }

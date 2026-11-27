@@ -16,11 +16,15 @@ struct PipelinesView: View {
                         }
                         Section("Running") {
                             if activity.running.isEmpty { Text("Nothing is running").foregroundStyle(.secondary) }
-                            ForEach(activity.running) { PipelineRow(item: $0) }
+                            ForEach(activity.running) { item in
+                                NavigationLink { PipelineRunView(appId: item.appId, runId: item.run.id) } label: { PipelineRow(item: item) }
+                            }
                         }
                         Section("Failed") {
                             if activity.failed.isEmpty { Text("No failed pipelines").foregroundStyle(.secondary) }
-                            ForEach(activity.failed) { PipelineRow(item: $0) }
+                            ForEach(activity.failed) { item in
+                                NavigationLink { PipelineRunView(appId: item.appId, runId: item.run.id) } label: { PipelineRow(item: item) }
+                            }
                         }
                     }
                     .refreshable { await reload() }
@@ -38,17 +42,14 @@ private struct PipelineRow: View {
     let item: PipelineActivityItem
 
     var body: some View {
-        Link(destination: URL(string: item.run.url) ?? URL(string: "https://github.com")!) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack {
-                    Text("\(item.appName) · \(item.name)").font(.body.weight(.medium))
-                    Spacer()
-                    StatusBadge(text: item.run.status.sentenceCased, tone: .ofPipeline(item.run.status))
-                }
-                Text("\(item.run.branch) · \(item.run.commit) “\(item.run.title)”").font(.caption).lineLimit(2)
-                if let actor = item.run.actor { Text(actor).font(.caption).foregroundStyle(.secondary) }
+        VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text("\(item.appName) · \(item.name)").font(.body.weight(.medium))
+                Spacer()
+                StatusBadge(text: item.run.status.sentenceCased, tone: .ofPipeline(item.run.status))
             }
+            Text("\(item.run.branch) · \(item.run.commit) “\(item.run.title)”").font(.caption).lineLimit(2)
+            if let actor = item.run.actor { Text(actor).font(.caption).foregroundStyle(.secondary) }
         }
-        .foregroundStyle(.primary)
     }
 }
