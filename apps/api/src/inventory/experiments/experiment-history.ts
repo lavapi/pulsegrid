@@ -39,7 +39,8 @@ const countsOf = (items: readonly (OutcomeItem & { repairs?: Repair[] })[]): Run
   };
 };
 
-const runEntry = (run: HistoryRun, reports: ReadonlyMap<string, ReportRow>, now: Date): TestHistoryEntry => {
+/** A group run or Run all as one history entry, with its result and counts. */
+export const runEntry = (run: HistoryRun, reports: ReadonlyMap<string, ReportRow>, now: Date): TestHistoryEntry => {
   const recent = now.getTime() - run.started_at.getTime() < LONGEST_TEST_MS;
   const items = run.items.map(({ region, experimentId, waiting, cancelled, skipped, settling, repairs }) => {
     const report = experimentId ? reports.get(reportKey(region, experimentId)) : undefined;

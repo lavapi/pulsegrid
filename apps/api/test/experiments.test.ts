@@ -7,6 +7,7 @@ import { ExperimentReportCapture } from '../src/inventory/experiments/experiment
 import { NOTES, RunSequencer } from '../src/inventory/experiments/run-sequencer';
 import { newEnvironment } from '../src/inventory/environments/account-environment';
 import { awsProvider } from '../src/inventory/providers/aws/aws.provider';
+import { PushNotifier } from '../src/push/push-notifier';
 import {
   CLOUD_PROVIDER_LIST,
   type CloudProvider,
@@ -294,6 +295,7 @@ describe('failover tests', () => {
     });
 
     it('runs a group one test at a time, and reports templates that did not start', async () => {
+      const told = vi.spyOn(context.app.get(PushNotifier), 'toUser').mockImplementation(() => {});
       const { id } = await addAccount('Staging');
       const { body: group } = await createGroup(id, [...both, { region: REGION, templateId: 'GONE' }]).expect(201);
       const { body: run } = await http().post(runs(id)).set('Cookie', developer).send({ groupId: group.id }).expect(201);
@@ -315,6 +317,16 @@ describe('failover tests', () => {
       expect(body.items[0]).toMatchObject({ settling: false, endedAt: '2026-11-10T12:10:00.000Z', healthyAt: expect.any(String) });
       expect(body.items[1]).toMatchObject({ waiting: false, error: 'AWS refused this experiment.' });
       expect(body).toMatchObject({ label: 'Data layer', startedBy: 'dev@example.test', stoppedReason: null, result: 'failed' });
+      const dev = await context.owner.selectFrom('users').select('id').where('email', '=', 'dev@example.test').where('tenant_id', '=', context.acme.tenant.id).executeTakeFirstOrThrow();
+      expect(told.mock.calls).toEqual([
+        [context.acme.tenant.id, dev.id, 'failover_tests', {
+          title: 'Data layer finished',
+          body: "1 of 3 passed, 2 didn't start",
+          path: `/failover-tests/runs/${id}/${run.id}`,
+          collapseId: `failover-run-${run.id}`,
+        }],
+      ]);
+      told.mockRestore();
       expect(await actions('RUNEXT1')).toEqual([{ action: 'cloud.experiment.started', actor_email: 'dev@example.test' }]);
       const [event] = await context.owner.selectFrom('audit_events').select(['action', 'metadata']).where('target_id', '=', run.id).execute();
       expect(event).toMatchObject({ action: 'cloud.experiment-run.started', metadata: { label: 'Data layer', tests: 3, production: false } });
@@ -399,6 +411,30 @@ describe('failover tests', () => {
       const { body: report } = await http().get(`/api/experiment-reports/${saved.id}`).set('Cookie', viewer).expect(200);
       expect(report).toMatchObject({ experimentId: 'OUT1', environmentName: 'Staging', stopAlarms: ['staging-errors'], run: null });
       expect(report.accountName).toBe('Staging account');
+    });
+
+    it('tells the person who started a test on its own how it ended, once', async () => {
+      const told = vi.spyOn(context.app.get(PushNotifier), 'toUser').mockImplementation(() => {});
+      const { id } = await addAccount('Staging');
+      const dev = await context.owner.selectFrom('users').select('id').where('email', '=', 'dev@example.test').where('tenant_id', '=', context.acme.tenant.id).executeTakeFirstOrThrow();
+      await context.owner
+        .insertInto('audit_events')
+        .values({ tenant_id: context.acme.tenant.id, actor_user_id: dev.id, actor_email: 'dev@example.test', action: 'cloud.experiment.started', target_type: 'experiment', target_id: 'MINE', metadata: '{}' })
+        .execute();
+      source.listExperiments.mockResolvedValue([summary('MINE', 'EXT1', 'stopped'), summary('THEIRS', 'EXT1', 'completed')]);
+      source.getExperiment.mockImplementation(async (_context, experimentId) => record(experimentId, 'EXT1', experimentId === 'MINE' ? 'stopped' : 'completed'));
+      await capture(id);
+      await capture(id);
+      const saved = await context.owner.selectFrom('experiment_reports').select('id').where('experiment_id', '=', 'MINE').executeTakeFirstOrThrow();
+      expect(told.mock.calls).toEqual([
+        [context.acme.tenant.id, dev.id, 'failover_tests', {
+          title: 'Failover test was stopped',
+          body: 'Database failover: Experiment stopped by stop condition.',
+          path: `/failover-tests/tests/${saved.id}`,
+          collapseId: `failover-${saved.id}`,
+        }],
+      ]);
+      told.mockRestore();
     });
 
     it('reports a group run in one place once its tests end', async () => {
