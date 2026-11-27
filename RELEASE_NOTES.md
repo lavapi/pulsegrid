@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-11-27
+
+- The iPhone app (1.1.0) does more: an **Infrastructure** tab with each service's health, details, load, logs, and force deploy or reboot; re-run or cancel pipelines; and **Environments**, **Costs** and **Failover tests** under More, with the tests' PDF reports. No server changes.
+
 ## [0.37.0] - 2026-11-27
 
 - The PulseGrid iPhone app: connect it to your PulseGrid by address, sign in through the browser, and unlock with Face ID. It shows the overview, releases, production releases, database access requests, pipelines and activity. Phones signed in to the app are listed under **Your account → Devices**. See `docs/ios-app.md`.
