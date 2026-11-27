@@ -3,11 +3,13 @@ import SwiftUI
 /// Pipelines running now and those that failed, for the selected account's environment.
 struct PipelinesView: View {
     @Environment(AppModel.self) private var app
+    @State private var starting = false
+    @State private var refresh = 0
 
     var body: some View {
         Group {
             if let account = app.selectedAccount {
-                Loaded(id: account.id) {
+                Loaded(id: "\(account.id)-\(refresh)") {
                     try await app.api.get("pipelines/apps/activity", query: ["environment": account.environmentId ?? "none"]) as PipelineActivity
                 } content: { activity, reload in
                     List {
@@ -34,7 +36,19 @@ struct PipelinesView: View {
             }
         }
         .navigationTitle("Pipelines")
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { AccountPicker() } }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { AccountPicker() }
+            if app.selectedAccount?.environmentId != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { starting = true } label: { Label("Start a pipeline", systemImage: "play.fill") }
+                }
+            }
+        }
+        .sheet(isPresented: $starting) {
+            if let account = app.selectedAccount {
+                StartPipelineView(account: account) { refresh += 1 }
+            }
+        }
     }
 }
 
