@@ -17,6 +17,6 @@ ALWAYS_SEARCH_USER_PATHS = NO
 CODE_SIGN_STYLE = Automatic
 // LavaPi LLC's Apple Developer team.
 DEVELOPMENT_TEAM = 795Z938JQD
-MARKETING_VERSION = 1.3.0
+MARKETING_VERSION = 1.4.0
 // Raised for every upload to App Store Connect, which takes each build number once.
-CURRENT_PROJECT_VERSION = 4
+CURRENT_PROJECT_VERSION = 5

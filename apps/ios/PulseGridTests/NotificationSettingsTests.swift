@@ -19,7 +19,7 @@ struct NotificationSettingsTests {
     }
 
     @Test func listsEveryTopicTheServerHas() {
-        #expect(NotificationTopic.allCases.map(\.rawValue) == ["database_access", "production_releases", "unhealthy_production", "unhealthy_staging", "failed_pipelines", "failover_tests"])
+        #expect(NotificationTopic.allCases.map(\.rawValue) == ["database_access", "production_releases", "unhealthy_production", "unhealthy_staging", "failed_pipelines", "failover_tests", "cost_increases"])
     }
 }
 
@@ -33,6 +33,11 @@ struct NotificationLinkTests {
     @Test func opensAnUnhealthyServiceFromItsNotification() {
         #expect(MainTabs.tab(for: "/infrastructure/r1") == .infrastructure)
         #expect(MainTabs.resourceId(in: "/infrastructure/r1") == "r1")
+    }
+
+    @Test func opensCostsAndAccessFromTheirNotifications() {
+        #expect(MorePage(path: "/costs") == .costs)
+        #expect(MainTabs.tab(for: "/database-access") == .access)
     }
 
     @Test func opensTheNotificationSettings() {
