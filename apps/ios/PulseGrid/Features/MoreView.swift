@@ -18,6 +18,7 @@ struct MoreView: View {
                     NavigationLink("Failover tests") { FailoverTestsView() }
                     if app.user?.can(.viewActivity) == true {
                         NavigationLink("Activity") { ActivityView() }
+                        NavigationLink("Cloud activity") { CloudActivityView() }
                     }
                 }
                 if let user = app.user {
@@ -62,6 +63,8 @@ struct MoreView: View {
                 case .failoverTests: FailoverTestsView()
                 case .notifications: NotificationSettingsView()
                 case .pipelineRun(let appId, let runId): PipelineRunView(appId: appId, runId: runId)
+                case .failoverReport(let report): FailoverReportView(report: report)
+                case .cloudActivity: CloudActivityView()
                 }
             }
         }
@@ -70,10 +73,15 @@ struct MoreView: View {
 
 /// The pages under More that a link can open, by their web path.
 enum MorePage: Hashable {
-    case environments, costs, failoverTests, notifications
+    case environments, costs, failoverTests, notifications, cloudActivity
     case pipelineRun(appId: String, runId: String)
+    case failoverReport(FailoverReport)
 
     init?(path: String) {
+        if let report = FailoverReport(path: path) {
+            self = .failoverReport(report)
+            return
+        }
         let parts = path.split(separator: "/").map(String.init)
         if parts.count == 4, parts[0] == "pipelines", parts[1] == "runs" {
             self = .pipelineRun(appId: parts[2], runId: parts[3])
@@ -84,6 +92,7 @@ enum MorePage: Hashable {
         case _ where path.hasPrefix("/costs"): self = .costs
         case _ where path.hasPrefix("/failover-tests"): self = .failoverTests
         case _ where path.hasPrefix("/account/notifications"): self = .notifications
+        case _ where path.hasPrefix("/activity/cloud"): self = .cloudActivity
         default: return nil
         }
     }

@@ -7,6 +7,7 @@ nonisolated enum NotificationTopic: String, CaseIterable, Identifiable, Sendable
     case unhealthyProduction = "unhealthy_production"
     case unhealthyStaging = "unhealthy_staging"
     case failedPipelines = "failed_pipelines"
+    case failoverTests = "failover_tests"
 
     var id: String { rawValue }
 
@@ -17,6 +18,7 @@ nonisolated enum NotificationTopic: String, CaseIterable, Identifiable, Sendable
         case .unhealthyProduction: "Services turning unhealthy in production"
         case .unhealthyStaging: "Services turning unhealthy in staging"
         case .failedPipelines: "Pipelines I started that failed"
+        case .failoverTests: "Failover tests I started, when they finish"
         }
     }
 }

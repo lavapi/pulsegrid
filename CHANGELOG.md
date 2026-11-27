@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file. The format is b
 
 - A push notification to the person who started a failover test when it finishes: a test on its own when its report is saved, and a group run once when the whole run ends, with how many tests passed, failed, stopped or didn't start. A new **Failover tests I started** switch turns it off.
 - **Your account → Notifications** on the web, with the same switches as the iPhone app.
+- iPhone app: **More → Cloud activity** shows what changed in the selected AWS account, searchable by person or resource, with reads on request and older pages. The new failover switch is under Notifications, and a failover notification opens the test's or run's report. The app is now version 1.3.0.
 
 ## [0.39.0] - 2026-11-27
 
