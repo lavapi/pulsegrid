@@ -77,7 +77,7 @@ private struct AccountCostsSection: View {
 }
 
 /// How this month so far compares with all of last month: up in orange, down in green.
-private struct ChangeBadge: View {
+struct ChangeBadge: View {
     let change: Double
 
     /// Below half a percent, the months are the same.

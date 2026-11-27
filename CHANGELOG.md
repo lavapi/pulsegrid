@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file. The format is b
 ### Changed
 
 - iPhone app: new navigation. Four tabs, Home, Services, Deploys and Access, plus Search, which finds any service, database, cache or server by name. Tap a screen's title to switch AWS account. Your picture at the top opens your profile, notifications, project and sign-out, and the More tab is gone: Environments and Costs are on Home, Failover tests and Cloud activity on Services, and Pipelines and Activity on Deploys. A notification about a service now opens that service. The app needs iOS 18 or later.
+- iPhone app: a new **Home**. **Needs you** puts what's waiting on you first, most urgent at the top: a production release waiting for a decision with its countdown, database access requests, services that are down, failover tests running, and failed pipelines, each opening where you act on it. Below it: health as a ring with a tile for each kind of service, this month's costs with a chart of the services that cost most, and the latest changes.
 
 ### Added
 

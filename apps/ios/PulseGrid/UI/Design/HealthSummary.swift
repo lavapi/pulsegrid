@@ -63,16 +63,3 @@ struct HealthSummary: View {
         }
     }
 }
-
-extension HealthCounts {
-    /// Several categories' counts added up.
-    static func sum(_ counts: [HealthCounts]) -> HealthCounts {
-        HealthCounts(
-            healthy: counts.reduce(0) { $0 + $1.healthy },
-            degraded: counts.reduce(0) { $0 + $1.degraded },
-            stopped: counts.reduce(0) { $0 + $1.stopped },
-            unknown: counts.reduce(0) { $0 + $1.unknown },
-            total: counts.reduce(0) { $0 + $1.total }
-        )
-    }
-}
