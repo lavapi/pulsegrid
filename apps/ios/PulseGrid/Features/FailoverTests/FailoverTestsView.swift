@@ -16,7 +16,7 @@ struct FailoverTestsView: View {
                             Text("No failover tests have run in this account.").foregroundStyle(.secondary)
                         }
                         ForEach(history.entries) { entry in
-                            NavigationLink { FailoverReportView(entry: entry) } label: { FailoverEntryRow(entry: entry) }
+                            NavigationLink { FailoverReportView(report: entry.report) } label: { FailoverEntryRow(entry: entry) }
                         }
                     }
                     .refreshable { await reload() }
@@ -50,16 +50,16 @@ private struct FailoverEntryRow: View {
 }
 
 /// A test's or a group run's PDF report, which can be shared from the phone.
-private struct FailoverReportView: View {
+struct FailoverReportView: View {
     @Environment(AppModel.self) private var app
-    let entry: FailoverHistoryEntry
+    let report: FailoverReport
 
     var body: some View {
-        Loaded(id: entry.id) {
-            var query = entry.reportPath.query
+        Loaded(id: report.id) {
+            var query = report.path.query
             query["timeZone"] = TimeZone.current.identifier
-            let data = try await app.api.file(entry.reportPath.path, query: query)
-            let file = FileManager.default.temporaryDirectory.appending(path: "Failover test \(entry.id.prefix(8)).pdf")
+            let data = try await app.api.file(report.path.path, query: query)
+            let file = FileManager.default.temporaryDirectory.appending(path: "Failover test \(report.id.prefix(8)).pdf")
             try data.write(to: file, options: .atomic)
             return file
         } content: { file, _ in
@@ -67,7 +67,7 @@ private struct FailoverReportView: View {
                 .ignoresSafeArea(edges: .bottom)
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { ShareLink(item: file) } }
         }
-        .navigationTitle(entry.label)
+        .navigationTitle(report.title)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

@@ -19,7 +19,7 @@ struct NotificationSettingsTests {
     }
 
     @Test func listsEveryTopicTheServerHas() {
-        #expect(NotificationTopic.allCases.map(\.rawValue) == ["database_access", "production_releases", "unhealthy_production", "unhealthy_staging", "failed_pipelines"])
+        #expect(NotificationTopic.allCases.map(\.rawValue) == ["database_access", "production_releases", "unhealthy_production", "unhealthy_staging", "failed_pipelines", "failover_tests"])
     }
 }
 
