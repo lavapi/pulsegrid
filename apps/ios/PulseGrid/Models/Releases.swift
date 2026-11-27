@@ -46,6 +46,15 @@ nonisolated struct ProductionRelease: Decodable, Equatable {
 
     /// In its hold and not yet finished or rolled back.
     var isWaiting: Bool { status == "HOLD" && decision == nil }
+
+    /// How the release ended, or where it is now.
+    var outcome: String {
+        switch decision {
+        case "FINISH": "Finished"
+        case "ROLLBACK": "Rolled back"
+        default: isWaiting ? "Waiting" : status.sentenceCased
+        }
+    }
 }
 
 /// The production release page: not set up here, or the release in progress if there is one.

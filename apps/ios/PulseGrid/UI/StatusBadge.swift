@@ -76,10 +76,20 @@ struct StatusBadge: View {
     }
 }
 
-extension String {
+nonisolated extension String {
     /// "not_deployed" → "Not deployed".
     var sentenceCased: String {
         let words = replacingOccurrences(of: "_", with: " ").lowercased()
         return words.prefix(1).uppercased() + words.dropFirst()
+    }
+}
+
+extension ProductionRelease {
+    var outcomeTone: Tone {
+        switch decision {
+        case "FINISH": .good
+        case "ROLLBACK": .bad
+        default: isWaiting ? .warning : .neutral
+        }
     }
 }

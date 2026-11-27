@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file. The format is b
 ### Added
 
 - iPhone app: **Start a pipeline** from Pipelines: pick a branch and fill in the pipeline's inputs. It follows the same rules as the web, including who may run it on which branch, and production runs are confirmed first.
+- iPhone app: a load balancer's page opens its **Requests**: the last hour's count, error rate, response times, busiest paths and requests, filterable by 4xx or 5xx. A database's page opens **Top SQL** and **Database logs**. Production release gets a **History** of the last releases and how each ended.
 
 ## [0.38.0] - 2026-11-27
 
