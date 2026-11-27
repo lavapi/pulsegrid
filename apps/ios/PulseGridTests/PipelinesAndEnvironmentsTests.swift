@@ -55,5 +55,8 @@ struct EnvironmentTests {
 
     @Test func opensEnvironmentsFromALink() {
         #expect(MainTabs.tab(for: "/environments") == .more)
+        #expect(MorePage(path: "/costs") == .costs)
+        #expect(MorePage(path: "/failover-tests") == .failoverTests)
+        #expect(MorePage(path: "/releases") == nil)
     }
 }
