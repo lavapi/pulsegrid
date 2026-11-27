@@ -50,7 +50,7 @@ jobs:
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
       - run: terraform fmt -check -recursive
       - run: |
-          for stack in new-stack existing-stack; do
+          for stack in new-stack existing-stack push-relay; do
             terraform -chdir="$stack" init -backend=false
             terraform -chdir="$stack" validate
           done

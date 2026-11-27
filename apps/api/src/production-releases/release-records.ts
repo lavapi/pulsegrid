@@ -4,6 +4,7 @@ import type { ProductionRelease, ProductionReleaseComponent, ProductionReleaseDe
 export type ReleaseItem = Record<string, AttributeValue>;
 
 export const ACTIVE_ID = 'ACTIVE';
+export const WAITING = 'HOLD';
 
 const text = (item: ReleaseItem, name: string): string | null => {
   const value = item[name];
@@ -63,3 +64,7 @@ export const newestFirst = (releases: ProductionRelease[], limit: number): Produ
   [...releases]
     .sort((left, right) => (right.createdAt ?? '').localeCompare(left.createdAt ?? ''))
     .slice(0, limit);
+
+/** A release in its hold that nobody has finished or rolled back yet. */
+export const isWaiting = (release: ProductionRelease | null): release is ProductionRelease =>
+  release?.status === WAITING && !release.decision;

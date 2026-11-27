@@ -6,10 +6,12 @@ import { WORKFLOW_POLL } from '../src/database-access/database-access-tenants';
 import { DatabaseAccessJobs } from '../src/database-access/database-access.jobs';
 import { DatabaseAccessQueue } from '../src/database-access/database-access.queue';
 import { DATABASE_ACCESS_SETUP } from '../src/database-access/database-access.settings';
+import { PUSH_SENDER } from '../src/push/push-notifier';
 import { authenticatorFor, connectProduction, runEnds, SETUP, sfn } from './support/database-access';
 import { setExtraPermissions, signIn, startTestApp, type TestContext, user } from './support/test-app';
 
 const queue = { follow: vi.fn(), expireAt: vi.fn(), cancelExpiry: vi.fn(), scheduleReconcile: vi.fn(), close: vi.fn() };
+const apns = { send: vi.fn(async () => 'sent' as const) };
 const ASK = { userName: 'vic@example.test', hours: 2, reason: 'Check a stuck payout' };
 
 describe('database access requests', () => {
@@ -48,7 +50,9 @@ describe('database access requests', () => {
         .overrideProvider(WORKFLOW_POLL)
         .useValue({ intervalMs: 0, timeoutMs: 1000 })
         .overrideProvider(DatabaseAccessQueue)
-        .useValue(queue),
+        .useValue(queue)
+        .overrideProvider(PUSH_SENDER)
+        .useValue(apns),
     );
     approver = await signIn(context, context.acme, user('gus', 'developer'));
     requester = await signIn(context, context.acme, user('vic', 'viewer'));
@@ -174,5 +178,41 @@ describe('database access requests', () => {
       message: 'Database access is requested in the project that has the Production account connected.',
     });
     await ask(otherProject).expect(404);
+  });
+
+  it('sends a push to approvers phones for a new request, and to the requester for the answer', async () => {
+    const phoneOf = async (email: string, apnsToken: string) => {
+      const account = await context.owner.selectFrom('accounts').select('id').where('email', '=', email).executeTakeFirstOrThrow();
+      const session = await context.owner
+        .insertInto('sessions')
+        .values({ account_id: account.id, tenant_id: tenantId(), token_hash: apnsToken, expires_at: new Date(Date.now() + 3_600_000), client: 'ios' })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await context.owner
+        .insertInto('push_devices')
+        .values({ account_id: account.id, session_id: session.id, apns_token: apnsToken, environment: 'sandbox' })
+        .execute();
+    };
+    await phoneOf('gus@example.test', 'a'.repeat(64));
+    await phoneOf('vic@example.test', 'b'.repeat(64));
+
+    const { body } = await ask().expect(201);
+    await vi.waitFor(() =>
+      expect(apns.send).toHaveBeenCalledWith('a'.repeat(64), 'sandbox', expect.objectContaining({
+        title: 'Database access request',
+        body: 'vic asks for 2 hours: Check a stuck payout',
+        path: '/settings/database-access',
+      })),
+    );
+    expect(apns.send).not.toHaveBeenCalledWith('b'.repeat(64), expect.anything(), expect.anything());
+
+    await decline(body.id, 'Use the staging copy').expect(201);
+    await vi.waitFor(() =>
+      expect(apns.send).toHaveBeenCalledWith('b'.repeat(64), 'sandbox', expect.objectContaining({
+        title: 'Database access declined',
+        body: 'gus@example.test declined: Use the staging copy',
+      })),
+    );
+    await context.owner.deleteFrom('sessions').where('client', '=', 'ios').execute();
   });
 });

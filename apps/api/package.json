@@ -1,6 +1,6 @@
 {
   "name": "@pulsegrid/api",
-  "version": "0.36.0",
+  "version": "0.37.0",
   "private": true,
   "license": "Apache-2.0",
   "scripts": {
@@ -38,6 +38,7 @@
     "@nestjs/platform-express": "^11.2.9",
     "@nestjs/throttler": "^6.4.0",
     "@node-rs/argon2": "2.0.2",
+    "@pulsegrid/push": "workspace:*",
     "@pulsegrid/shared": "workspace:*",
     "bullmq": "^6.6.0",
     "cookie-parser": "^1.4.7",

@@ -1,3 +1,4 @@
+import type { PushEnvironment } from '@pulsegrid/push';
 import type {
   ActionRunStatus,
   CloudAccountStatus,
@@ -40,6 +41,41 @@ export interface SessionsTable {
   token_hash: string;
   created_at: CreatedAt;
   expires_at: Date;
+  client: Generated<SessionClient>;
+  /** The phone's name, for sessions of the iPhone app. */
+  device_name: string | null;
+  last_used_at: Date | null;
+}
+
+export type SessionClient = 'web' | 'ios';
+
+export interface DeviceSignInCodesTable {
+  code_hash: string;
+  account_id: string;
+  tenant_id: string | null;
+  /** The app's PKCE challenge: only the app that asked can swap the code. */
+  challenge: string;
+  device_name: string;
+  expires_at: Date;
+  created_at: CreatedAt;
+}
+
+export interface PushDevicesTable {
+  id: Generated<string>;
+  account_id: string;
+  session_id: string;
+  apns_token: string;
+  environment: PushEnvironment;
+  created_at: CreatedAt;
+  updated_at: ColumnType<Date, Date | undefined, Date>;
+}
+
+export interface PushRelayInstallationsTable {
+  relay_url: string;
+  installation_id: string;
+  /** The relay's secret for this server, encrypted with TOKEN_ENCRYPTION_KEY. */
+  secret_encrypted: string;
+  created_at: CreatedAt;
 }
 
 export interface AccountsTable {
@@ -331,6 +367,9 @@ export interface Database {
   resource_display_names: ResourceDisplayNamesTable;
   database_access_grants: DatabaseAccessGrantsTable;
   database_access_requests: DatabaseAccessRequestsTable;
+  device_sign_in_codes: DeviceSignInCodesTable;
+  push_devices: PushDevicesTable;
+  push_relay_installations: PushRelayInstallationsTable;
   accounts: AccountsTable;
   account_identities: AccountIdentitiesTable;
   users: UsersTable;

@@ -1,4 +1,4 @@
-import { type AuthMethods, signInErrorMessage } from '@pulsegrid/shared';
+import { type AuthMethods, safeNext, signInErrorMessage } from '@pulsegrid/shared';
 import { redirect } from 'next/navigation';
 import { AuthPage } from '@/components/auth/auth-page';
 import { SignInForm } from '@/components/auth/sign-in-form';
@@ -7,9 +7,9 @@ import { apiGet } from '@/lib/server-api';
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; step?: string }>;
+  searchParams: Promise<{ error?: string; step?: string; next?: string }>;
 }) {
-  const { error, step } = await searchParams;
+  const { error, step, next } = await searchParams;
   const { google, setupRequired } = await apiGet<AuthMethods>('/auth/methods');
   if (setupRequired) {
     redirect('/setup');
@@ -26,7 +26,7 @@ export default async function LoginPage({
           {message}
         </p>
       )}
-      <SignInForm google={google} initialTwoFactor={step === 'two-factor'} />
+      <SignInForm google={google} initialTwoFactor={step === 'two-factor'} next={safeNext(next) ?? '/'} />
     </AuthPage>
   );
 }

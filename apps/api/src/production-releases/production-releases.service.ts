@@ -21,10 +21,9 @@ import { TenantDatabase } from '../database/tenant-database';
 import { MESSAGES, ProductionReleaseError, refusalMessage } from './production-releases-errors';
 import { ProductionReleasesAws } from './production-releases.aws';
 import { PRODUCTION_RELEASES_SETUP, type ProductionReleasesSetup } from './production-releases.settings';
-import { ACTIVE_ID, activeReleaseId, newestFirst, toRelease } from './release-records';
+import { ACTIVE_ID, isWaiting, newestFirst, toRelease, WAITING } from './release-records';
 
 const HISTORY_SIZE = 20;
-const WAITING = 'HOLD';
 
 const DECISIONS = { finish: 'FINISH', rollback: 'ROLLBACK' } as const;
 const ACTIONS = { finish: 'production.release.finished', rollback: 'production.release.rolled_back' } as const;
@@ -54,7 +53,7 @@ export class ProductionReleasesService {
     if (!(await this.shownIn(auth.tenantId))) {
       return { ready: false };
     }
-    return { ready: true, current: await this.reading(() => this.current()) };
+    return { ready: true, current: await this.reading(() => this.aws.current()) };
   }
 
   /** 1 while a release waits for a decision, for the badge beside the menu entry. */
@@ -62,8 +61,8 @@ export class ProductionReleasesService {
     if (!(await this.shownIn(auth.tenantId))) {
       return { count: 0 };
     }
-    const current = await this.current().catch(() => null);
-    return { count: current?.status === WAITING && !current.decision ? 1 : 0 };
+    const current = await this.aws.current().catch(() => null);
+    return { count: isWaiting(current) ? 1 : 0 };
   }
 
   async history(auth: AuthContext): Promise<ProductionRelease[]> {
@@ -80,7 +79,7 @@ export class ProductionReleasesService {
     ipAddress: string | undefined,
   ): Promise<ProductionReleaseDecisionResult> {
     await this.requireShown(auth);
-    const release = await this.reading(() => this.current());
+    const release = await this.reading(() => this.aws.current());
     const refusal = refusalFor(release);
     if (refusal || !release) {
       await this.record(auth, FAILED_ACTION, release?.id ?? null, choice, ipAddress, refusal ?? MESSAGES.noRelease);
@@ -100,12 +99,6 @@ export class ProductionReleasesService {
     await this.record(auth, ACTIONS[choice], release.id, choice, ipAddress, 'succeeded');
     this.logger.log(`${auth.email} chose ${DECISIONS[choice]} for release ${release.id}`);
     return { releaseId: release.id, decision: DECISIONS[choice], decidedBy: auth.email };
-  }
-
-  private async current(): Promise<ProductionRelease | null> {
-    const id = activeReleaseId(await this.aws.item(ACTIVE_ID));
-    const item = id ? await this.aws.item(id) : undefined;
-    return item ? toRelease(item) : null;
   }
 
   /** Reads from production, turning any AWS failure into a readable message and logging only its kind. */

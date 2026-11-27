@@ -1,4 +1,4 @@
-import { isUserPermission, USER_PERMISSIONS } from '@pulsegrid/shared';
+import { DEVICE_SESSION_DAYS, isUserPermission, type SignedInDevice, USER_PERMISSIONS } from '@pulsegrid/shared';
 import { Inject, Injectable } from '@nestjs/common';
 import { type Kysely, sql } from 'kysely';
 import { hashToken, newToken } from '../../common/secure-token';
@@ -7,6 +7,10 @@ import { DATABASE } from '../../database/database.module';
 import type { Database } from '../../database/schema';
 import { TenantDatabase } from '../../database/tenant-database';
 import type { PersonContext, ProjectAccess } from './auth-context';
+
+const DEVICE_TTL_MS = DEVICE_SESSION_DAYS * 24 * 60 * 60 * 1000;
+/** How often a phone's use is written down, extending its sign-in; more often would write on every request. */
+const TOUCH_EVERY_MS = 60 * 60 * 1000;
 
 @Injectable()
 export class SessionService {
@@ -30,6 +34,54 @@ export class SessionService {
     return token;
   }
 
+  /** A sign-in for the iPhone app, lasting while the phone keeps using it. */
+  async createForDevice(accountId: string, tenantId: string | null, deviceName: string): Promise<{ token: string; expiresAt: Date }> {
+    const token = newToken();
+    const expiresAt = new Date(Date.now() + DEVICE_TTL_MS);
+    await this.db
+      .insertInto('sessions')
+      .values({
+        account_id: accountId,
+        tenant_id: tenantId,
+        token_hash: hashToken(token),
+        expires_at: expiresAt,
+        client: 'ios',
+        device_name: deviceName,
+        last_used_at: new Date(),
+      })
+      .execute();
+    return { token, expiresAt };
+  }
+
+  async devices(accountId: string, currentSessionId: string): Promise<SignedInDevice[]> {
+    const rows = await this.db
+      .selectFrom('sessions')
+      .select(['id', 'device_name', 'created_at', 'last_used_at'])
+      .where('account_id', '=', accountId)
+      .where('client', '=', 'ios')
+      .where('expires_at', '>', new Date())
+      .orderBy('created_at', 'desc')
+      .execute();
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.device_name ?? 'iPhone',
+      signedInAt: row.created_at.toISOString(),
+      lastUsedAt: row.last_used_at?.toISOString() ?? null,
+      current: row.id === currentSessionId,
+    }));
+  }
+
+  /** Signs out one of the person's own phones; false when it isn't theirs or is already gone. */
+  async revokeDevice(accountId: string, sessionId: string): Promise<boolean> {
+    const result = await this.db
+      .deleteFrom('sessions')
+      .where('id', '=', sessionId)
+      .where('account_id', '=', accountId)
+      .where('client', '=', 'ios')
+      .executeTakeFirst();
+    return Number(result.numDeletedRows) > 0;
+  }
+
   async resolve(token: string): Promise<PersonContext | null> {
     const row = await this.db
       .selectFrom('sessions')
@@ -43,6 +95,8 @@ export class SessionService {
         'accounts.is_super_admin as isOwner',
         'accounts.totp_enabled_at as totpEnabledAt',
         'accounts.temporary_password_expires_at as temporaryPasswordUntil',
+        'sessions.client as client',
+        'sessions.last_used_at as lastUsedAt',
       ])
       .where('sessions.token_hash', '=', hashToken(token))
       .where('sessions.expires_at', '>', new Date())
@@ -50,7 +104,10 @@ export class SessionService {
     if (!row) {
       return null;
     }
-    const { tenantId, totpEnabledAt, temporaryPasswordUntil, ...person } = row;
+    const { tenantId, totpEnabledAt, temporaryPasswordUntil, lastUsedAt, ...person } = row;
+    if (person.client === 'ios') {
+      await this.touchDevice(person.sessionId, lastUsedAt);
+    }
     return {
       ...person,
       mustChangePassword: temporaryPasswordUntil !== null,
@@ -82,6 +139,18 @@ export class SessionService {
       query = query.where('id', '!=', exceptSessionId);
     }
     await query.execute();
+  }
+
+  private async touchDevice(sessionId: string, lastUsedAt: Date | null): Promise<void> {
+    const now = Date.now();
+    if (lastUsedAt && now - lastUsedAt.getTime() < TOUCH_EVERY_MS) {
+      return;
+    }
+    await this.db
+      .updateTable('sessions')
+      .set({ last_used_at: new Date(now), expires_at: new Date(now + DEVICE_TTL_MS) })
+      .where('id', '=', sessionId)
+      .execute();
   }
 
   private projectAccess(tenantId: string, accountId: string, isOwner: boolean): Promise<ProjectAccess | null> {

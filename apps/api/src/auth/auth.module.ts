@@ -11,6 +11,8 @@ import { TenantsModule } from '../tenants/tenants.module';
 import { AccountStore } from './account-store';
 import { AccountController } from './account.controller';
 import { AccountService } from './account.service';
+import { DeviceAuthController } from './device/device-auth.controller';
+import { DeviceSignInService } from './device/device-sign-in.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { FreshCodeCheck } from './two-factor/fresh-code';
@@ -36,8 +38,9 @@ import { BackupCodeHasher } from './two-factor/backup-code-hasher';
       }),
     }),
   ],
-  controllers: [AccountController, AuthController],
+  controllers: [AccountController, AuthController, DeviceAuthController],
   providers: [
+    DeviceSignInService,
     AccountService,
     AccountStore,
     AuthService,
