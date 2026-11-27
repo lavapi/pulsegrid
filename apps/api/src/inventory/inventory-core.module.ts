@@ -1,6 +1,7 @@
 import { Inject, Module, type OnApplicationShutdown } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { AuditModule } from '../audit/audit.module';
+import { PushCoreModule } from '../push/push-core.module';
 import { APP_CONFIG, type AppConfig } from '../config/app-config';
 import { ACTION_QUEUE_NAME, ActionQueue } from './actions/action-queue';
 import { ActionRunStore } from './actions/action-run.store';
@@ -10,6 +11,7 @@ import { AccountCredentials } from './connection/account-credentials';
 import { CredentialVault } from './connection/credential-vault';
 import { ExperimentReportCapture } from './experiments/experiment-report-capture';
 import { ExperimentReportStore } from './experiments/experiment-report.store';
+import { FailoverTestAlerts } from './experiments/failover-test-alerts';
 import { ExperimentStarter } from './experiments/experiment-starter';
 import { ExperimentWaveQueue, WAVE_QUEUE_NAME } from './experiments/experiment-wave-queue';
 import { EnvironmentLock } from './experiments/environment-lock';
@@ -27,7 +29,7 @@ import { createQueueConnection, queuePrefix } from '../redis/redis-connection';
 import { SYNC_QUEUE_NAME, SyncQueue } from './sync/sync-queue';
 
 @Module({
-  imports: [AuditModule],
+  imports: [AuditModule, PushCoreModule],
   providers: [
     ActionRunStore,
     ActionTracker,
@@ -50,6 +52,7 @@ import { SYNC_QUEUE_NAME, SyncQueue } from './sync/sync-queue';
     AccountCredentials,
     CredentialVault,
     ExperimentReportStore,
+    FailoverTestAlerts,
     ExperimentReportCapture,
     ExperimentStarter,
     EnvironmentLock,

@@ -67,8 +67,9 @@ The app registers its phone with `PUT /api/devices/push` after the person allows
 | A production release is waiting for a decision | People with **Finish or roll back production releases**, once per release |
 | A service turned degraded | Everyone in the project who turned it on: production is on by default, staging off. Once per service until it's healthy again, and not again within 30 minutes of recovering |
 | A pipeline you started or re-ran from PulseGrid failed | The person who started it. Runs are followed for up to 6 hours |
+| A failover test you started finished | The person who started it: a test on its own when its report is saved, a group run once when the whole run ends, with how many passed |
 
-Each person chooses which of these they get, in the app under **More → Notifications** (`GET` and `PUT /api/account/notifications`). The choice is kept per person and applies on all their phones.
+Each person chooses which of these they get, in the app under **More → Notifications** or on the web under **Your account → Notifications** (`GET` and `PUT /api/account/notifications`). The choice is kept per person and applies on all their phones.
 
 A run started from PulseGrid is followed by its ID when GitHub returns it. Otherwise PulseGrid takes the first manual run of that pipeline on that branch since it was started.
 

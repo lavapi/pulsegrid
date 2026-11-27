@@ -1,12 +1,13 @@
 import { type ExperimentReport, type ExperimentReportDetails, testResult } from '@pulsegrid/shared';
 import { Injectable } from '@nestjs/common';
-import type { Selectable } from 'kysely';
+import { type Selectable, sql } from 'kysely';
 import type { ExperimentReportsTable } from '../../database/schema';
 import type { TenantTransaction } from '../../database/tenant-context';
 import { TenantDatabase } from '../../database/tenant-database';
 import type { ExperimentRecord } from '../providers/provider';
 import type { ExperimentAccount } from './experiment-account';
 import { startedBy } from './experiment-audit';
+import { FailoverTestAlerts } from './failover-test-alerts';
 
 export type ReportRow = Selectable<ExperimentReportsTable>;
 
@@ -72,15 +73,21 @@ const detailsOf = ({ description, steps, targets, stopAlarms, resolvedResourceId
 
 @Injectable()
 export class ExperimentReportStore {
-  constructor(private readonly database: TenantDatabase) {}
+  constructor(
+    private readonly database: TenantDatabase,
+    private readonly alerts: FailoverTestAlerts,
+  ) {}
 
-  /** Saves the report of an ended test once; active tests and tests already saved are left alone. */
+  /**
+   * Saves the report of an ended test once; active tests and tests already saved are left alone. The person who
+   * started a test on its own hears how it ended; tests in a group run are told about once the whole run ends.
+   */
   async save(tenantId: string, { account, environment }: ExperimentAccount, record: ExperimentRecord): Promise<void> {
     if (!testResult(record.state)) {
       return;
     }
-    await this.database.run(tenantId, async (trx) => {
-      await trx
+    const saved = await this.database.run(tenantId, async (trx) => {
+      const row = await trx
         .insertInto('experiment_reports')
         .values({
           tenant_id: tenantId,
@@ -100,7 +107,24 @@ export class ExperimentReportStore {
           details: detailsOf(record),
         })
         .onConflict((conflict) => conflict.columns(['cloud_account_id', 'region', 'experiment_id']).doNothing())
-        .execute();
+        .returning(['id', 'started_by_email'])
+        .executeTakeFirst();
+      return row && !(await inGroupRun(trx, record.id)) ? row : null;
     });
+    if (saved) {
+      await this.alerts.testFinished(tenantId, {
+        id: saved.id,
+        label: record.label,
+        state: record.state,
+        reason: record.reason,
+        startedByEmail: saved.started_by_email,
+      });
+    }
   }
 }
+
+const inGroupRun = async (trx: TenantTransaction, experimentId: string): Promise<boolean> => {
+  const items = sql<string>`${JSON.stringify([{ experimentId }])}::jsonb`;
+  const run = await trx.selectFrom('experiment_runs').select('id').where(sql<boolean>`items @> ${items}`).executeTakeFirst();
+  return run !== undefined;
+};

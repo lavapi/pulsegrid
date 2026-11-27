@@ -1,4 +1,4 @@
-import { type ExperimentRunItem, isActiveExperiment } from '@pulsegrid/shared';
+import { type ExperimentRunItem, isActiveExperiment, type TestHistoryEntry } from '@pulsegrid/shared';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { type Kysely, sql } from 'kysely';
 import { DATABASE } from '../../database/database.module';
@@ -10,8 +10,10 @@ import type { CloudCredentials, ExperimentSource, InventoryItem } from '../provi
 import { ProviderRegistry } from '../providers/provider-registry';
 import { EnvironmentLock } from './environment-lock';
 import { findExperimentAccount } from './experiment-account';
-import { ExperimentReportStore } from './experiment-report.store';
+import { runEntry } from './experiment-history';
+import { ExperimentReportStore, reportsFor } from './experiment-report.store';
 import { ExperimentStarter } from './experiment-starter';
+import { FailoverTestAlerts } from './failover-test-alerts';
 import { parseKey } from './resource-keys';
 
 /** How long the environment may stay unhealthy, before or after a test, before the run stops. */
@@ -34,8 +36,11 @@ interface SequenceRun {
   label: string;
   items: ExperimentRunItem[];
   started_by_email: string | null;
+  started_at: Date;
   cloud_account_id: string;
 }
+
+const isUnfinished = (items: readonly ExperimentRunItem[]): boolean => items.some(({ waiting, settling }) => waiting || settling);
 
 interface Step {
   account: CloudAccountRow;
@@ -77,26 +82,27 @@ export class RunSequencer {
     private readonly starter: ExperimentStarter,
     private readonly reports: ExperimentReportStore,
     private readonly lock: EnvironmentLock,
+    private readonly alerts: FailoverTestAlerts,
   ) {}
 
   /** Moves a run on by one step. A run another process is moving on is skipped. */
   async advance(tenantId: string, runId: string): Promise<void> {
-    await this.database.run(tenantId, async (trx) => {
+    const finished = await this.database.run(tenantId, async (trx): Promise<TestHistoryEntry | null> => {
       const run = await trx
         .selectFrom('experiment_runs')
-        .select(['id', 'label', 'items', 'started_by_email', 'cloud_account_id', 'stopped_reason'])
+        .select(['id', 'label', 'items', 'started_by_email', 'started_at', 'cloud_account_id', 'stopped_reason'])
         .where('id', '=', runId)
         .forUpdate()
         .skipLocked()
         .executeTakeFirst();
-      if (!run || run.stopped_reason || !run.items.some(({ waiting, settling }) => waiting || settling)) {
-        return;
+      if (!run || run.stopped_reason || !isUnfinished(run.items)) {
+        return null;
       }
       const found = await findExperimentAccount(trx, run.cloud_account_id);
       const source = found && this.providers.get(found.account.provider).experimentSource;
       const credentials = found && await this.accountCredentials.of(found.account);
       if (!found || !source || !credentials) {
-        return;
+        return null;
       }
       const step: Step = {
         account: found.account,
@@ -112,7 +118,17 @@ export class RunSequencer {
         .set({ items: JSON.stringify(items), stopped_reason: stoppedReason })
         .where('id', '=', runId)
         .execute();
+      if (!stoppedReason && isUnfinished(items)) {
+        return null;
+      }
+      const ids = items.flatMap(({ experimentId }) => (experimentId ? [experimentId] : []));
+      const reports = await reportsFor(trx, run.cloud_account_id, ids);
+      const history = { ...run, items, account_name: found.account.name, environment_name: found.environment?.name ?? null };
+      return runEntry(history, reports, new Date(step.now));
     });
+    if (finished) {
+      await this.alerts.runFinished(tenantId, finished);
+    }
   }
 
   /** Moves on every unfinished run, in every project. */

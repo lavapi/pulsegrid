@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- A push notification to the person who started a failover test when it finishes: a test on its own when its report is saved, and a group run once when the whole run ends, with how many tests passed, failed, stopped or didn't start. A new **Failover tests I started** switch turns it off.
+- **Your account → Notifications** on the web, with the same switches as the iPhone app.
+
 ## [0.39.0] - 2026-11-27
 
 ### Added
