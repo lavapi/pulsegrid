@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from './config/config.module';
 import { DatabaseAccessCoreModule } from './database-access/database-access-core.module';
+import { DatabaseAccessEndingAlerts } from './database-access/database-access-ending-alerts';
+import { DatabaseAccessEndingAlertsWorker } from './database-access/database-access-ending-alerts.worker';
 import { DatabaseAccessWorker } from './database-access/database-access.worker';
 import { DatabaseModule } from './database/database.module';
 import { ActionWorker } from './inventory/actions/action-worker';
@@ -32,6 +34,8 @@ import { RedisModule } from './redis/redis.module';
   providers: [
     ActionWorker,
     CostWorker,
+    DatabaseAccessEndingAlerts,
+    DatabaseAccessEndingAlertsWorker,
     DatabaseAccessWorker,
     ExperimentWaveWorker,
     PipelineRunAlertsWorker,

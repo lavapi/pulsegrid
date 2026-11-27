@@ -17,6 +17,7 @@ import { ExperimentWaveQueue, WAVE_QUEUE_NAME } from './experiments/experiment-w
 import { EnvironmentLock } from './experiments/environment-lock';
 import { RunSequencer } from './experiments/run-sequencer';
 import { COST_QUEUE_NAME, CostQueue } from './costs/cost-queue';
+import { CostAlerts } from './costs/cost-alerts';
 import { CostRefreshService } from './costs/cost-refresh.service';
 import { TokenCipher } from './connection/token-cipher';
 import { awsProvider } from './providers/aws/aws.provider';
@@ -65,6 +66,7 @@ import { SYNC_QUEUE_NAME, SyncQueue } from './sync/sync-queue';
           new Queue(WAVE_QUEUE_NAME, { connection: createQueueConnection(config.redis), prefix: queuePrefix(config.redis) }),
         ),
     },
+    CostAlerts,
     CostRefreshService,
     {
       provide: CostQueue,

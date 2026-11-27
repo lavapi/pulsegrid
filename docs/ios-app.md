@@ -67,6 +67,8 @@ The app registers its phone with `PUT /api/devices/push` after the person allows
 | A production release is waiting for a decision | People with **Finish or roll back production releases**, once per release |
 | A service turned degraded | Everyone in the project who turned it on: production is on by default, staging off. Once per service until it's healthy again, and not again within 30 minutes of recovering |
 | A pipeline you started or re-ran from PulseGrid failed | The person who started it. Runs are followed for up to 6 hours |
+| Your production database access ends in 15 minutes | The person with the access, again if the access is extended. Under the database access switch |
+| An AWS account's month is heading for at least 25% and $50 more than last month | People who can view costs, from the 5th of the month, once per account a month. Checked after each cost refresh |
 | A failover test you started finished | The person who started it: a test on its own when its report is saved, a group run once when the whole run ends, with how many passed |
 
 Each person chooses which of these they get, in the app under **More → Notifications** or on the web under **Your account → Notifications** (`GET` and `PUT /api/account/notifications`). The choice is kept per person and applies on all their phones.
