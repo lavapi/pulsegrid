@@ -66,4 +66,23 @@ struct AccessHistoryTests {
         #expect(try grant(status: "expired", endReason: "expired").hours == 3)
         #expect(try grant(status: "revoked", endReason: "manual", revokedAt: "2026-11-27T11:00:00.000Z").hours == 1)
     }
+
+    @Test func describesWhatCameOfMyRequests() throws {
+        func entry(status: String, decidedBy: String? = nil, declineReason: String? = nil, grant: String = "null") throws -> MyDatabaseAccessHistoryEntry {
+            let json = """
+            {"request":{"id":"r","requestedBy":"Vic","requestedByEmail":"vic@example.com","userName":"vic@example.com","hours":2,
+             "reason":"Look at orders","status":"\(status)","createdAt":"2026-11-27T10:00:00.000Z","expiresAt":"2026-11-28T10:00:00.000Z",
+             "decidedBy":\(decidedBy.map { "\"\($0)\"" } ?? "null"),"declineReason":\(declineReason.map { "\"\($0)\"" } ?? "null")},
+             "grant":\(grant)}
+            """
+            return try JSONCoding.decoder.decode(MyDatabaseAccessHistoryEntry.self, from: Data(json.utf8))
+        }
+        let declined = try entry(status: "declined", decidedBy: "Ana", declineReason: "Use staging")
+        #expect(declined.outcome == "Declined by Ana" && declined.note == "Use staging")
+        #expect(try entry(status: "expired").outcome == "No answer")
+        #expect(try entry(status: "cancelled").outcome == "Cancelled")
+        let grant = #"{"id":"g","grantedBy":"Ana","userName":"vic@example.com","reason":"Look at orders","status":"expired","failure":null,"startsAt":"2026-11-27T10:00:00.000Z","expiresAt":"2026-11-27T13:00:00.000Z","revokedAt":null,"revokedBy":null,"endReason":"expired"}"#
+        let approved = try entry(status: "approved", decidedBy: "Ana", grant: grant)
+        #expect(approved.outcome == "Expired" && approved.grant?.hours == 3)
+    }
 }
