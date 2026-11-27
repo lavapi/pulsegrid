@@ -9,7 +9,7 @@ struct MainTabs: View {
     var body: some View {
         TabView(selection: $tab) {
             Tab("Home", systemImage: "house", value: AppTab.home) {
-                TabRoot(tab: .home, route: $route) { OverviewView() }
+                TabRoot(tab: .home, route: $route) { HomeView() }
             }
             Tab("Services", systemImage: "server.rack", value: AppTab.services) {
                 TabRoot(tab: .services, route: $route) { InfrastructureView() }

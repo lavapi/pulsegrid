@@ -24,7 +24,7 @@ struct ActivityView: View {
     }
 }
 
-private struct ActivityRow: View {
+struct ActivityRow: View {
     let event: AuditEvent
 
     var body: some View {
