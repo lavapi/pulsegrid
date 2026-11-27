@@ -51,9 +51,8 @@ private struct MyAccessView: View {
                                 IconTile(symbol: "cylinder.split.1x2.fill", color: .blue)
                             }
                             if grant.status == "active" {
-                                AccessCountdown(grant: grant)
+                                AccessCountdown(grant: grant, size: 84)
                             }
-                            LabeledContent("Until") { Text(grant.expiresAt, format: .dateTime.hour().minute()) }
                         } header: {
                             Text("Your access")
                         } footer: {

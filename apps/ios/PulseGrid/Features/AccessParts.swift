@@ -38,23 +38,40 @@ struct HoursPicker: View {
 /// "1 hour", "3 hours".
 func hoursText(_ hours: Int) -> String { "\(hours) \(hours == 1 ? "hour" : "hours")" }
 
-/// The time left on active access, counting down live, with a bar for how much of it has passed.
+/// The time left on active access as a ring that empties as it runs out, turning orange in the last 15 minutes,
+/// with the countdown and the end time beside it.
 struct AccessCountdown: View {
     let grant: DatabaseAccessGrant
+    var size: CGFloat = 64
 
     var body: some View {
         if grant.expiresAt > .now {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("Ends in")
-                    Spacer()
-                    Text(timerInterval: Date.now...grant.expiresAt, countsDown: true)
-                        .font(.title3.weight(.semibold).monospacedDigit())
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                let total = max(1, grant.expiresAt.timeIntervalSince(grant.startsAt))
+                let left = max(0, grant.expiresAt.timeIntervalSince(context.date))
+                let color: Color = left < 15 * 60 ? .orange : .accentColor
+                HStack(spacing: 16) {
+                    ZStack {
+                        Circle().stroke(color.opacity(0.18), lineWidth: size * 0.13)
+                        Circle()
+                            .trim(from: 0, to: left / total)
+                            .stroke(color, style: StrokeStyle(lineWidth: size * 0.13, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                        Image(systemName: "hourglass").font(.system(size: size * 0.3, weight: .semibold)).foregroundStyle(color)
+                    }
+                    .frame(width: size, height: size)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Time left").font(.caption).foregroundStyle(.secondary)
+                        Text(timerInterval: context.date...grant.expiresAt, countsDown: true)
+                            .font(.title2.weight(.bold).monospacedDigit())
+                            .foregroundStyle(color)
+                        Text("Ends at \(grant.expiresAt, format: .dateTime.hour().minute())").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
                 }
-                ProgressView(timerInterval: grant.startsAt...grant.expiresAt, countsDown: true) { EmptyView() } currentValueLabel: { EmptyView() }
-                    .tint(.accentColor)
+                .padding(.vertical, 4)
+                .accessibilityElement(children: .combine)
             }
-            .padding(.vertical, 4)
         }
     }
 }
