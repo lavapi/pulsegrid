@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-11-27
+
 ### Added
 
 - The iPhone app in `apps/ios` (SwiftUI, iOS 17.4 and later):
@@ -13,16 +15,12 @@ All notable changes to this project are documented in this file. The format is b
   - It registers for push notifications, and tapping one opens its screen.
   - Whenever the server can't be reached, it says to turn on the VPN.
   - It has its own icon, is signed with LavaPi's Apple team, and `apps/ios/scripts/upload-testflight.sh` uploads a build to TestFlight.
-
-### Added
-
 - Signing in from the iPhone app: the app opens the usual sign-in page in the system browser, which hands it a one-time code at `pulsegrid://signed-in`. The app swaps the code, with its PKCE secret, for its own token (`POST /api/auth/device/codes`, `POST /api/auth/device/token`). The API accepts that token as `Authorization: Bearer`. App sign-ins last 30 days from their last use.
 - **Your account → Devices** lists phones signed in to the app, with **Sign out** (`GET` and `DELETE /api/account/devices`).
 - Push notifications through Apple's push service, for database access requests and their answers, and for production releases waiting for a decision. Phones register with `PUT /api/devices/push`. They're sent when `APNS_TEAM_ID`, `APNS_KEY_ID`, `APNS_BUNDLE_ID` and `APNS_PRIVATE_KEY` are set.
 - Sign-in, Google included, can return to a page on this site with `?next=`.
 - Migration 0046 adds the app's sessions, sign-in codes and push devices. Run `pnpm db:migrate`.
 - The push relay in `apps/push-relay`, with its Terraform in `infra/terraform/push-relay`: a small Lambda behind API Gateway that sends notifications to the iPhone app for servers without their own Apple key. Each server registers itself once (`POST /v1/installations`) and sends with its own secret (`POST /v1/notifications`), up to a daily limit. It keeps no notification text. See `docs/push-relay.md`.
-
 - Push notifications work without an Apple key: the API and the worker send them through LavaPi's push relay (`PUSH_RELAY_URL`, default `https://push-pulsegrid.lavapi.com`, empty to turn notifications off). The server registers with the relay by itself, and keeps its relay secret encrypted. With the `APNS_*` settings, it still sends to Apple directly.
 - Migration 0047 adds the server's push relay registration. Run `pnpm db:migrate`.
 

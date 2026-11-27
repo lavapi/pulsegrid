@@ -2,7 +2,10 @@
 
 ## [Unreleased]
 
-- Groundwork for the iPhone app: signing in from the app, a **Devices** list under Your account, and push notifications for access requests and waiting production releases. See `docs/ios-app.md`. Run `pnpm db:migrate`.
+## [0.37.0] - 2026-11-27
+
+- The PulseGrid iPhone app: connect it to your PulseGrid by address, sign in through the browser, and unlock with Face ID. It shows the overview, releases, production releases, database access requests, pipelines and activity. Phones signed in to the app are listed under **Your account → Devices**. See `docs/ios-app.md`.
+- Push notifications on the iPhone for database access requests and their answers, and for production releases waiting for a decision. They work with no setup, through LavaPi's push relay; set `PUSH_RELAY_URL` empty to turn them off. Run `pnpm db:migrate`.
 
 ## [0.36.0] - 2026-11-26
 
