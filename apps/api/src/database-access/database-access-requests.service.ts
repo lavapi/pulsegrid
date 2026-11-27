@@ -72,7 +72,7 @@ export class DatabaseAccessRequestsService {
       reason: input.reason.trim(),
     });
     await this.record(auth, row, 'database_access.access_requested', ipAddress, { hours: row.hours, reason: row.reason });
-    this.push.toPermission(auth.tenantId, APPROVER, {
+    this.push.toPermission(auth.tenantId, APPROVER, 'database_access', {
       title: 'Database access request',
       body: `${row.requested_by_name} asks for ${hoursText(row.hours)}: ${row.reason}`,
       path: '/settings/database-access',
@@ -119,7 +119,7 @@ export class DatabaseAccessRequestsService {
       throw error;
     }
     await this.record(auth, row, 'database_access.request_approved', ipAddress, { hours });
-    this.push.toUser(auth.tenantId, row.requested_by_user_id, {
+    this.push.toUser(auth.tenantId, row.requested_by_user_id, 'database_access', {
       title: 'Database access approved',
       body: `${auth.email} approved ${hoursText(hours)}. It's ready to use in a minute or two.`,
       path: '/database-access',
@@ -141,7 +141,7 @@ export class DatabaseAccessRequestsService {
       throw new ConflictException(ANSWERED);
     }
     await this.record(auth, row, 'database_access.request_declined', ipAddress, { reason });
-    this.push.toUser(auth.tenantId, row.requested_by_user_id, {
+    this.push.toUser(auth.tenantId, row.requested_by_user_id, 'database_access', {
       title: 'Database access declined',
       body: reason ? `${auth.email} declined: ${reason}` : `${auth.email} declined your request.`,
       path: '/database-access',

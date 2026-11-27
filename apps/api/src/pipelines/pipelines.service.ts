@@ -33,6 +33,7 @@ import { chunk } from '../common/chunk';
 import { GitConnectionsService } from './git/git-connections.service';
 import { type GitClient, GitProviderError, type GitWorkflow } from './git/git-provider';
 import { PipelineCache } from './pipeline-cache';
+import { PipelineRunWatches } from './pipeline-run-watches';
 import { averageDeployments, deploymentsOf } from './deployment-times';
 import { toPipelineApp } from './pipeline-apps';
 import {
@@ -170,6 +171,7 @@ export class PipelinesService {
     private readonly cache: PipelineCache,
     private readonly database: TenantDatabase,
     private readonly audit: AuditService,
+    private readonly watches: PipelineRunWatches,
   ) {}
 
   async isConnected(tenantId: string): Promise<boolean> {
@@ -383,11 +385,12 @@ export class PipelinesService {
       throw new BadRequestException(problem);
     }
 
-    await this.call(() => git.client.startRun(repository, workflowId, branch, inputs));
+    const runId = await this.call(() => git.client.startRun(repository, workflowId, branch, inputs));
     await this.finishAction(auth, git, context, target, 'pipeline.run_started', ipAddress, {
       branch,
       inputs: Object.keys(inputs),
     });
+    await this.watches.add(auth.tenantId, { userId: auth.userId, appId, workflowId, pipelineName: workflow.name, branch, runId });
   }
 
   async rerun(
@@ -402,6 +405,14 @@ export class PipelinesService {
     await this.finishAction(auth, git, context, target, 'pipeline.rerun', ipAddress, {
       runId,
       failedOnly,
+    });
+    await this.watches.add(auth.tenantId, {
+      userId: auth.userId,
+      appId,
+      workflowId: context.workflow.id,
+      pipelineName: context.workflow.name,
+      branch: target.branch,
+      runId,
     });
     await this.cache.forget(keyFor(git, `jobs:${runId}`));
   }

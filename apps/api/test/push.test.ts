@@ -31,7 +31,7 @@ describe('waiting production release alerts', () => {
     const { alerts, push, redis } = alertsWith(waiting);
     await alerts.check();
     expect(redis.set).toHaveBeenCalledWith('production-release:announced:rel-1', '1', 'EX', expect.any(Number), 'NX');
-    expect(push.toPermission).toHaveBeenCalledWith('tenant-1', 'production.release.decide', {
+    expect(push.toPermission).toHaveBeenCalledWith('tenant-1', 'production.release.decide', 'production_releases', {
       title: 'Production release waiting',
       body: 'ada@example.test is waiting for you to finish or roll it back.',
       path: '/production-releases',

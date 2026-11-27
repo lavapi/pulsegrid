@@ -70,6 +70,27 @@ export interface PushDevicesTable {
   updated_at: ColumnType<Date, Date | undefined, Date>;
 }
 
+export interface NotificationSettingsTable {
+  account_id: string;
+  /** Only the choices the person changed; the rest follow DEFAULT_NOTIFICATION_SETTINGS. */
+  settings: ColumnType<Record<string, boolean>, string, string>;
+  updated_at: ColumnType<Date, Date | undefined, Date>;
+}
+
+export interface WatchedPipelineRunsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  user_id: string;
+  app_id: string;
+  workflow_id: string;
+  pipeline_name: string;
+  branch: string;
+  /** Null until the run started from PulseGrid is found among the pipeline's runs. */
+  run_id: string | null;
+  started_at: CreatedAt;
+  expires_at: Date;
+}
+
 export interface PushRelayInstallationsTable {
   relay_url: string;
   installation_id: string;
@@ -370,6 +391,8 @@ export interface Database {
   device_sign_in_codes: DeviceSignInCodesTable;
   push_devices: PushDevicesTable;
   push_relay_installations: PushRelayInstallationsTable;
+  notification_settings: NotificationSettingsTable;
+  watched_pipeline_runs: WatchedPipelineRunsTable;
   accounts: AccountsTable;
   account_identities: AccountIdentitiesTable;
   users: UsersTable;
