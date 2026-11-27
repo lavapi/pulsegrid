@@ -10,6 +10,7 @@ All notable changes to this project are documented in this file. The format is b
 - iPhone app: a new **Home**. **Needs you** puts what's waiting on you first, most urgent at the top: a production release waiting for a decision with its countdown, database access requests, services that are down, failover tests running, and failed pipelines, each opening where you act on it. Below it: health as a ring with a tile for each kind of service, this month's costs with a chart of the services that cost most, and the latest changes.
 - iPhone app: **Services** lists every service in the account at once, by kind and cluster, with problems first. Chips at the top filter by kind and show how many need attention. A service's page opens with its health, status and load, the load charts are filled and show the value under your finger, and logs, requests and database activity are tiles.
 - iPhone app: **Deploys** brings releases and pipelines together. A production release waiting for you comes first with its countdown, then pipelines running now, what's deployed for each service with its stages, and what failed, filtered by All, Running or Failed. Start a pipeline from the top, and the tab refreshes while something runs. A run's jobs show as a bar of stages.
+- iPhone app: database access counts down on a ring that empties as time runs out and turns orange in the last 15 minutes, with the end time beside it.
 
 ### Added
 
