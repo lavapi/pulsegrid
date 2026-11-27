@@ -27,6 +27,16 @@ xcodebuild -project PulseGrid.xcodeproj -scheme PulseGrid -destination 'platform
 
 To check screens against a local API without signing in, a debug build accepts `-server <url> -PulseGridToken <app token> -PulseGridOpen <path>` as launch arguments. Release builds ignore them.
 
+### Uploading to TestFlight
+
+The app is signed with LavaPi's Apple team (`DEVELOPMENT_TEAM` in `Config/Base.xcconfig`), with Xcode's automatic signing. Xcode on the Mac must be signed in to an Apple account in that team (**Xcode → Settings → Accounts**).
+
+1. Raise `CURRENT_PROJECT_VERSION` in `Config/Base.xcconfig`. App Store Connect takes each build number once. Raise `MARKETING_VERSION` too for a new version.
+2. Run `apps/ios/scripts/upload-testflight.sh`. It archives the app and uploads it to App Store Connect, using `Config/ExportOptions.plist`.
+3. Apple checks the build, which usually takes 10 to 30 minutes. Then it shows up in TestFlight for the internal testers.
+
+The app says it uses no encryption beyond the system's (`ITSAppUsesNonExemptEncryption = NO`), so builds go to testers without the export compliance question.
+
 ## How the app signs in
 
 The app never asks for a password itself. It opens PulseGrid's own sign-in page in the system browser, so email and password, Google and the authenticator code all work as on the web.
