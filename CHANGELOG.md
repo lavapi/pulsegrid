@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- iPhone app: **Start a pipeline** from Pipelines: pick a branch and fill in the pipeline's inputs. It follows the same rules as the web, including who may run it on which branch, and production runs are confirmed first.
+
 ## [0.38.0] - 2026-11-27
 
 ### Added
