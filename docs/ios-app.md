@@ -29,13 +29,21 @@ To check screens against a local API without signing in, a debug build accepts `
 
 ### Uploading to TestFlight
 
-The app is signed with LavaPi's Apple team (`DEVELOPMENT_TEAM` in `Config/Base.xcconfig`), with Xcode's automatic signing. Xcode on the Mac must be signed in to an Apple account in that team (**Xcode → Settings → Accounts**).
+The app is built with LavaPi's Apple team (`DEVELOPMENT_TEAM` in `Config/Base.xcconfig`) and signed for the App Store by hand, with the **Apple Distribution: LavaPi LLC** certificate and the **PulseGrid App Store** provisioning profile (`Config/ExportOptions.plist`). Uploads sign in with an App Store Connect API key with the App Manager role.
+
+Once per Mac:
+
+1. Put the certificate with its private key in the login Keychain, and the profile in `~/Library/Developer/Xcode/UserData/Provisioning Profiles`.
+2. Put the API key file at `~/.appstoreconnect/private_keys/AuthKey_<key ID>.p8`, readable only by you (`chmod 600`).
+3. Set `ASC_KEY_ID` and `ASC_ISSUER_ID` in your shell. They're under App Store Connect → Users and Access → Integrations.
+
+For each upload:
 
 1. Raise `CURRENT_PROJECT_VERSION` in `Config/Base.xcconfig`. App Store Connect takes each build number once. Raise `MARKETING_VERSION` too for a new version.
-2. Run `apps/ios/scripts/upload-testflight.sh`. It archives the app and uploads it to App Store Connect, using `Config/ExportOptions.plist`.
-3. Apple checks the build, which usually takes 10 to 30 minutes. Then it shows up in TestFlight for the internal testers.
+2. Run `apps/ios/scripts/upload-testflight.sh`. It archives the app and uploads it.
+3. Apple checks the build, usually in 10 to 30 minutes. Then it shows up in TestFlight for the **LavaPi** internal testing group.
 
-The app says it uses no encryption beyond the system's (`ITSAppUsesNonExemptEncryption = NO`), so builds go to testers without the export compliance question.
+The app says it uses no encryption beyond the system's (`ITSAppUsesNonExemptEncryption = NO`), so builds go to testers without the export compliance question. In the App Store, the app is listed as **PulseGrid by LavaPi**, since "PulseGrid" was taken. On the phone it's still called PulseGrid.
 
 ## How the app signs in
 
