@@ -13,7 +13,8 @@ struct CloudActivityView: View {
             }
         }
         .navigationTitle("Cloud activity")
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { AccountPicker() } }
+        .accountTitleMenu()
+
     }
 }
 

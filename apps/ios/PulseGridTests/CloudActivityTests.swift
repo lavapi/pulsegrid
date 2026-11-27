@@ -30,9 +30,9 @@ struct FailoverReportLinkTests {
         #expect(FailoverReport(path: "/failover-tests/tests/r1") == .test(reportId: "r1", title: "Failover test"))
         #expect(FailoverReport(path: "/failover-tests/runs/a1/run1") == .run(accountId: "a1", runId: "run1", title: "Failover tests"))
         #expect(FailoverReport(path: "/failover-tests") == nil)
-        #expect(MorePage(path: "/failover-tests/tests/r1") == .failoverReport(.test(reportId: "r1", title: "Failover test")))
-        #expect(MorePage(path: "/failover-tests") == .failoverTests)
-        #expect(MainTabs.tab(for: "/failover-tests/runs/a1/run1") == .more)
+        #expect(AppRoute(path: "/failover-tests/tests/r1") == .failoverReport(.test(reportId: "r1", title: "Failover test")))
+        #expect(AppRoute(path: "/failover-tests") == .failoverTests)
+        #expect(AppRoute(path: "/failover-tests/runs/a1/run1")?.tab == .services)
     }
 
     @Test func asksForTheRightPDF() {

@@ -1,5 +1,5 @@
 // Settings for every target. Kept in files so changes read clearly in review.
-IPHONEOS_DEPLOYMENT_TARGET = 17.4
+IPHONEOS_DEPLOYMENT_TARGET = 18.0
 SDKROOT = iphoneos
 SUPPORTED_PLATFORMS = iphoneos iphonesimulator
 SUPPORTS_MACCATALYST = NO

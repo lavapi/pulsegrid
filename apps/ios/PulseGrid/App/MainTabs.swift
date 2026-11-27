@@ -1,46 +1,78 @@
 import SwiftUI
 
+/// Four tabs and Search. Notifications open their screen on the tab it belongs to.
 struct MainTabs: View {
-    enum Tab: Hashable { case overview, infrastructure, releases, access, more }
-
     @Environment(AppModel.self) private var app
-    @State private var tab: Tab = .overview
-    @State private var showProduction = false
-    @State private var openResourceId: String?
-    @State private var morePage: MorePage?
+    @State private var tab: AppTab = .home
+    @State private var route: AppRoute?
 
     var body: some View {
         TabView(selection: $tab) {
-            OverviewView().tabItem { Label("Overview", systemImage: "gauge.with.dots.needle.33percent") }.tag(Tab.overview)
-            InfrastructureView(openResourceId: $openResourceId).tabItem { Label("Infrastructure", systemImage: "server.rack") }.tag(Tab.infrastructure)
-            ReleasesView(showProduction: $showProduction).tabItem { Label("Releases", systemImage: "shippingbox") }.tag(Tab.releases)
-            AccessView().tabItem { Label("Access", systemImage: "cylinder.split.1x2") }.tag(Tab.access)
-            MoreView(openPage: $morePage).tabItem { Label("More", systemImage: "ellipsis.circle") }.tag(Tab.more)
+            Tab("Home", systemImage: "house", value: AppTab.home) {
+                TabRoot(tab: .home, route: $route) { OverviewView() }
+            }
+            Tab("Services", systemImage: "server.rack", value: AppTab.services) {
+                TabRoot(tab: .services, route: $route) { InfrastructureView() }
+            }
+            Tab("Deploys", systemImage: "shippingbox", value: AppTab.deploys) {
+                TabRoot(tab: .deploys, route: $route) { ReleasesView() }
+            }
+            Tab("Access", systemImage: "cylinder.split.1x2", value: AppTab.access) {
+                TabRoot(tab: .access, route: $route, followsAccount: false) { AccessView() }
+            }
+            Tab(value: AppTab.search, role: .search) {
+                TabRoot(tab: .search, route: $route) { SearchView() }
+            }
         }
+        .modifier(MinimizingTabBar())
         .onChange(of: app.pendingPath, initial: true) { _, path in
             guard let path else { return }
-            tab = MainTabs.tab(for: path) ?? tab
-            showProduction = path.hasPrefix("/production-releases")
-            openResourceId = MainTabs.resourceId(in: path)
-            morePage = MorePage(path: path)
+            if let opened = AppRoute(path: path) {
+                tab = opened.tab
+                route = opened.opensScreen ? opened : nil
+            }
             app.pendingPath = nil
         }
     }
+}
 
-    /// The tab a notification's web path belongs to.
-    static func tab(for path: String) -> Tab? {
-        if path.hasPrefix("/production-releases") { return .releases }
-        if path.hasPrefix("/settings/database-access") || path.hasPrefix("/database-access") { return .access }
-        if path.hasPrefix("/releases") { return .releases }
-        if path.hasPrefix("/infrastructure") { return .infrastructure }
-        if path.hasPrefix("/account") || MorePage(path: path) != nil { return .more }
-        return nil
+/// A tab's navigation, with the account menu on its title, the person's picture, and the screen a notification opened.
+private struct TabRoot<Content: View>: View {
+    let tab: AppTab
+    @Binding var route: AppRoute?
+    var followsAccount = true
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        NavigationStack {
+            content
+                .modifier(OptionalAccountMenu(enabled: followsAccount))
+                .toolbar { ToolbarItem(placement: .topBarTrailing) { ProfileButton() } }
+                .navigationDestination(item: openedHere) { AppRouteScreen(route: $0) }
+        }
     }
 
-    /// The resource in a path such as "/infrastructure/<id>", to open its page.
-    static func resourceId(in path: String) -> String? {
-        let parts = path.split(separator: "/").map(String.init)
-        return parts.count == 2 && parts[0] == "infrastructure" ? parts[1] : nil
+    private var openedHere: Binding<AppRoute?> {
+        Binding(get: { route?.tab == tab ? route : nil }, set: { route = $0 })
+    }
+}
+
+private struct OptionalAccountMenu: ViewModifier {
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled { content.accountTitleMenu() } else { content }
+    }
+}
+
+/// The tab bar shrinks while scrolling down, where iOS supports it.
+private struct MinimizingTabBar: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.tabBarMinimizeBehavior(.onScrollDown)
+        } else {
+            content
+        }
     }
 }
 

@@ -25,27 +25,18 @@ struct NotificationSettingsTests {
 
 struct NotificationLinkTests {
     @Test func opensAFailedRunFromItsNotification() {
-        #expect(MorePage(path: "/pipelines/runs/app-1/987") == .pipelineRun(appId: "app-1", runId: "987"))
-        #expect(MainTabs.tab(for: "/pipelines/runs/app-1/987") == .more)
-        #expect(MorePage(path: "/pipelines/runs/app-1") == nil)
+        #expect(AppRoute(path: "/pipelines/runs/app-1/987") == .pipelineRun(appId: "app-1", runId: "987"))
+        #expect(AppRoute(path: "/pipelines/runs/app-1/987")?.tab == .deploys)
+        #expect(AppRoute(path: "/pipelines/runs/app-1") == nil)
     }
 
     @Test func opensAnUnhealthyServiceFromItsNotification() {
-        #expect(MainTabs.tab(for: "/infrastructure/r1") == .infrastructure)
-        #expect(MainTabs.resourceId(in: "/infrastructure/r1") == "r1")
-    }
-
-    @Test func opensCostsAndAccessFromTheirNotifications() {
-        #expect(MorePage(path: "/costs") == .costs)
-        #expect(MainTabs.tab(for: "/database-access") == .access)
+        #expect(AppRoute(path: "/infrastructure/ecs/r1") == .resource(id: "r1"))
+        #expect(AppRoute(path: "/infrastructure/ecs/r1")?.tab == .services)
     }
 
     @Test func opensActivityButNotCloudActivityAsActivity() {
-        #expect(MorePage(path: "/activity") == .activity)
-        #expect(MorePage(path: "/activity/cloud") == .cloudActivity)
-    }
-
-    @Test func opensTheNotificationSettings() {
-        #expect(MorePage(path: "/account/notifications") == .notifications)
+        #expect(AppRoute(path: "/activity") == .activity)
+        #expect(AppRoute(path: "/activity/cloud") == .cloudActivity)
     }
 }

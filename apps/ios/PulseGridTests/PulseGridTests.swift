@@ -162,13 +162,18 @@ struct DecodingTests {
 
 struct NotificationRoutingTests {
     @Test func opensTheScreenANotificationIsAbout() {
-        #expect(MainTabs.tab(for: "/settings/database-access") == .access)
-        #expect(MainTabs.tab(for: "/database-access") == .access)
-        #expect(MainTabs.tab(for: "/production-releases") == .releases)
-        #expect(MainTabs.tab(for: "/infrastructure/r1") == .infrastructure)
-        #expect(MainTabs.resourceId(in: "/infrastructure/r1") == "r1")
-        #expect(MainTabs.resourceId(in: "/infrastructure") == nil)
-        #expect(MainTabs.tab(for: "/somewhere-else") == nil)
+        #expect(AppRoute(path: "/settings/database-access") == .databaseAccess)
+        #expect(AppRoute(path: "/database-access")?.tab == .access)
+        #expect(AppRoute(path: "/database-access")?.opensScreen == false)
+        #expect(AppRoute(path: "/production-releases") == .productionRelease)
+        #expect(AppRoute(path: "/production-releases")?.tab == .deploys)
+        #expect(AppRoute(path: "/infrastructure/ecs/r1") == .resource(id: "r1"))
+        #expect(AppRoute(path: "/infrastructure/r1") == .services)
+        #expect(AppRoute(path: "/pipelines/runs/a1/run1") == .pipelineRun(appId: "a1", runId: "run1"))
+        #expect(AppRoute(path: "/costs")?.tab == .home)
+        #expect(AppRoute(path: "/activity/cloud") == .cloudActivity)
+        #expect(AppRoute(path: "/account/notifications") == .notifications)
+        #expect(AppRoute(path: "/somewhere-else") == nil)
     }
 }
 

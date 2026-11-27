@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Changed
+
+- iPhone app: new navigation. Four tabs, Home, Services, Deploys and Access, plus Search, which finds any service, database, cache or server by name. Tap a screen's title to switch AWS account. Your picture at the top opens your profile, notifications, project and sign-out, and the More tab is gone: Environments and Costs are on Home, Failover tests and Cloud activity on Services, and Pipelines and Activity on Deploys. A notification about a service now opens that service. The app needs iOS 18 or later.
+
 ### Added
 
 - iPhone app: approvers see who has database access now, with a live countdown, and access granted outside PulseGrid. They can give access, extend it or revoke it, each with a fresh authenticator code, and the list refreshes while AWS is still working on a change.
