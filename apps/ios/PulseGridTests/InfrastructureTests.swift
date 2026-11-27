@@ -73,3 +73,24 @@ extension LoadChart {
         try! JSONCoding.decoder.decode(LoadChart.self, from: Data(#"{"id":"x","label":"X","unit":"\#(unit)","limit":null,"warnAbove":null,"note":null,"series":[]}"#.utf8))
     }
 }
+
+struct DesignTests {
+    @Test(arguments: [("ecs-service", "shippingbox.fill"), ("rds-cluster", "cylinder.split.1x2.fill"), ("load-balancer", "arrow.triangle.branch"), ("security-group", "network"), ("secrets-manager-secret", "key.fill"), ("something-new", "square.stack.3d.up.fill")])
+    func picksAnIconForEachKindOfService(type: String, symbol: String) {
+        #expect(ServiceStyle.type(type).symbol == symbol)
+    }
+
+    @Test func addsUpHealthAcrossCategories() {
+        let one = HealthCounts(healthy: 3, degraded: 1, stopped: 0, unknown: 0, total: 4)
+        let two = HealthCounts(healthy: 1, degraded: 0, stopped: 1, unknown: 1, total: 3)
+        #expect(HealthCounts.sum([one, two]) == HealthCounts(healthy: 4, degraded: 1, stopped: 1, unknown: 1, total: 7))
+    }
+
+    @Test func namesTheAccountWithoutRepeatingItsEnvironment() throws {
+        let decode = { (environment: String) in
+            try JSONCoding.decoder.decode(CloudAccount.self, from: Data(#"{"id":"a","name":"Staging","accountId":"1","status":"connected","environmentId":"e","environmentName":"\#(environment)","isProduction":false}"#.utf8))
+        }
+        #expect(try decode("staging").title == "Staging")
+        #expect(try decode("eu-staging").title == "Staging · eu-staging")
+    }
+}

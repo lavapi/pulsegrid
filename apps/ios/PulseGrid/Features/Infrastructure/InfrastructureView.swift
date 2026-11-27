@@ -34,15 +34,38 @@ struct InfrastructureView: View {
     }
 }
 
-/// A category's name with its health counts, shared by Overview and Infrastructure.
+/// A category with its icon, and its problems when there are any, shared by Overview and Infrastructure.
 struct CategoryRow: View {
     let category: ServiceCategorySummary
 
     var body: some View {
-        HStack {
-            Text(category.label).font(.body.weight(.medium))
-            Spacer()
-            HealthBadges(health: category.health)
+        Label {
+            HStack {
+                Text(category.label).font(.body.weight(.medium))
+                Spacer()
+                CompactHealth(health: category.health)
+            }
+        } icon: {
+            IconTile(.category(category.category))
+        }
+    }
+}
+
+/// Problems as badges, or a quiet count with a check when everything is healthy.
+struct CompactHealth: View {
+    let health: HealthCounts
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if health.degraded > 0 { StatusBadge(text: "\(health.degraded) degraded", tone: .bad) }
+            if health.stopped > 0 { StatusBadge(text: "\(health.stopped) stopped", tone: .warning) }
+            if health.degraded == 0 && health.stopped == 0 {
+                Label("\(health.total)", systemImage: "checkmark.circle.fill")
+                    .labelStyle(.titleAndIcon)
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.green)
+                    .accessibilityLabel("All \(health.total) healthy")
+            }
         }
     }
 }
@@ -75,18 +98,24 @@ struct CategoryResourcesView: View {
     }
 }
 
-/// A resource's name, type, status and health in a list.
+/// A resource with its type's icon, its type and status, and its health when it isn't healthy.
 struct ResourceRow: View {
     let resource: Resource
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        Label {
             HStack {
-                Text(resource.title).font(.body.weight(.medium)).lineLimit(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(resource.title).font(.body.weight(.medium)).lineLimit(1)
+                    Text("\(resource.typeLabel) · \(resource.status)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
                 Spacer()
-                StatusBadge(text: resource.health.sentenceCased, tone: .ofHealth(resource.health))
+                if resource.health != "healthy" {
+                    StatusBadge(text: resource.health.sentenceCased, tone: .ofHealth(resource.health))
+                }
             }
-            Text("\(resource.typeLabel) · \(resource.status) · \(resource.region)").font(.caption).foregroundStyle(.secondary)
+        } icon: {
+            IconTile(.type(resource.type))
         }
     }
 }
