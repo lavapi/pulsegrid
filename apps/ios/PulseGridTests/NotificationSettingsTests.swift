@@ -40,6 +40,11 @@ struct NotificationLinkTests {
         #expect(MainTabs.tab(for: "/database-access") == .access)
     }
 
+    @Test func opensActivityButNotCloudActivityAsActivity() {
+        #expect(MorePage(path: "/activity") == .activity)
+        #expect(MorePage(path: "/activity/cloud") == .cloudActivity)
+    }
+
     @Test func opensTheNotificationSettings() {
         #expect(MorePage(path: "/account/notifications") == .notifications)
     }

@@ -13,6 +13,11 @@ nonisolated struct EnvironmentSummary: Decodable, Identifiable, Equatable {
 
         var id: String { service }
 
+        /// The service category whose icon it shares.
+        var categoryKey: String {
+            ["secrets": "secrets-manager", "network": "vpc"][service] ?? service
+        }
+
         /// The names the web uses for each cloud service.
         var label: String {
             [

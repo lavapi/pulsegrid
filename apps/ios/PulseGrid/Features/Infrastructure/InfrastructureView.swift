@@ -101,15 +101,18 @@ struct CategoryResourcesView: View {
 /// A resource with its type's icon, its type and status, and its health when it isn't healthy.
 struct ResourceRow: View {
     let resource: Resource
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Label {
-            HStack {
+            // Large text puts the badge under the name, so the name keeps its room.
+            let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout())
+            layout {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(resource.title).font(.body.weight(.medium)).lineLimit(1)
-                    Text("\(resource.typeLabel) · \(resource.status)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(resource.title).font(.body.weight(.medium)).lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
+                    Text("\(resource.typeLabel) · \(resource.status)").font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
-                Spacer()
+                if !typeSize.isAccessibilitySize { Spacer() }
                 if resource.health != "healthy" {
                     StatusBadge(text: resource.health.sentenceCased, tone: .ofHealth(resource.health))
                 }

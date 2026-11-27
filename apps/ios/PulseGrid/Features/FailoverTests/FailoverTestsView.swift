@@ -33,18 +33,35 @@ struct FailoverTestsView: View {
 private struct FailoverEntryRow: View {
     let entry: FailoverHistoryEntry
 
+    private var icon: (symbol: String, color: Color) {
+        switch entry.result {
+        case "passed": ("checkmark.shield.fill", .green)
+        case "failed": ("xmark.shield.fill", .red)
+        case "stopped": ("stop.fill", .orange)
+        case "running": ("bolt.fill", .blue)
+        default: ("questionmark", .gray)
+        }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack {
-                Text(entry.label).font(.body.weight(.medium)).lineLimit(2)
-                Spacer()
-                StatusBadge(text: entry.result.sentenceCased, tone: .ofTestResult(entry.result))
+        Label {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Text(entry.label).font(.body.weight(.medium)).lineLimit(2)
+                    Spacer()
+                    StatusBadge(text: entry.result.sentenceCased, tone: .ofTestResult(entry.result))
+                }
+                if let counts = entry.counts, entry.isGroupRun {
+                    ProgressView(value: Double(counts.passed), total: Double(max(counts.total, 1))) {
+                        Text("\(counts.passed) of \(counts.total) passed").font(.caption)
+                    }
+                    .tint(counts.passed == counts.total ? .green : .orange)
+                }
+                Text([entry.startedBy, entry.startedAt?.formatted(date: .abbreviated, time: .shortened)].compactMap { $0 }.joined(separator: " · "))
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            if let counts = entry.counts, entry.isGroupRun {
-                Text("\(counts.passed) of \(counts.total) passed").font(.caption)
-            }
-            Text([entry.startedBy, entry.startedAt?.formatted(date: .abbreviated, time: .shortened)].compactMap { $0 }.joined(separator: " · "))
-                .font(.caption).foregroundStyle(.secondary)
+        } icon: {
+            IconTile(symbol: icon.symbol, color: icon.color)
         }
     }
 }

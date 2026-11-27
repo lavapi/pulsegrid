@@ -94,3 +94,24 @@ struct DesignTests {
         #expect(try decode("eu-staging").title == "Staging · eu-staging")
     }
 }
+
+struct DayGroupTests {
+    private struct Item: Identifiable { let id: Int; let at: Date }
+
+    @Test func groupsByDayNewestFirstKeepingOrder() {
+        let now = Date.now
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: now)!
+        let groups = DayGroup.grouping([Item(id: 1, at: now), Item(id: 2, at: now), Item(id: 3, at: yesterday)], by: \.at)
+        #expect(groups.map(\.title) == ["Today", "Yesterday"])
+        #expect(groups.map { $0.items.map(\.id) } == [[1, 2], [3]])
+    }
+
+    @Test func comparesThisMonthWithLast() throws {
+        let account = try JSONCoding.decoder.decode(AccountCosts.self, from: Data(#"""
+        {"accountId":"c","accountName":"Staging","environmentName":null,"isProduction":false,"currency":"USD","updatedAt":null,"error":null,
+         "services":[{"service":"RDS","category":"rds","thisMonth":110,"lastMonth":100}]}
+        """#.utf8))
+        #expect(abs((account.monthChange ?? 0) - 0.1) < 0.0001)
+        #expect(account.services.first?.category == "rds")
+    }
+}

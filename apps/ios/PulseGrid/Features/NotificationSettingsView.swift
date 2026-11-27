@@ -39,7 +39,9 @@ private struct TopicList: View {
             }
             Section {
                 ForEach(NotificationTopic.allCases) { topic in
-                    Toggle(topic.label, isOn: Binding(get: { settings.isOn(topic) }, set: { on in Task { await change(topic, to: on) } }))
+                    Toggle(isOn: Binding(get: { settings.isOn(topic) }, set: { on in Task { await change(topic, to: on) } })) {
+                        Label { Text(topic.label) } icon: { IconTile(symbol: topic.symbol, color: topic.color) }
+                    }
                 }
             } header: {
                 Text("Notify me about")

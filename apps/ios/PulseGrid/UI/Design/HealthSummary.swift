@@ -3,12 +3,36 @@ import SwiftUI
 /// The account at a glance: a ring for the share of healthy services, and the counts beside it.
 struct HealthSummary: View {
     let health: HealthCounts
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var healthyShare: Double { health.total == 0 ? 1 : Double(health.healthy) / Double(health.total) }
     private var tone: Tone { health.degraded > 0 ? .bad : health.stopped > 0 ? .warning : .good }
 
     var body: some View {
-        HStack(spacing: 18) {
+        if typeSize.isAccessibilitySize {
+            // Large text: the counts as rows, so no label has to wrap mid-word.
+            VStack(alignment: .leading, spacing: 8) {
+                ring
+                LabeledContent("Healthy", value: health.healthy.formatted())
+                LabeledContent("Degraded", value: health.degraded.formatted())
+                LabeledContent("Stopped", value: health.stopped.formatted())
+            }
+        } else {
+            HStack(spacing: 18) {
+                ring
+                HStack(spacing: 0) {
+                    Count(value: health.healthy, label: "Healthy", tone: .good)
+                    Divider().frame(height: 36)
+                    Count(value: health.degraded, label: "Degraded", tone: health.degraded > 0 ? .bad : .neutral)
+                    Divider().frame(height: 36)
+                    Count(value: health.stopped, label: "Stopped", tone: health.stopped > 0 ? .warning : .neutral)
+                }
+            }
+            .padding(.vertical, 6)
+        }
+    }
+
+    private var ring: some View {
             Gauge(value: healthyShare) {
                 Text("Healthy")
             } currentValueLabel: {
@@ -19,16 +43,6 @@ struct HealthSummary: View {
             .tint(tone.color)
             .scaleEffect(1.15)
             .accessibilityLabel("\(Int((healthyShare * 100).rounded())) percent of services healthy")
-
-            HStack(spacing: 0) {
-                Count(value: health.healthy, label: "Healthy", tone: .good)
-                Divider().frame(height: 36)
-                Count(value: health.degraded, label: "Degraded", tone: health.degraded > 0 ? .bad : .neutral)
-                Divider().frame(height: 36)
-                Count(value: health.stopped, label: "Stopped", tone: health.stopped > 0 ? .warning : .neutral)
-            }
-        }
-        .padding(.vertical, 6)
     }
 
     private struct Count: View {

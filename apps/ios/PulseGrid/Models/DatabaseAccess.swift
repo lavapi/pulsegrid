@@ -20,6 +20,7 @@ nonisolated struct DatabaseAccessGrant: Decodable, Equatable {
     let userName: String
     let status: String
     let failure: String?
+    let startsAt: Date
     let expiresAt: Date
 }
 

@@ -14,14 +14,18 @@ struct EnvironmentsView: View {
                 }
                 ForEach(environments) { environment in
                     NavigationLink { EnvironmentDetailView(environment: environment) } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(environment.name).font(.body.weight(.medium))
-                                Text(environment.accounts.map(\.name).joined(separator: ", ").nilIfEmpty ?? "No AWS account")
-                                    .font(.caption).foregroundStyle(.secondary)
+                        Label {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(environment.name).font(.body.weight(.medium))
+                                    Text(environment.accounts.map(\.name).joined(separator: ", ").nilIfEmpty ?? "No AWS account")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                CompactHealth(health: environment.health)
                             }
-                            Spacer()
-                            HealthBadges(health: environment.health)
+                        } icon: {
+                            IconTile(symbol: "square.stack.3d.up.fill", color: .teal)
                         }
                     }
                 }
@@ -38,7 +42,7 @@ struct EnvironmentDetailView: View {
     var body: some View {
         List {
             Section {
-                LabeledContent("Health") { HealthBadges(health: environment.health) }
+                HealthSummary(health: environment.health)
                 if let synced = environment.lastSyncedAt {
                     LabeledContent("Checked") { Text(synced, format: .relative(presentation: .named)) }
                 }
@@ -46,10 +50,14 @@ struct EnvironmentDetailView: View {
             if !environment.services.isEmpty {
                 Section("Services") {
                     ForEach(environment.services) { service in
-                        HStack {
-                            Text(service.label)
-                            Spacer()
-                            HealthBadges(health: service.health)
+                        Label {
+                            HStack {
+                                Text(service.label)
+                                Spacer()
+                                CompactHealth(health: service.health)
+                            }
+                        } icon: {
+                            IconTile(.category(service.categoryKey))
                         }
                     }
                 }

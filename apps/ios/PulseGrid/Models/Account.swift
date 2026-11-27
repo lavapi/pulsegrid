@@ -50,11 +50,7 @@ nonisolated struct CloudAccount: Decodable, Identifiable, Equatable {
     /// Accounts the switcher offers: connected ones, as on the web.
     var isSelectable: Bool { status == "connected" }
 
-    /// The account's name, with its environment when that's named differently.
-    var title: String {
-        guard let environmentName, environmentName.caseInsensitiveCompare(name) != .orderedSame else { return name }
-        return "\(name) · \(environmentName)"
-    }
+    var title: String { accountTitle(name: name, environment: environmentName) }
 }
 
 nonisolated struct SignedInDevice: Decodable, Identifiable {
@@ -67,4 +63,10 @@ nonisolated struct SignedInDevice: Decodable, Identifiable {
 
 nonisolated struct DeviceToken: Decodable {
     let token: String
+}
+
+/// An account's name, with its environment when that's named differently.
+nonisolated func accountTitle(name: String, environment: String?) -> String {
+    guard let environment, environment.caseInsensitiveCompare(name) != .orderedSame else { return name }
+    return "\(name) · \(environment)"
 }
