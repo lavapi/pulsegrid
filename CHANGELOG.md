@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-11-27
+
 ### Added
 
 - `GET /api/database-access/mine/history`: a person's own database access requests, newest first, each with the grant it led to. Anyone can read their own; the approvers' history is unchanged.
