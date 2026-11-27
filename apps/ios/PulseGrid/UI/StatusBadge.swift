@@ -23,6 +23,24 @@ enum Tone {
         }
     }
 
+    static func ofHealth(_ health: String) -> Tone {
+        switch health {
+        case "healthy": .good
+        case "degraded": .bad
+        case "stopped": .warning
+        default: .neutral
+        }
+    }
+
+    static func ofActionRun(_ status: String) -> Tone {
+        switch status {
+        case "succeeded": .good
+        case "running": .active
+        case "failed", "timed_out": .bad
+        default: .warning
+        }
+    }
+
     static func ofPipeline(_ status: String) -> Tone {
         switch status {
         case "success": .good

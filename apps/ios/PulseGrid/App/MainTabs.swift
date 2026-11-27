@@ -1,35 +1,44 @@
 import SwiftUI
 
 struct MainTabs: View {
-    enum Tab: Hashable { case overview, releases, production, access, more }
+    enum Tab: Hashable { case overview, infrastructure, releases, access, more }
 
     @Environment(AppModel.self) private var app
     @State private var tab: Tab = .overview
+    @State private var showProduction = false
+    @State private var openResourceId: String?
 
     var body: some View {
         TabView(selection: $tab) {
             OverviewView().tabItem { Label("Overview", systemImage: "gauge.with.dots.needle.33percent") }.tag(Tab.overview)
-            ReleasesView().tabItem { Label("Releases", systemImage: "shippingbox") }.tag(Tab.releases)
-            if app.user?.can(.decideProductionReleases) == true {
-                ProductionReleaseView().tabItem { Label("Production", systemImage: "flag.checkered") }.tag(Tab.production)
-            }
+            InfrastructureView(openResourceId: $openResourceId).tabItem { Label("Infrastructure", systemImage: "server.rack") }.tag(Tab.infrastructure)
+            ReleasesView(showProduction: $showProduction).tabItem { Label("Releases", systemImage: "shippingbox") }.tag(Tab.releases)
             AccessView().tabItem { Label("Access", systemImage: "cylinder.split.1x2") }.tag(Tab.access)
             MoreView().tabItem { Label("More", systemImage: "ellipsis.circle") }.tag(Tab.more)
         }
         .onChange(of: app.pendingPath, initial: true) { _, path in
             guard let path else { return }
             tab = MainTabs.tab(for: path) ?? tab
+            showProduction = path.hasPrefix("/production-releases")
+            openResourceId = MainTabs.resourceId(in: path)
             app.pendingPath = nil
         }
     }
 
     /// The tab a notification's web path belongs to.
     static func tab(for path: String) -> Tab? {
-        if path.hasPrefix("/production-releases") { return .production }
+        if path.hasPrefix("/production-releases") { return .releases }
         if path.hasPrefix("/settings/database-access") || path.hasPrefix("/database-access") { return .access }
         if path.hasPrefix("/releases") { return .releases }
+        if path.hasPrefix("/infrastructure") { return .infrastructure }
         if path.hasPrefix("/account") { return .more }
         return nil
+    }
+
+    /// The resource in a path such as "/infrastructure/<id>", to open its page.
+    static func resourceId(in path: String) -> String? {
+        let parts = path.split(separator: "/").map(String.init)
+        return parts.count == 2 && parts[0] == "infrastructure" ? parts[1] : nil
     }
 }
 

@@ -5,22 +5,20 @@ struct ProductionReleaseView: View {
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        NavigationStack {
-            Loaded(id: "production") {
-                try await app.api.get("production-releases/current") as ProductionReleasesView
-            } content: { view, reload in
-                switch view {
-                case .notSetUp:
-                    ContentUnavailableView("Not set up here", systemImage: "shippingbox", description: Text("Production releases are decided in the project that runs them."))
-                case .ready(nil):
-                    ContentUnavailableView("No release in progress", systemImage: "checkmark.seal", description: Text("You'll get a notification when one is waiting for you."))
-                        .refreshable { await reload() }
-                case .ready(let release?):
-                    CurrentRelease(release: release, reload: reload)
-                }
+        Loaded(id: "production") {
+            try await app.api.get("production-releases/current") as ProductionReleasesView
+        } content: { view, reload in
+            switch view {
+            case .notSetUp:
+                ContentUnavailableView("Not set up here", systemImage: "shippingbox", description: Text("Production releases are decided in the project that runs them."))
+            case .ready(nil):
+                ContentUnavailableView("No release in progress", systemImage: "checkmark.seal", description: Text("You'll get a notification when one is waiting for you."))
+                    .refreshable { await reload() }
+            case .ready(let release?):
+                CurrentRelease(release: release, reload: reload)
             }
-            .navigationTitle("Production")
         }
+        .navigationTitle("Production")
     }
 }
 
