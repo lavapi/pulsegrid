@@ -64,6 +64,12 @@ nonisolated struct Resource: Decodable, Identifiable, Sendable {
     /// Types the API reads logs for.
     var hasLogs: Bool { type == "ecs-service" }
 
+    /// Load balancers, whose request logs the API reads.
+    var hasRequestLogs: Bool { type == "load-balancer" }
+
+    /// Databases with Performance Insights and logs the API reads.
+    var hasDatabaseActivity: Bool { ["rds-cluster", "rds-instance"].contains(type) }
+
     /// "ecs-service" → "ECS service", as the web names them.
     var typeLabel: String {
         let words = type.split(separator: "-").map(String.init)

@@ -22,8 +22,15 @@ struct ResourceDetailView: View {
                 }
                 ResourceActionsSection(resource: resource, isProduction: account.isProduction)
                 if resource.hasLoad { ResourceLoadSection(resourceId: resource.id) }
-                if resource.hasLogs {
-                    Section { NavigationLink("Logs") { ResourceLogsView(resource: resource) } }
+                if resource.hasLogs || resource.hasRequestLogs || resource.hasDatabaseActivity {
+                    Section {
+                        if resource.hasLogs { NavigationLink("Logs") { ResourceLogsView(resource: resource) } }
+                        if resource.hasRequestLogs { NavigationLink("Requests") { RequestLogsView(resource: resource) } }
+                        if resource.hasDatabaseActivity {
+                            NavigationLink("Top SQL") { TopSqlScreen(resource: resource) }
+                            NavigationLink("Database logs") { DatabaseLogScreen(resource: resource) }
+                        }
+                    }
                 }
                 if !resource.facts.isEmpty {
                     Section("Details") {
