@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-11-27
+
+- Get an iPhone notification when a failover test you started finishes: a single test with its result, or a group run once, with how many tests passed.
+- Choose your iPhone notifications on the web too, under **Your account → Notifications**.
+- The iPhone app (1.3.0) shows **Cloud activity**: what changed in the AWS account, searchable by person or resource.
+
 ## [0.39.0] - 2026-11-27
 
 - New iPhone notifications: when a service turns unhealthy (production on by default, staging off), and when a pipeline you started from PulseGrid fails. Each person chooses theirs in the app under **More → Notifications**. Run `pnpm db:migrate`.
