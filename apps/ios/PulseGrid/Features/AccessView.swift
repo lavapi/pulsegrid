@@ -15,9 +15,11 @@ struct AccessView: View {
             }
             .navigationTitle("Database access")
             .toolbar {
-                if app.user?.can(.grantDatabaseAccess) == true {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        NavigationLink { AccessHistoryView() } label: { Label("History", systemImage: "clock.arrow.circlepath") }
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        if app.user?.can(.grantDatabaseAccess) == true { AccessHistoryView() } else { MyAccessHistoryView() }
+                    } label: {
+                        Label("History", systemImage: "clock.arrow.circlepath")
                     }
                 }
             }

@@ -45,6 +45,29 @@ nonisolated struct DatabaseAccessGrant: Decodable, Identifiable, Equatable {
 
 }
 
+/// One of the person's own requests and the grant it led to.
+nonisolated struct MyDatabaseAccessHistoryEntry: Decodable, Identifiable {
+    let request: DatabaseAccessRequest
+    let grant: DatabaseAccessGrant?
+
+    var id: String { request.id }
+
+    /// What came of the request: the grant's ending once approved, or the request's answer.
+    var outcome: String {
+        if let grant { return grant.ending }
+        switch request.status {
+        case "pending": return "Waiting"
+        case "declined": return request.decidedBy.map { "Declined by \($0)" } ?? "Declined"
+        case "cancelled": return "Cancelled"
+        case "expired": return "No answer"
+        default: return request.status.sentenceCased
+        }
+    }
+
+    /// The decline reason or the grant's failure, when there is one.
+    var note: String? { request.declineReason ?? grant?.failure }
+}
+
 /// A person's own access: unavailable in this project, or their latest request and the grant it led to.
 nonisolated enum MyDatabaseAccess: Decodable {
     case unavailable(message: String)
