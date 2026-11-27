@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file. The format is b
 ### Added
 
 - iPhone app: approvers see who has database access now, with a live countdown, and access granted outside PulseGrid. They can give access, extend it or revoke it, each with a fresh authenticator code, and the list refreshes while AWS is still working on a change.
+- iPhone app: start failover tests from **More → Failover tests**: one template, a group or every test, with the run order, production's extra confirmation and the name typed out, as on the website. Recent tests and group runs open live pages that refresh while they run, show each step or test in turn, and can be stopped. Past reports moved under **History**. The app is now version 1.7.0.
 
 ### Fixed
 
