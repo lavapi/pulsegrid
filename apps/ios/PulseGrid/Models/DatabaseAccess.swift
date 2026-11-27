@@ -20,6 +20,8 @@ nonisolated struct DatabaseAccessGrant: Decodable, Identifiable, Equatable {
     let userName: String
     let reason: String
     let status: String
+    /// A change running in AWS on active access: "extending" or "revoking".
+    let change: String?
     let failure: String?
     let startsAt: Date
     let expiresAt: Date
@@ -43,6 +45,50 @@ nonisolated struct DatabaseAccessGrant: Decodable, Identifiable, Equatable {
         }
     }
 
+    /// Active access with nothing else running on it, so it can be extended or revoked.
+    var isChangeable: Bool { status == "active" && change == nil }
+
+    /// What AWS is still doing with it: "Granting", "Extending" or "Revoking".
+    var progress: String? {
+        if status == "granting" { return "Granting" }
+        return change?.sentenceCased
+    }
+}
+
+/// Access AWS has that PulseGrid didn't grant.
+nonisolated struct OutsideDatabaseAccess: Decodable, Identifiable, Equatable {
+    let userId: String
+    let expiresAt: Date?
+
+    var id: String { userId }
+}
+
+/// What approvers see: not set up, with the problems to fix, or who has access now.
+nonisolated enum DatabaseAccessOverview: Decodable {
+    case unavailable(problems: [String])
+    case ready(maxHours: Int, grants: [DatabaseAccessGrant], outside: [OutsideDatabaseAccess], outsideCheckedAt: Date?)
+
+    private enum Keys: String, CodingKey { case ready, problems, maxHours, grants, outside, outsideCheckedAt }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: Keys.self)
+        guard try container.decode(Bool.self, forKey: .ready) else {
+            self = .unavailable(problems: try container.decode([String].self, forKey: .problems))
+            return
+        }
+        self = .ready(
+            maxHours: try container.decode(Int.self, forKey: .maxHours),
+            grants: try container.decode([DatabaseAccessGrant].self, forKey: .grants),
+            outside: try container.decode([OutsideDatabaseAccess].self, forKey: .outside),
+            outsideCheckedAt: try container.decodeIfPresent(Date.self, forKey: .outsideCheckedAt)
+        )
+    }
+
+    /// Whether AWS is still granting or changing some access, so the screen keeps refreshing.
+    var isBusy: Bool {
+        guard case .ready(_, let grants, _, _) = self else { return false }
+        return grants.contains { $0.progress != nil }
+    }
 }
 
 /// One of the person's own requests and the grant it led to.

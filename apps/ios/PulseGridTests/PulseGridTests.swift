@@ -79,6 +79,20 @@ struct APIClientTests {
         #expect(signedOut)
     }
 
+    @Test func showsAWrongCodeWithoutSigningOut() async {
+        var signedOut = false
+        let api = APIClient(baseURL: { URL(string: "https://pulsegrid.example")! }, token: { "secret-token" }) { request in
+            let signedIn = request.url?.path == "/api/me"
+            let response = HTTPURLResponse(url: request.url!, statusCode: signedIn ? 200 : 401, httpVersion: nil, headerFields: nil)!
+            return (Data((signedIn ? "{}" : #"{"message":"That code is incorrect."}"#).utf8), response)
+        }
+        api.onSignedOut = { signedOut = true }
+        await #expect(throws: AppError.refused("That code is incorrect.")) {
+            try await api.postIgnoringResponse("database-access/grants/g1/revoke")
+        }
+        #expect(!signedOut)
+    }
+
     @Test func treatsAnUnreachableGatewayAsTheVPN() {
         #expect(APIClient.refusal(from: Data(), status: 504) == .unreachable)
         #expect(APIClient.refusal(from: Data("<html>".utf8), status: 500) == .unexpected)

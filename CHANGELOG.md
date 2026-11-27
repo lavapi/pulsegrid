@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Added
+
+- iPhone app: approvers see who has database access now, with a live countdown, and access granted outside PulseGrid. They can give access, extend it or revoke it, each with a fresh authenticator code, and the list refreshes while AWS is still working on a change.
+
+### Fixed
+
+- iPhone app: a wrong authenticator code shows "That code is incorrect." instead of signing you out.
+
 ## [0.42.0] - 2026-11-27
 
 ### Added
