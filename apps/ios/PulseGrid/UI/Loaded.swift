@@ -66,3 +66,17 @@ struct RefreshBanner: View {
             .background(error.needsVPN ? .orange : .red, in: .rect(cornerRadius: 10))
     }
 }
+
+extension View {
+    /// Reloads every few seconds while `active`, for work that is still running elsewhere, and stops once it ends.
+    func refreshing(while active: Bool, every interval: Duration = .seconds(5), reload: @escaping () async -> Void) -> some View {
+        task(id: active) {
+            guard active else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: interval)
+                guard !Task.isCancelled else { return }
+                await reload()
+            }
+        }
+    }
+}

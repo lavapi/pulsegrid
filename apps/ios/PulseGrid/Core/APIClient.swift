@@ -53,6 +53,28 @@ final class APIClient {
     struct Empty: Codable {}
 
     private func send(_ method: String, _ path: String, query: [String: String], body: Data?) async throws -> Data {
+        let (data, status) = try await exchange(method, path, query: query, body: body)
+        switch status {
+        case 200..<300:
+            return data
+        case 401 where await isSignedIn():
+            // Still signed in, so PulseGrid refused something else, such as a wrong authenticator code.
+            throw APIClient.refusal(from: data, status: status)
+        case 401:
+            onSignedOut()
+            throw AppError.signedOut
+        default:
+            throw APIClient.refusal(from: data, status: status)
+        }
+    }
+
+    /// Whether the sign-in still works, asked again after a refusal that might mean it ended.
+    private func isSignedIn() async -> Bool {
+        let status = try? await exchange("GET", "me", query: [:], body: nil).status
+        return status.map { 200..<300 ~= $0 } ?? false
+    }
+
+    private func exchange(_ method: String, _ path: String, query: [String: String], body: Data?) async throws -> (data: Data, status: Int) {
         guard let base = baseURL() else { throw AppError.unexpected }
         var components = URLComponents(url: base.appending(path: "api").appending(path: path), resolvingAgainstBaseURL: false)
         if !query.isEmpty {
@@ -76,16 +98,7 @@ final class APIClient {
         } catch {
             throw AppError.from(error)
         }
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        switch status {
-        case 200..<300:
-            return data
-        case 401:
-            onSignedOut()
-            throw AppError.signedOut
-        default:
-            throw APIClient.refusal(from: data, status: status)
-        }
+        return (data, (response as? HTTPURLResponse)?.statusCode ?? 0)
     }
 
     private func decode<Response: Decodable>(_ data: Data) throws -> Response {
