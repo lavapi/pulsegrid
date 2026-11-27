@@ -12,6 +12,7 @@ All notable changes to this project are documented in this file. The format is b
   - Screens: Overview, Releases, Production releases, Database access (approve, decline or request), Pipelines, Activity, and the project switcher.
   - It registers for push notifications, and tapping one opens its screen.
   - Whenever the server can't be reached, it says to turn on the VPN.
+  - It has its own icon, is signed with LavaPi's Apple team, and `apps/ios/scripts/upload-testflight.sh` uploads a build to TestFlight.
 
 ### Added
 
