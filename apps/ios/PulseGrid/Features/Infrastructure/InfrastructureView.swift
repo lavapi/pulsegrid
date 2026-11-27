@@ -42,9 +42,7 @@ struct CategoryRow: View {
         HStack {
             Text(category.label).font(.body.weight(.medium))
             Spacer()
-            if category.health.degraded > 0 { StatusBadge(text: "\(category.health.degraded) degraded", tone: .bad) }
-            if category.health.stopped > 0 { StatusBadge(text: "\(category.health.stopped) stopped", tone: .warning) }
-            StatusBadge(text: "\(category.health.healthy) healthy", tone: .good)
+            HealthBadges(health: category.health)
         }
     }
 }

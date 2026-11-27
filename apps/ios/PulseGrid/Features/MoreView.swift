@@ -1,15 +1,17 @@
 import SwiftUI
 
-/// Pipelines, activity, and the person's own account: project, notifications, server and sign-out.
+/// Pipelines, environments, activity, and the person's own account: project, notifications, server and sign-out.
 struct MoreView: View {
     @Environment(AppModel.self) private var app
     @Environment(PushRegistrar.self) private var push
+    @Binding var showEnvironments: Bool
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     NavigationLink("Pipelines") { PipelinesView() }
+                    NavigationLink("Environments") { EnvironmentsView() }
                     if app.user?.can(.viewActivity) == true {
                         NavigationLink("Activity") { ActivityView() }
                     }
@@ -52,6 +54,7 @@ struct MoreView: View {
                 }
             }
             .navigationTitle("More")
+            .navigationDestination(isPresented: $showEnvironments) { EnvironmentsView() }
         }
     }
 }
