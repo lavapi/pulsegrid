@@ -1,15 +1,17 @@
 import type { PushMessage, PushSender } from '@pulsegrid/push';
-import type { UserPermission } from '@pulsegrid/shared';
+import type { NotificationTopic, UserPermission } from '@pulsegrid/shared';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'kysely';
 import { TenantDatabase } from '../database/tenant-database';
+import { NotificationSettingsStore } from './notification-settings.store';
 import { PushDevicesStore } from './push-devices.store';
 
 export const PUSH_SENDER = Symbol('PUSH_SENDER');
 
 /**
  * Push notifications to people's iPhones. Sending never holds up or fails the action that caused it: it runs on
- * its own, and failures are only logged. It sends through Apple or the push relay (see pushSenderFor).
+ * its own, and failures are only logged. Each person gets only the topics they left on (NotificationSettingsStore).
+ * It sends through Apple or the push relay (see pushSenderFor).
  */
 @Injectable()
 export class PushNotifier {
@@ -19,10 +21,11 @@ export class PushNotifier {
     @Inject(PUSH_SENDER) private readonly sender: PushSender | null,
     private readonly devices: PushDevicesStore,
     private readonly database: TenantDatabase,
+    private readonly settings: NotificationSettingsStore,
   ) {}
 
   /** Everyone in the project who holds the permission; the super admin holds them all. */
-  toPermission(tenantId: string, permission: UserPermission, message: PushMessage): void {
+  toPermission(tenantId: string, permission: UserPermission, topic: NotificationTopic, message: PushMessage): void {
     this.inBackground(async () => {
       const rows = await this.database.run(tenantId, (trx) =>
         trx
@@ -37,22 +40,32 @@ export class PushNotifier {
           )
           .execute(),
       );
-      await this.send(rows.map(({ account_id }) => account_id), message);
+      await this.send(rows.map(({ account_id }) => account_id), topic, message);
     });
   }
 
-  toUser(tenantId: string, userId: string, message: PushMessage): void {
+  /** Everyone in the project. */
+  toProject(tenantId: string, topic: NotificationTopic, message: PushMessage): void {
+    this.inBackground(async () => {
+      const rows = await this.database.run(tenantId, (trx) => trx.selectFrom('users').select('account_id').execute());
+      await this.send(rows.map(({ account_id }) => account_id), topic, message);
+    });
+  }
+
+  toUser(tenantId: string, userId: string, topic: NotificationTopic, message: PushMessage): void {
     this.inBackground(async () => {
       const row = await this.database.run(tenantId, (trx) =>
         trx.selectFrom('users').select('account_id').where('id', '=', userId).executeTakeFirst(),
       );
-      await this.send(row ? [row.account_id] : [], message);
+      await this.send(row ? [row.account_id] : [], topic, message);
     });
   }
 
-  private async send(accountIds: readonly string[], message: PushMessage): Promise<void> {
+  /** To the phones of the accounts that want this topic. */
+  private async send(accountIds: readonly string[], topic: NotificationTopic, message: PushMessage): Promise<void> {
     if (!this.sender) return;
-    for (const device of await this.devices.forAccounts(accountIds)) {
+    const wanting = await this.settings.allowing(accountIds, topic);
+    for (const device of await this.devices.forAccounts(wanting)) {
       const result = await this.sender.send(device.apnsToken, device.environment, message);
       if (result === 'gone') await this.devices.forget(device.id);
       if (result === 'failed') this.logger.warn(`A push notification wasn't delivered: ${message.collapseId}`);

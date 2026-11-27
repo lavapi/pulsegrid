@@ -65,6 +65,12 @@ The app registers its phone with `PUT /api/devices/push` after the person allows
 | A new database access request | People with **Grant production database access** |
 | A request was approved or declined | The person who asked |
 | A production release is waiting for a decision | People with **Finish or roll back production releases**, once per release |
+| A service turned degraded | Everyone in the project who turned it on: production is on by default, staging off. Once per service until it's healthy again, and not again within 30 minutes of recovering |
+| A pipeline you started or re-ran from PulseGrid failed | The person who started it. Runs are followed for up to 6 hours |
+
+Each person chooses which of these they get, in the app under **More → Notifications** (`GET` and `PUT /api/account/notifications`). The choice is kept per person and applies on all their phones.
+
+A run started from PulseGrid is followed by its ID when GitHub returns it. Otherwise PulseGrid takes the first manual run of that pipeline on that branch since it was started.
 
 Notifications for the App Store app work with no settings. The API and the worker send them through LavaPi's push relay (`https://push-pulsegrid.lavapi.com`), which holds the app's Apple key. The first time it sends, the server registers with the relay by itself and keeps its relay secret encrypted in the database. The relay passes each notification on to Apple and keeps no copy of it. See [Push relay](push-relay.md).
 

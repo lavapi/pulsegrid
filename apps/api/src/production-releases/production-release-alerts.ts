@@ -35,7 +35,7 @@ export class ProductionReleaseAlerts {
     if (first !== 'OK') return;
     const tenant = await this.db.selectFrom('tenants').select('id').where('slug', '=', this.setup.projectSlug).executeTakeFirst();
     if (!tenant) return;
-    this.push.toPermission(tenant.id, 'production.release.decide', {
+    this.push.toPermission(tenant.id, 'production.release.decide', 'production_releases', {
       title: 'Production release waiting',
       body: `${release.requestedBy ?? 'A release'} is waiting for you to finish or roll it back.`,
       path: '/production-releases',

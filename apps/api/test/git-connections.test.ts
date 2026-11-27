@@ -37,7 +37,7 @@ const clientFor = (token: string): GitClient => ({
   getRepository: async () => ({ defaultBranch: 'main' }),
   listBranches: async () => ['main'],
   readDefinition: async () => null,
-  startRun: async () => undefined,
+  startRun: async () => null,
   rerun: async () => undefined,
   cancel: async () => undefined,
 });

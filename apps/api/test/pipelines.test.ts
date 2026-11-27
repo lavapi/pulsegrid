@@ -42,6 +42,7 @@ const state = {
   repositoryCalls: 0,
   files: {} as Record<string, string>,
   actions: [] as string[],
+  startedRunId: null as string | null,
 };
 
 const provider: GitClient = {
@@ -79,6 +80,7 @@ const provider: GitClient = {
   },
   startRun: async (repository, workflowId, branch, inputs) => {
     state.actions.push(`start:${repository}:${workflowId}:${branch}:${JSON.stringify(inputs)}`);
+    return state.startedRunId;
   },
   rerun: async (repository, runId, failedOnly) => {
     state.actions.push(`rerun:${repository}:${runId}:${failedOnly}`);

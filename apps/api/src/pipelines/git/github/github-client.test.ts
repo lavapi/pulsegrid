@@ -145,11 +145,16 @@ describe('GitHubClient', () => {
 
   it('starts a run on a branch with inputs', async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
-    await new GitHubClient('t', fetcher).startRun('o/r', '5', 'main', { tag: 'v1' });
+    expect(await new GitHubClient('t', fetcher).startRun('o/r', '5', 'main', { tag: 'v1' })).toBeNull();
     const [url, init] = fetcher.mock.calls[0] as [string, RequestInit];
     expect(url).toContain('/repos/o/r/actions/workflows/5/dispatches');
     expect(init.method).toBe('POST');
     expect(JSON.parse(String(init.body))).toEqual({ ref: 'main', inputs: { tag: 'v1' } });
+  });
+
+  it('says which run it started when GitHub answers with it', async () => {
+    const fetcher = vi.fn().mockResolvedValue(json({ workflow_run_id: 987, run_url: 'u', html_url: 'h' }, { status: 200 }));
+    expect(await new GitHubClient('t', fetcher).startRun('o/r', '5', 'main', {})).toBe('987');
   });
 
   it.each([
