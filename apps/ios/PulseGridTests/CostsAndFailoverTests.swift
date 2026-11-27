@@ -35,7 +35,7 @@ struct FailoverHistoryTests {
         """#)
         let run = history.entries[0], test = history.entries[1]
         #expect(run.isGroupRun && run.counts?.passed == 2)
-        #expect(run.reportPath.path == "experiment-reports/runs/r1/pdf" && run.reportPath.query == ["account": "c1"])
-        #expect(test.reportPath.path == "experiment-reports/t1/pdf" && test.reportPath.query.isEmpty)
+        #expect(run.report.path.path == "experiment-reports/runs/r1/pdf" && run.report.path.query == ["account": "c1"])
+        #expect(test.report.path.path == "experiment-reports/t1/pdf" && test.report.path.query.isEmpty)
     }
 }

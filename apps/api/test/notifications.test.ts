@@ -59,6 +59,7 @@ describe('notifications', () => {
         unhealthy_production: true,
         unhealthy_staging: false,
         failed_pipelines: true,
+        failover_tests: true,
       });
       const changed = await http().put('/api/account/notifications').set('Cookie', ada).send({ unhealthy_staging: true, failed_pipelines: false }).expect(200);
       expect(changed.body).toMatchObject({ unhealthy_staging: true, failed_pipelines: false, database_access: true });
