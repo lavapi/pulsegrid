@@ -56,14 +56,17 @@ private struct PipelineRow: View {
     let item: PipelineActivityItem
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack {
-                Text("\(item.appName) · \(item.name)").font(.body.weight(.medium))
-                Spacer()
-                StatusBadge(text: item.run.status.sentenceCased, tone: .ofPipeline(item.run.status))
+        Label {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(item.appName) · \(item.name)").font(.body.weight(.medium)).lineLimit(1)
+                Text("\(item.run.commit) “\(item.run.title)”").font(.caption).lineLimit(2)
+                HStack(spacing: 6) {
+                    BranchTag(branch: item.run.branch)
+                    if let actor = item.run.actor { Text(actor).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+                }
             }
-            Text("\(item.run.branch) · \(item.run.commit) “\(item.run.title)”").font(.caption).lineLimit(2)
-            if let actor = item.run.actor { Text(actor).font(.caption).foregroundStyle(.secondary) }
+        } icon: {
+            PipelineStatusIcon(status: item.run.status)
         }
     }
 }

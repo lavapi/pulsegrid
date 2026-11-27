@@ -76,6 +76,7 @@ struct MoreView: View {
                 case .pipelineRun(let appId, let runId): PipelineRunView(appId: appId, runId: runId)
                 case .failoverReport(let report): FailoverReportView(report: report)
                 case .cloudActivity: CloudActivityView()
+                case .activity: ActivityView()
                 }
             }
         }
@@ -110,7 +111,7 @@ private struct ProfileHeader: View {
 
 /// The pages under More that a link can open, by their web path.
 enum MorePage: Hashable {
-    case environments, costs, failoverTests, notifications, cloudActivity
+    case environments, costs, failoverTests, notifications, cloudActivity, activity
     case pipelineRun(appId: String, runId: String)
     case failoverReport(FailoverReport)
 
@@ -130,6 +131,7 @@ enum MorePage: Hashable {
         case _ where path.hasPrefix("/failover-tests"): self = .failoverTests
         case _ where path.hasPrefix("/account/notifications"): self = .notifications
         case _ where path.hasPrefix("/activity/cloud"): self = .cloudActivity
+        case _ where path.hasPrefix("/activity"): self = .activity
         default: return nil
         }
     }

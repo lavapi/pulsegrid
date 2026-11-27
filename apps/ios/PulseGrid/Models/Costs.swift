@@ -2,6 +2,7 @@ import Foundation
 
 nonisolated struct ServiceCost: Decodable, Equatable, Identifiable {
     let service: String
+    let category: String?
     let thisMonth: Double
     let lastMonth: Double
 
@@ -21,6 +22,9 @@ nonisolated struct AccountCosts: Decodable, Equatable, Identifiable {
     var id: String { accountId }
     var thisMonth: Double { services.reduce(0) { $0 + $1.thisMonth } }
     var lastMonth: Double { services.reduce(0) { $0 + $1.lastMonth } }
+
+    /// This month so far against all of last month, such as 0.12 for 12% more; nil without a last month.
+    var monthChange: Double? { lastMonth > 0 ? thisMonth / lastMonth - 1 : nil }
 
     /// The services that cost most this month, biggest first.
     func biggest(_ count: Int) -> [ServiceCost] {

@@ -31,17 +31,19 @@ private struct AccountCostsSection: View {
             if let error = account.error {
                 Text(error).font(.footnote).foregroundStyle(.secondary)
             } else {
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text("This month so far").font(.caption).foregroundStyle(.secondary)
-                        Text(account.format(account.thisMonth)).font(.title2.weight(.semibold).monospacedDigit())
+                        Text(account.format(account.thisMonth)).font(.title.weight(.bold).monospacedDigit())
+                        if let change = account.monthChange { ChangeBadge(change: change) }
                     }
                     Spacer()
-                    VStack(alignment: .trailing) {
+                    VStack(alignment: .trailing, spacing: 4) {
                         Text("Last month").font(.caption).foregroundStyle(.secondary)
-                        Text(account.format(account.lastMonth)).font(.body.monospacedDigit())
+                        Text(account.format(account.lastMonth)).font(.title3.weight(.semibold).monospacedDigit()).foregroundStyle(.secondary)
                     }
                 }
+                .padding(.vertical, 4)
                 let biggest = account.biggest(5)
                 if !biggest.isEmpty {
                     Chart(biggest) { service in
@@ -55,7 +57,11 @@ private struct AccountCostsSection: View {
                     .chartForegroundStyleScale(["This month": Color.accentColor, "Last month": Color.secondary.opacity(0.5)])
                     .frame(height: CGFloat(biggest.count) * 44 + 30)
                     ForEach(biggest) { service in
-                        LabeledContent(service.service, value: account.format(service.thisMonth))
+                        Label {
+                            LabeledContent(service.service, value: account.format(service.thisMonth))
+                        } icon: {
+                            IconTile(.category(service.category ?? ""))
+                        }
                     }
                 }
                 if let updated = account.updatedAt {
@@ -63,9 +69,31 @@ private struct AccountCostsSection: View {
                 }
             }
         } header: {
-            Text([account.accountName, account.environmentName].compactMap { $0 }.joined(separator: " · "))
+            Text(accountTitle(name: account.accountName, environment: account.environmentName))
         } footer: {
             if account.isProduction { Text("Production") }
         }
+    }
+}
+
+/// How this month so far compares with all of last month: up in orange, down in green.
+private struct ChangeBadge: View {
+    let change: Double
+
+    /// Below half a percent, the months are the same.
+    private var same: Bool { abs(change) < 0.005 }
+
+    var body: some View {
+        Group {
+            if same {
+                Label("Same as last month", systemImage: "equal")
+            } else {
+                Label(change.formatted(.percent.precision(.fractionLength(0)).sign(strategy: .always())), systemImage: change > 0 ? "arrow.up.right" : "arrow.down.right")
+                    .accessibilityLabel("\(Int((abs(change) * 100).rounded())) percent \(change > 0 ? "more" : "less") than last month so far")
+            }
+        }
+        .labelStyle(.titleAndIcon)
+        .font(.caption.weight(.semibold).monospacedDigit())
+        .foregroundStyle(same ? .secondary : change > 0 ? Color.orange : Color.green)
     }
 }

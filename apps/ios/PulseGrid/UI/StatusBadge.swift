@@ -23,6 +23,17 @@ enum Tone {
         }
     }
 
+    /// A release stage: waiting, running, success, failure or cancelled.
+    static func ofStage(_ status: String) -> Tone {
+        switch status {
+        case "success": .good
+        case "running": .active
+        case "failure": .bad
+        case "cancelled": .warning
+        default: .neutral
+        }
+    }
+
     static func ofHealth(_ health: String) -> Tone {
         switch health {
         case "healthy": .good

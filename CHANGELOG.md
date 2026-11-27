@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format is b
 
 ## [Unreleased]
 
+### Changed
+
+- The iPhone app has a new design, made with native components throughout. It uses the brand's indigo, Settings-style icons for each kind of service, a health summary with a gauge, status badges with a dot, and the list's outline while loading. Access requests read as cards you can swipe to approve or decline, your own access counts down live, and releases show their stages. Pipelines, failover tests and activity show status icons, activity is grouped by day, costs show the change from last month, and More is grouped into Work, History and You. It works with large text and on small iPhones. The app is now version 1.5.0.
+
 ## [0.41.0] - 2026-11-27
 
 ### Added
