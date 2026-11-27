@@ -8,6 +8,7 @@ INFOPLIST_KEY_CFBundleDisplayName = PulseGrid
 INFOPLIST_KEY_UILaunchScreen_Generation = YES
 INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES
 INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait
+INFOPLIST_KEY_NSSupportsLiveActivities = YES
 INFOPLIST_KEY_NSFaceIDUsageDescription = PulseGrid uses Face ID to unlock the app.
 INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO
 INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.developer-tools

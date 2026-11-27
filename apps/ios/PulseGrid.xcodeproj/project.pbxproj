@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A1000000000000000000007D /* PulseGridWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A10000000000000000000071 /* PulseGridWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		A10000000000000000000020 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -14,7 +18,28 @@
 			remoteGlobalIDString = A10000000000000000000010;
 			remoteInfo = PulseGrid;
 		};
+		A1000000000000000000007A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000000000000000000070;
+			remoteInfo = PulseGridWidgets;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A1000000000000000000007C /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A1000000000000000000007D /* PulseGridWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		A10000000000000000000011 /* PulseGrid.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PulseGrid.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -24,6 +49,10 @@
 		A10000000000000000000033 /* Tests.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Tests.xcconfig; sourceTree = "<group>"; };
 		A10000000000000000000034 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000035 /* PulseGrid.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PulseGrid.entitlements; sourceTree = "<group>"; };
+		A10000000000000000000071 /* PulseGridWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PulseGridWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1000000000000000000007E /* Widgets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Widgets.xcconfig; sourceTree = "<group>"; };
+		A1000000000000000000007F /* Widgets-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Widgets-Info.plist"; sourceTree = "<group>"; };
+		A10000000000000000000080 /* Widgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widgets.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -37,9 +66,26 @@
 			path = PulseGridTests;
 			sourceTree = "<group>";
 		};
+		A10000000000000000000072 /* PulseGridWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PulseGridWidgets;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000079 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		A10000000000000000000073 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A10000000000000000000013 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -62,6 +108,8 @@
 			children = (
 				A10000000000000000000012 /* PulseGrid */,
 				A10000000000000000000022 /* PulseGridTests */,
+				A10000000000000000000072 /* PulseGridWidgets */,
+				A10000000000000000000079 /* Shared */,
 				A10000000000000000000030 /* Config */,
 				A10000000000000000000003 /* Products */,
 			);
@@ -75,6 +123,9 @@
 				A10000000000000000000033 /* Tests.xcconfig */,
 				A10000000000000000000034 /* Info.plist */,
 				A10000000000000000000035 /* PulseGrid.entitlements */,
+				A1000000000000000000007E /* Widgets.xcconfig */,
+				A1000000000000000000007F /* Widgets-Info.plist */,
+				A10000000000000000000080 /* Widgets.entitlements */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -84,6 +135,7 @@
 			children = (
 				A10000000000000000000011 /* PulseGrid.app */,
 				A10000000000000000000021 /* PulseGridTests.xctest */,
+				A10000000000000000000071 /* PulseGridWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -91,6 +143,27 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		A10000000000000000000070 /* PulseGridWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000076 /* Build configuration list for PBXNativeTarget "PulseGridWidgets" */;
+			buildPhases = (
+				A10000000000000000000074 /* Sources */,
+				A10000000000000000000073 /* Frameworks */,
+				A10000000000000000000075 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A10000000000000000000072 /* PulseGridWidgets */,
+				A10000000000000000000079 /* Shared */,
+			);
+			name = PulseGridWidgets;
+			productName = PulseGridWidgets;
+			productReference = A10000000000000000000071 /* PulseGridWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		A10000000000000000000010 /* PulseGrid */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A10000000000000000000040 /* Build configuration list for PBXNativeTarget "PulseGrid" */;
@@ -98,13 +171,16 @@
 				A10000000000000000000014 /* Sources */,
 				A10000000000000000000013 /* Frameworks */,
 				A10000000000000000000015 /* Resources */,
+				A1000000000000000000007C /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				A1000000000000000000007B /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A10000000000000000000012 /* PulseGrid */,
+				A10000000000000000000079 /* Shared */,
 			);
 			name = PulseGrid;
 			productName = PulseGrid;
@@ -149,6 +225,9 @@
 						CreatedOnToolsVersion = 27.0;
 						TestTargetID = A10000000000000000000010;
 					};
+					A10000000000000000000070 = {
+						CreatedOnToolsVersion = 27.0;
+					};
 				};
 			};
 			buildConfigurationList = A10000000000000000000060 /* Build configuration list for PBXProject "PulseGrid" */;
@@ -167,11 +246,19 @@
 			targets = (
 				A10000000000000000000010 /* PulseGrid */,
 				A10000000000000000000024 /* PulseGridTests */,
+				A10000000000000000000070 /* PulseGridWidgets */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		A10000000000000000000075 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A10000000000000000000015 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -189,6 +276,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		A10000000000000000000074 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A10000000000000000000014 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -211,9 +305,28 @@
 			target = A10000000000000000000010 /* PulseGrid */;
 			targetProxy = A10000000000000000000020 /* PBXContainerItemProxy */;
 		};
+		A1000000000000000000007B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000000000000000000070 /* PulseGridWidgets */;
+			targetProxy = A1000000000000000000007A /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		A10000000000000000000077 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A1000000000000000000007E /* Widgets.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		A10000000000000000000078 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A1000000000000000000007E /* Widgets.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
 		A10000000000000000000061 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A10000000000000000000031 /* Base.xcconfig */;
@@ -268,6 +381,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		A10000000000000000000076 /* Build configuration list for PBXNativeTarget "PulseGridWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000077 /* Debug */,
+				A10000000000000000000078 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		A10000000000000000000040 /* Build configuration list for PBXNativeTarget "PulseGrid" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
