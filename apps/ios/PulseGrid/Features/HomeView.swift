@@ -60,7 +60,8 @@ struct HomeView: View {
         }
         var current: ProductionRelease?
         if case .ready(let release)? = await release { current = release }
-        return try await HomeSnapshot(
+        if user?.can(.decideProductionReleases) == true { LiveActivities.follow(release: current) }
+        let home = try await HomeSnapshot(
             categories: categories,
             needsYou: NeedsYou.items(
                 release: current,
@@ -72,6 +73,8 @@ struct HomeView: View {
             costs: await costs?.accounts.first { $0.accountId == account.id },
             activity: await activity?.events
         )
+        home.saveForWidgets(account: account)
+        return home
     }
 }
 

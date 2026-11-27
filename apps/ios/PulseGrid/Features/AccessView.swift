@@ -32,7 +32,9 @@ private struct MyAccessView: View {
 
     var body: some View {
         Loaded(id: "mine") {
-            try await app.api.get("database-access/mine") as MyDatabaseAccess
+            let access = try await app.api.get("database-access/mine") as MyDatabaseAccess
+            if case .ready(_, _, _, let grant) = access { LiveActivities.follow(access: grant) }
+            return access
         } content: { access, reload in
             switch access {
             case .unavailable(let message):

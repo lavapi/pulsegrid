@@ -70,6 +70,7 @@ struct DeploysView: View {
         async let production: ProductionReleasesView? = canDecide ? try? await api.get("production-releases/current") : nil
         var waiting: ProductionRelease?
         if case .ready(let current?)? = await production, current.isWaiting { waiting = current }
+        if canDecide { LiveActivities.follow(release: waiting) }
         let activity = try await pipelines
         return try await Deploys(
             waitingRelease: waiting,

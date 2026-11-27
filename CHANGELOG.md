@@ -11,6 +11,8 @@ All notable changes to this project are documented in this file. The format is b
 - iPhone app: **Services** lists every service in the account at once, by kind and cluster, with problems first. Chips at the top filter by kind and show how many need attention. A service's page opens with its health, status and load, the load charts are filled and show the value under your finger, and logs, requests and database activity are tiles.
 - iPhone app: **Deploys** brings releases and pipelines together. A production release waiting for you comes first with its countdown, then pipelines running now, what's deployed for each service with its stages, and what failed, filtered by All, Running or Failed. Start a pipeline from the top, and the tab refreshes while something runs. A run's jobs show as a bar of stages.
 - iPhone app: database access counts down on a ring that empties as time runs out and turns orange in the last 15 minutes, with the end time beside it.
+- iPhone app: **Live Activities**. A production release waiting for your decision, and your own database access, count down on the Lock Screen and in the Dynamic Island, end when they're over, and move when access is extended.
+- iPhone app: **widgets**. **Health** shows the account's healthy share on the Home Screen and Lock Screen, and **Needs you** shows how many things wait on you. They show what Home last loaded and never hold your sign-in.
 
 ### Added
 
