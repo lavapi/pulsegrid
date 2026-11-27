@@ -6,6 +6,7 @@ import { TenantDatabase } from '../../database/tenant-database';
 import { AccountCredentials } from '../connection/account-credentials';
 import type { CostEntry, CostSource } from '../providers/provider';
 import { ProviderRegistry } from '../providers/provider-registry';
+import { CostAlerts } from './cost-alerts';
 import { costPeriod, currentMonth, previousMonth } from './cost-months';
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -27,6 +28,7 @@ export class CostRefreshService {
     private readonly database: TenantDatabase,
     private readonly accountCredentials: AccountCredentials,
     private readonly providers: ProviderRegistry,
+    private readonly alerts: CostAlerts,
   ) {}
 
   async refreshDueAccounts(now = new Date()): Promise<void> {
@@ -60,7 +62,11 @@ export class CostRefreshService {
       await this.save(tenantId, account.id, entries, now);
     } catch (error) {
       await this.saveFailure(tenantId, account.id, source, error, now);
+      return;
     }
+    await this.alerts.check(tenantId, account.id, now).catch((error: unknown) =>
+      this.logger.warn(`Checking for a cost rise failed: ${(error as Error).name}`),
+    );
   }
 
   private save(tenantId: string, accountId: string, entries: CostEntry[], now: Date): Promise<void> {
